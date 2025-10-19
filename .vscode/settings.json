@@ -1,9 +1,25 @@
 {
     "python.analysis.extraPaths": [
-        "./MyPlugin/Content/Python-vendor"
+        "./MaidCat/Content/Python",
+        "./MaidCat/Content/Python/Lib/site-packages",
+        "D:/GitHub/See1Unreal5/Intermediate/PythonStub",
+        "D:/GitHub/See1Unreal5/TA/TAPython/Python",
+        "D:/GitHub/See1Unreal5/TA/TAPython/Lib/site-packages",
+        "D:/GitHub/See1Unreal5/Content/Python",
+        "D:/GitHub/See1Unreal5/Content/Python/Lib/site-packages"
     ],
     "python.autoComplete.extraPaths": [
-        "./MyPlugin/Content/Python-vendor"
+        "./MaidCat/Content/Python",
+        "./MaidCat/Content/Python/Lib/site-packages",
+        "D:/GitHub/See1Unreal5/Intermediate/PythonStub",
+        "D:/GitHub/See1Unreal5/TA/TAPython/Python",
+        "D:/GitHub/See1Unreal5/TA/TAPython/Lib/site-packages",
+        "D:/GitHub/See1Unreal5/Content/Python",
+        "D:/GitHub/See1Unreal5/Content/Python/Lib/site-packages"
     ],
-    "python.envFile": "${workspaceFolder}/.env"
+    "python.envFile": "${workspaceFolder}/.env",
+    "files.associations": {
+        "*.uplugin": "jsonc",
+        "*.uproject": "jsonc"
+    }
 }

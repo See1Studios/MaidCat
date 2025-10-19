@@ -1,0 +1,660 @@
+# ============================================================================
+# init_unreal.py - MaidCat 플러그인 초기화 스크립트
+# ============================================================================
+"""
+MaidCat 플러그인 시작 시 실행되는 메인 초기화 스크립트
+- 의존성 패키지 설치
+- Python 경로 설정
+- Startup 폴더의 모든 초기화 모듈 자동 실행
+- 메뉴 및 툴바 아이템 추가
+"""
+
+import sys
+import os
+import unreal
+from pathlib import Path
+import importlib
+
+# 의존성 설치
+try:
+    from tool import dependencies_installer
+    dependencies_installer.install_dependencies()
+except ImportError as e:
+    print(f"⚠️  dependencies_installer를 찾을 수 없습니다: {e}")
+except Exception as e:
+    print(f"❌ 의존성 설치 중 오류 발생: {e}")
+
+# util 모듈 리로드 (개발 중 변경사항 반영)
+try:
+    import util.editor as editor_util
+    import util.material as material_util
+    importlib.reload(editor_util)
+    print(f"🔄 util.editor 모듈 리로드됨")
+    print(editor_util.UINames.LEVEL_EDITOR_MAIN_MENU)
+except ImportError:
+    print("⚠️  util 모듈을 찾을 수 없습니다.")
+
+
+def get_plugin_path():
+    """플러그인 경로 반환"""
+    # 플러그인 경로는 이 스크립트의 위치를 기준으로 계산
+    current_file = Path(__file__)
+    # init_unreal.py -> Python -> Content -> MaidCat (플러그인 루트)
+    plugin_root = current_file.parent.parent.parent
+    return plugin_root
+
+
+def add_to_sys_path(path_str, description=""):
+    """sys.path에 경로 추가 (중복 방지)"""
+    if path_str not in sys.path:
+        sys.path.append(path_str)
+        print(f"✅ Added to sys.path: {path_str}")
+        if description:
+            print(f"   ({description})")
+    return path_str
+
+
+def setup_python_paths():
+    """플러그인 및 프로젝트 Python 경로 설정"""
+    plugin_path = get_plugin_path()
+    project_path = Path(unreal.Paths.project_dir())
+    
+    print("\n📂 Setting up Python paths...")
+    print(f"   Plugin Path: {plugin_path}")
+    print(f"   Project Path: {project_path}")
+    
+    # === 플러그인 경로 설정 ===
+    # 플러그인 Content/Python 경로
+    plugin_content_python_path = plugin_path / "Content" / "Python"
+    if plugin_content_python_path.exists():
+        add_to_sys_path(str(plugin_content_python_path), "Plugin Python scripts")
+    
+    # 플러그인 Python 라이브러리 경로 (Lib/site-packages)
+    plugin_lib_path = plugin_content_python_path / "Lib" / "site-packages"
+    if plugin_lib_path.exists():
+        add_to_sys_path(str(plugin_lib_path), "Plugin Python libraries")
+    
+    # === 프로젝트 경로 설정 ===
+    # 프로젝트 TA Python 경로
+    ta_python_path = project_path / "TA" / "TAPython" / "Python"
+    if ta_python_path.exists():
+        add_to_sys_path(str(ta_python_path), "Project TA Python scripts")
+    
+    # 프로젝트 TA Python 라이브러리 경로 (TAPython/Lib/site-packages)
+    ta_lib_path = project_path / "TA" / "TAPython" / "Lib" / "site-packages"
+    if ta_lib_path.exists():
+        add_to_sys_path(str(ta_lib_path), "Project TA Python libraries")
+    
+    # 프로젝트 Content/Python 경로
+    project_content_python_path = project_path / "Content" / "Python"
+    if project_content_python_path.exists():
+        add_to_sys_path(str(project_content_python_path), "Project Content Python scripts")
+    
+    return plugin_content_python_path
+
+
+def run_startup_modules():
+    """Startup 폴더의 모든 초기화 모듈 실행"""
+    plugin_path = get_plugin_path()
+    startup_path = plugin_path / "Content" / "Python" / "startup"
+    
+    if not startup_path.exists():
+        print(f"⚠️  Startup 폴더가 없습니다: {startup_path}")
+        print("   Startup 폴더를 생성하고 초기화 스크립트를 추가하세요.")
+        return
+    
+    # Startup 폴더를 sys.path에 추가
+    add_to_sys_path(str(startup_path), "Startup modules")
+    
+    print("\n" + "=" * 60)
+    print("🚀 Running Startup Modules...")
+    print("=" * 60)
+    
+    # Startup 폴더의 모든 .py 파일 찾기 (알파벳 순 정렬)
+    startup_files = sorted(startup_path.glob("*.py"))
+    
+    if not startup_files:
+        print("⚠️  Startup 폴더에 초기화 스크립트가 없습니다.")
+        return
+    
+    success_count = 0
+    fail_count = 0
+    
+    for startup_file in startup_files:
+        # __init__.py나 test_ 파일은 건너뛰기
+        if startup_file.name.startswith("_") or startup_file.name.startswith("test_"):
+            continue
+        
+        module_name = startup_file.stem
+        print(f"\n📦 Loading: {module_name}")
+        
+        try:
+            # 모듈 동적 import
+            module = __import__(module_name)
+            
+            # 모듈에 run() 함수가 있으면 실행
+            if hasattr(module, "run"):
+                module.run()
+                print(f"   ✅ {module_name}.run() executed")
+            else:
+                print(f"   ℹ️  {module_name} loaded (no run() function)")
+            
+            success_count += 1
+            
+        except Exception as e:
+            print(f"   ❌ Error loading {module_name}: {e}")
+            import traceback
+            traceback.print_exc()
+            fail_count += 1
+    
+    print("\n" + "=" * 60)
+    print(f"✅ Startup Complete: {success_count} succeeded, {fail_count} failed")
+    print("=" * 60)
+
+
+def create_script_editor_button():
+    """툴바에 스크립트 에디터 버튼 추가"""
+    section_name = 'MaidCat_Plugins'
+    se_command = 'import my_module;w = my_module.show()'  # TODO: 실제 명령으로 교체
+    label = 'MaidCat Tools'
+    tooltip = "MaidCat 플러그인 도구"
+    
+    try:
+        menus = unreal.ToolMenus.get()
+        level_menu_bar = menus.find_menu('LevelEditor.LevelEditorToolBar.PlayToolBar')
+        level_menu_bar.add_section(section_name=section_name, label=section_name)
+
+        entry = unreal.ToolMenuEntry(type=unreal.MultiBlockType.TOOL_BAR_BUTTON)
+        entry.set_label(label)
+        entry.set_tool_tip(tooltip)
+        entry.set_icon('EditorStyle', 'DebugConsole.Icon')
+        entry.set_string_command(
+            type=unreal.ToolMenuStringCommandType.PYTHON,
+            custom_type=unreal.Name(''),
+            string=se_command
+        )
+        level_menu_bar.add_menu_entry(section_name, entry)
+        menus.refresh_all_widgets()
+        print(f"✅ 툴바 버튼 추가됨: {label}")
+    except Exception as e:
+        print(f"❌ 툴바 버튼 추가 실패: {e}")
+
+
+def add_cmd_to_menu(label=None, command=None, tooltip=None, icon=None):
+    """메뉴에 명령어 추가"""
+    try:
+        unreal_menus = unreal.ToolMenus.get()
+        parent_menu = unreal_menus.find_menu("LevelEditor.MainMenu.Tools")
+
+        # name kwargs는 유니크해야 함! 설정하지 않으면 자동 생성됨
+        entry = unreal.ToolMenuEntry(
+            type=unreal.MultiBlockType.MENU_ENTRY,
+            insert_position=unreal.ToolMenuInsert("", unreal.ToolMenuInsertType.FIRST),
+        )
+        
+        if label:
+            entry.set_label(label)
+        if command:
+            entry.set_string_command(
+                type=unreal.ToolMenuStringCommandType.PYTHON,
+                string=command,
+                custom_type=unreal.Name("MaidCat_Plugin"),
+            )
+        if tooltip:
+            entry.set_tool_tip(tooltip)
+        if icon:
+            entry.set_icon(icon)
+
+        parent_menu.add_menu_entry("MaidCat", entry)
+        print(f"✅ 메뉴 아이템 추가됨: {label}")
+    except Exception as e:
+        print(f"❌ 메뉴 아이템 추가 실패: {e}")
+
+
+def setup_ui_elements():
+    """UI 요소 설정 (메뉴, 툴바 등)"""
+    print("\n🎨 Setting up UI elements...")
+    
+    # 기본 설정
+    section_name = 'MaidCat_Plugins'
+    se_command = 'import my_module;w = my_module.show()'  # TODO: 실제 명령으로 교체
+    label = 'MaidCat Tools'
+    tooltip = "MaidCat 플러그인 도구 모음"
+    
+    # 툴바 버튼 추가 (주석 해제하면 활성화)
+    # create_script_editor_button()
+    
+    # 메뉴 아이템 추가
+    add_cmd_to_menu(label=label, command=se_command, tooltip=tooltip)
+
+
+def update_vscode_settings():
+    """VSCode 설정 자동 업데이트 (프로젝트 + 플러그인)"""
+    print("\n⚙️  Updating VSCode settings...")
+    
+    try:
+        import json
+        plugin_path = get_plugin_path()
+        project_path = Path(unreal.Paths.project_dir())
+        
+        print(f"   🔧 Plugin Path: {plugin_path}")
+        print(f"   🔧 Project Path: {project_path}")
+        
+        # === 1. 프로젝트 VSCode 설정 업데이트 ===
+        update_project_vscode_settings(json, plugin_path, project_path)
+        
+        # === 2. 플러그인 VSCode 설정 업데이트 ===  
+        update_plugin_vscode_settings(json, plugin_path)
+        
+    except Exception as e:
+        print(f"   ❌ VSCode 설정 업데이트 실패: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+def update_project_vscode_settings(json, plugin_path, project_path):
+    """프로젝트의 VSCode 설정 업데이트"""
+    settings_path = project_path / ".vscode" / "settings.json"
+    print(f"\n   📁 프로젝트 VSCode 설정 업데이트: {settings_path}")
+    
+    # .vscode 폴더 생성
+    if not settings_path.parent.exists():
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        print(f"   📂 .vscode 폴더 생성됨: {settings_path.parent}")
+    
+    # 기존 설정 읽기
+    settings = {}
+    if settings_path.exists():
+        try:
+            with open(settings_path, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+        except Exception as e:
+            print(f"   ⚠️  기존 설정 읽기 실패, 새로 생성: {e}")
+            settings = {}
+    
+    # 프로젝트 기준 Python 경로들
+    python_paths = []
+    
+    # Unreal Python Stub 경로
+    stub_path = "./Intermediate/PythonStub"
+    python_paths.append(stub_path)
+    stub_exists = (project_path / "Intermediate" / "PythonStub").exists()
+    print(f"   {'✅' if stub_exists else '⚠️'} Unreal Python stub: {stub_path}")
+    
+    # TA Python 경로들
+    ta_paths = ["./TA/TAPython/Python", "./TA/TAPython/Lib/site-packages"]
+    for ta_path in ta_paths:
+        python_paths.append(ta_path)
+        ta_exists = (project_path / ta_path.replace("./", "")).exists()
+        print(f"   {'✅' if ta_exists else '⚠️'} TA Python: {ta_path}")
+    
+    # Content Python 경로
+    content_path = "./Content/Python"
+    python_paths.append(content_path)
+    content_exists = (project_path / "Content" / "Python").exists()
+    print(f"   {'✅' if content_exists else '⚠️'} Content Python: {content_path}")
+    
+    # 플러그인 경로들 (상대 경로로 변환)
+    try:
+        plugin_relative = plugin_path.resolve().relative_to(project_path.resolve())
+        plugin_paths = [
+            str(plugin_relative / "Content" / "Python").replace("\\", "/"),
+            str(plugin_relative / "Content" / "Python" / "Lib" / "site-packages").replace("\\", "/")
+        ]
+        python_paths.extend(plugin_paths)
+        print(f"   ✅ Plugin paths (relative): {plugin_paths}")
+    except ValueError:
+        # 플러그인이 프로젝트 외부에 있는 경우
+        plugin_paths = [
+            str(plugin_path / "Content" / "Python"),
+            str(plugin_path / "Content" / "Python" / "Lib" / "site-packages")
+        ]
+        python_paths.extend(plugin_paths)
+        print(f"   ✅ Plugin paths (absolute): {plugin_paths}")
+    
+    # 설정 업데이트
+    settings.update({
+        "python.analysis.extraPaths": python_paths,
+        "python.autoComplete.extraPaths": python_paths,
+        "python.envFile": "${workspaceFolder}/.env"
+    })
+    
+    # 파일 저장
+    with open(settings_path, 'w', encoding='utf-8') as f:
+        json.dump(settings, f, indent=4, ensure_ascii=False)
+    
+    print(f"   ✅ 프로젝트 VSCode 설정 업데이트 완료 ({len(python_paths)} paths)")
+
+
+def update_plugin_vscode_settings(json, plugin_path):
+    """플러그인의 VSCode 설정 업데이트"""
+    settings_path = plugin_path / ".vscode" / "settings.json"
+    print(f"\n   📁 플러그인 VSCode 설정 업데이트: {settings_path}")
+    
+    # .vscode 폴더 생성
+    if not settings_path.parent.exists():
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        print(f"   📂 .vscode 폴더 생성됨: {settings_path.parent}")
+    
+    # 플러그인 전용 설정
+    plugin_settings = {
+        "python.analysis.extraPaths": [
+            "./MaidCat/Content/Python",
+            "./MaidCat/Content/Python/Lib/site-packages"
+        ],
+        "python.autoComplete.extraPaths": [
+            "./MaidCat/Content/Python", 
+            "./MaidCat/Content/Python/Lib/site-packages"
+        ],
+        "python.envFile": "${workspaceFolder}/.env",
+        "files.associations": {
+            "*.uplugin": "jsonc",
+            "*.uproject": "jsonc"
+        }
+    }
+    
+    # 기존 설정과 병합
+    if settings_path.exists():
+        try:
+            with open(settings_path, 'r', encoding='utf-8') as f:
+                existing = json.load(f)
+                existing.update(plugin_settings)
+                plugin_settings = existing
+        except Exception as e:
+            print(f"   ⚠️  기존 플러그인 설정 읽기 실패: {e}")
+    
+    # 파일 저장
+    with open(settings_path, 'w', encoding='utf-8') as f:
+        json.dump(plugin_settings, f, indent=4, ensure_ascii=False)
+    
+    print(f"   ✅ 플러그인 VSCode 설정 업데이트 완료")
+
+
+def update_project_vscode_settings(settings_path, plugin_path, project_path):
+    """프로젝트의 VSCode 설정 업데이트"""
+    print(f"\n   📁 프로젝트 VSCode 설정 업데이트: {settings_path}")
+    
+    if not settings_path.parent.exists():
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        print(f"   📂 .vscode 폴더 생성됨: {settings_path.parent}")
+    
+    # 기본 설정이나 기존 설정 읽기
+    settings = {}
+    if settings_path.exists():
+        try:
+            with open(settings_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                # 간단한 주석 제거
+                lines = []
+                for line in content.split('\n'):
+                    if '//' in line and line.strip().startswith('//'):
+                        continue
+                    if '//' in line:
+                        comment_index = line.find('//')
+                        quote_count = line[:comment_index].count('"')
+                        if quote_count % 2 == 0:
+                            line = line[:comment_index].rstrip()
+                    if line.strip():
+                        lines.append(line)
+                clean_content = '\n'.join(lines)
+                settings = json.loads(clean_content)
+        except Exception as e:
+            print(f"   ⚠️  기존 설정 읽기 실패, 새로 생성: {e}")
+            settings = {}
+    
+    # 프로젝트 기준 Python 경로들
+    python_paths = []
+    
+    # === Unreal Python Stub 경로 ===
+    stub_path_rel = "./Intermediate/PythonStub"
+    stub_path_full = project_path / "Intermediate" / "PythonStub"
+    python_paths.append(stub_path_rel)
+    if stub_path_full.exists():
+        print(f"   ✅ Unreal Python stub 경로 추가됨: {stub_path_rel}")
+    else:
+        print(f"   ⚠️  Unreal Python stub 폴더가 아직 없음 (언리얼 에디터 실행 후 생성됨): {stub_path_rel}")
+    
+    # === 프로젝트 TA 경로들 ===
+    ta_paths = [
+        "./TA/TAPython/Python",
+        "./TA/TAPython/Lib/site-packages"
+    ]
+    for ta_path in ta_paths:
+        full_path = project_path / ta_path.replace("./", "")
+        python_paths.append(ta_path)
+        if full_path.exists():
+            print(f"   ✅ TA Python 경로 추가됨: {ta_path}")
+        else:
+            print(f"   ⚠️  TA Python 경로가 없음: {ta_path}")
+    
+    # === 프로젝트 Content Python 경로 ===
+    content_python_path = "./Content/Python"
+    content_python_full = project_path / "Content" / "Python"
+    python_paths.append(content_python_path)
+    if content_python_full.exists():
+        print(f"   ✅ Content Python 경로 추가됨: {content_python_path}")
+    else:
+        print(f"   ⚠️  Content Python 경로가 없음: {content_python_path}")
+    
+    # === 플러그인 경로들 (프로젝트 기준 상대 경로로) ===
+    try:
+        plugin_real_path = plugin_path.resolve()
+        project_real_path = project_path.resolve()
+        plugin_relative = plugin_real_path.relative_to(project_real_path)
+        
+        plugin_paths = [
+            str(plugin_relative / "Content" / "Python").replace("\\", "/"),
+            str(plugin_relative / "Content" / "Python" / "Lib" / "site-packages").replace("\\", "/")
+        ]
+        python_paths.extend(plugin_paths)
+        print(f"   ✅ 플러그인 경로들 추가됨 (상대경로): {plugin_paths}")
+        
+    except ValueError:
+        # 플러그인이 프로젝트 외부에 있는 경우
+        plugin_paths = [
+            str(plugin_real_path / "Content" / "Python"),
+            str(plugin_real_path / "Content" / "Python" / "Lib" / "site-packages")
+        ]
+        python_paths.extend(plugin_paths)
+        print(f"   ✅ 플러그인 경로들 추가됨 (절대경로): {plugin_paths}")
+    
+    # 기존 경로와 통합
+    existing_analysis_paths = settings.get("python.analysis.extraPaths", [])
+    existing_autocomplete_paths = settings.get("python.autoComplete.extraPaths", [])
+    
+    all_analysis_paths = list(dict.fromkeys(python_paths + existing_analysis_paths))
+    all_autocomplete_paths = list(dict.fromkeys(python_paths + existing_autocomplete_paths))
+    
+    settings.update({
+        "python.analysis.extraPaths": all_analysis_paths,
+        "python.autoComplete.extraPaths": all_autocomplete_paths,
+        "python.envFile": "${workspaceFolder}/.env"
+    })
+    
+    # 설정 파일 저장
+    with open(settings_path, 'w', encoding='utf-8') as f:
+        json.dump(settings, f, indent=4, ensure_ascii=False)
+    
+    print(f"   ✅ 프로젝트 VSCode 설정 업데이트 완료")
+    print(f"   📂 Total paths: {len(all_analysis_paths)}")
+
+
+def update_plugin_vscode_settings(settings_path, plugin_path):
+    """플러그인의 VSCode 설정 업데이트"""
+    print(f"\n   📁 플러그인 VSCode 설정 업데이트: {settings_path}")
+    
+    if not settings_path.parent.exists():
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        print(f"   📂 .vscode 폴더 생성됨: {settings_path.parent}")
+    
+    # 플러그인 전용 설정
+    plugin_settings = {
+        "python.analysis.extraPaths": [
+            "./MaidCat/Content/Python",
+            "./MaidCat/Content/Python/Lib/site-packages"
+        ],
+        "python.autoComplete.extraPaths": [
+            "./MaidCat/Content/Python", 
+            "./MaidCat/Content/Python/Lib/site-packages"
+        ],
+        "python.envFile": "${workspaceFolder}/.env",
+        "files.associations": {
+            "*.uplugin": "jsonc",
+            "*.uproject": "jsonc"
+        }
+    }
+    
+    # 기존 설정이 있으면 병합
+    if settings_path.exists():
+        try:
+            with open(settings_path, 'r', encoding='utf-8') as f:
+                existing = json.load(f)
+                # 기존 설정을 유지하면서 Python 관련 설정만 업데이트
+                existing.update(plugin_settings)
+                plugin_settings = existing
+        except Exception as e:
+            print(f"   ⚠️  기존 플러그인 설정 읽기 실패, 새로 생성: {e}")
+    
+    with open(settings_path, 'w', encoding='utf-8') as f:
+        json.dump(plugin_settings, f, indent=4, ensure_ascii=False)
+    
+    print(f"   ✅ 플러그인 VSCode 설정 업데이트 완료")
+        
+        # 현재 설정 읽기
+        with open(vscode_settings_path, 'r', encoding='utf-8') as f:
+            # JSON에서 주석 제거를 위한 간단한 처리
+            content = f.read()
+            # // 주석 제거 (간단한 방법)
+            lines = content.split('\n')
+            clean_lines = []
+            for line in lines:
+                # // 주석이 있는 경우 제거
+                if '//' in line:
+                    comment_index = line.find('//')
+                    # 문자열 내부의 //인지 확인 (간단한 검사)
+                    quote_count = line[:comment_index].count('"')
+                    if quote_count % 2 == 0:  # 문자열 외부의 주석
+                        line = line[:comment_index].rstrip()
+                if line.strip():  # 빈 줄이 아닌 경우에만 추가
+                    clean_lines.append(line)
+            
+            clean_content = '\n'.join(clean_lines)
+            settings = json.loads(clean_content)
+        
+        # Python 경로들 설정
+        python_paths = []
+        
+        # === 플러그인 경로들 ===
+        # 플러그인의 실제 경로 계산 (심볼릭 링크 고려)
+        plugin_real_path = plugin_path.resolve()  # 심볼릭 링크 해결
+        project_real_path = project_path.resolve()
+        
+        # 플러그인 경로를 프로젝트 기준 상대 경로로 변환
+        try:
+            plugin_relative = plugin_real_path.relative_to(project_real_path)
+            plugin_content_python_rel = plugin_relative / "Content" / "Python"
+            plugin_lib_rel = plugin_relative / "Content" / "Python" / "Lib" / "site-packages"
+            
+            python_paths.extend([
+                str(plugin_content_python_rel).replace("\\", "/"),
+                str(plugin_lib_rel).replace("\\", "/"),
+            ])
+        except ValueError:
+            # 플러그인이 프로젝트 외부에 있는 경우 절대 경로 사용
+            python_paths.extend([
+                str(plugin_real_path / "Content" / "Python"),
+                str(plugin_real_path / "Content" / "Python" / "Lib" / "site-packages"),
+            ])
+        
+        # === Unreal Python Stub 경로 ===
+        # Project/Intermediate/PythonStub 경로 추가
+        stub_path_rel = "./Intermediate/PythonStub"
+        stub_path_full = project_path / "Intermediate" / "PythonStub"
+        if stub_path_full.exists():
+            python_paths.append(stub_path_rel)
+            print(f"   ✅ Unreal Python stub 경로 추가됨: {stub_path_rel}")
+        else:
+            print(f"   ⚠️  Unreal Python stub 폴더가 없습니다: {stub_path_full}")
+        
+        # === 프로젝트 경로들 추가 (존재하는 경우에만) ===
+        potential_paths = [
+            "./TA/TAPython/Python",
+            "./TA/TAPython/Lib/site-packages", 
+            "./Content/Python"
+        ]
+        
+        for path_str in potential_paths:
+            full_path = project_path / Path(path_str.replace("./", ""))
+            if full_path.exists():
+                python_paths.append(path_str)
+        
+        # 기존 경로 유지하면서 새 경로 추가
+        existing_analysis_paths = settings.get("python.analysis.extraPaths", [])
+        existing_autocomplete_paths = settings.get("python.autoComplete.extraPaths", [])
+        
+        # 중복 제거하면서 경로 통합
+        all_analysis_paths = list(dict.fromkeys(existing_analysis_paths + python_paths))
+        all_autocomplete_paths = list(dict.fromkeys(existing_autocomplete_paths + python_paths))
+        
+        settings["python.analysis.extraPaths"] = all_analysis_paths
+        settings["python.autoComplete.extraPaths"] = all_autocomplete_paths
+        
+        # 설정 파일 업데이트
+        with open(vscode_settings_path, 'w', encoding='utf-8') as f:
+            json.dump(settings, f, indent=4, ensure_ascii=False)
+        
+        print(f"   ✅ VSCode 설정이 업데이트되었습니다")
+        print(f"   📂 Analysis paths: {len(all_analysis_paths)} paths")
+        print(f"   📂 AutoComplete paths: {len(all_autocomplete_paths)} paths")
+        
+        # 추가된 경로들 상세 표시
+        print("   📋 포함된 경로들:")
+        for i, path in enumerate(all_analysis_paths, 1):
+            status = "✅" if (project_path / path.replace("./", "")).exists() else "⚠️"
+            print(f"      {i}. {status} {path}")
+        
+    except Exception as e:
+        print(f"   ❌ VSCode 설정 업데이트 실패: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+def main():
+    """메인 초기화 함수"""
+    print("\n" + "=" * 60)
+    print("🐱 MaidCat Plugin Initialization")
+    print("=" * 60)
+    
+    plugin_path = get_plugin_path()
+    project_path = Path(unreal.Paths.project_dir())
+    print(f"📁 Plugin Path: {plugin_path}")
+    print(f"📁 Project Path: {project_path}")
+    
+    try:
+        # --- 1. Python 경로 설정 (플러그인 + 프로젝트) ---
+        plugin_content_python_path = setup_python_paths()
+        
+        # --- 2. VSCode 설정 자동 업데이트 ---
+        update_vscode_settings()
+        
+        # --- 3. Startup 모듈 실행 ---
+        run_startup_modules()
+        
+        # --- 4. UI 요소 설정 ---
+        setup_ui_elements()
+        
+        print(f"\n🎉 MaidCat 플러그인이 성공적으로 활성화되었습니다!")
+        
+    except Exception as e:
+        print(f"\n❌ 플러그인 초기화 중 오류 발생: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print(f"\n❌ Fatal error in init_unreal.py: {e}")
+        import traceback
+        traceback.print_exc()

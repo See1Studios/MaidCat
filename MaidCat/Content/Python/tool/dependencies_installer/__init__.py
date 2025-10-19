@@ -15,7 +15,7 @@ def get_py_pip():
     try:
         import py_pip
     except ImportError:
-        from dependencies_installer.vendor import py_pip
+        from .vendor import py_pip
     return py_pip
             
 
@@ -28,7 +28,17 @@ def install_dependencies():
     
     # Find requirements.txt file
     current_file = Path(__file__)
-    requirements_path = current_file.parent.parent / "requirements.txt"
+    # dependencies_installer는 tool 폴더 안에 있으므로 경로 수정
+    # tool/dependencies_installer/__init__.py -> tool/dependencies_installer -> tool -> Python -> requirements.txt
+    requirements_path = current_file.parent.parent.parent / "requirements.txt"
+    
+    print(f"Looking for requirements.txt at: {requirements_path}")
+    if not requirements_path.exists():
+        print(f"⚠️  requirements.txt not found at {requirements_path}")
+        return
     
     # Install requirements
     py_pip.install(requirements=requirements_path)
+
+
+print("Installing dependencies...")
