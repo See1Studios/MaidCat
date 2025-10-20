@@ -64,4 +64,4 @@ setup_data = generate_command_data  # 별칭
 run_gui = run_console_cat           # 별칭
 run_console_runner = run_console_cat # 호환성 유지
 
-print("Console Cat module loaded. 🐱")
+print("Console Cat module loaded. (Cat emoji)")

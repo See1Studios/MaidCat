@@ -12,22 +12,31 @@ MaidCat Console Runner 🐱
 try:
     from PySide6 import QtWidgets, QtCore, QtGui
     PYSIDE_AVAILABLE = True
-    print("🎉 PySide6 사용 중")
 except ImportError:
     try:
         from PySide2 import QtWidgets, QtCore, QtGui
         PYSIDE_AVAILABLE = True
-        print("⚠️ PySide2 fallback 사용 중")
     except ImportError:
-        print("❌ PySide6 또는 PySide2가 필요합니다.")
-        print("권장 설치: pip install PySide6")
-        print("대안 설치: pip install PySide2")
+        print("ERROR: PySide6 or PySide2 is required.")
+        print("Recommended: pip install PySide6")
+        print("Alternative: pip install PySide2")
         PYSIDE_AVAILABLE = False
 
 import unreal
 import json
+import sys
 import os
+import subprocess
 from pathlib import Path
+
+# 같은 패키지의 데이터 생성 모듈 import
+try:
+    from . import generate_console_command_list
+except ImportError:
+    try:
+        import generate_console_command_list
+    except ImportError:
+        generate_console_command_list = None
 
 
 # ============================================================================
@@ -90,12 +99,11 @@ class ConsoleCatDataManager:
                     cmd['scope'] = scope
                     self.all_commands.append(cmd)
                 
-                print(f"✅ {scope}: {len(commands_data)}개 명령어 로드")
-                
             except Exception as e:
                 print(f"❌ {json_file} 로드 실패: {e}")
         
-        print(f"📊 총 {len(self.all_commands)}개 명령어 로드 완료")
+        if self.all_commands:
+            print(f"Console Cat: {len(self.all_commands)}개 명령어 로드 완료")
     
     def load_favorites(self):
         """즐겨찾기 로드"""
@@ -140,11 +148,43 @@ class ConsoleCatDataManager:
         full_command = f"{command} {args}".strip()
         
         try:
-            print(f"🚀 실행: {full_command}")
-            unreal.SystemLibrary.execute_console_command(None, full_command)
-            return True
+            # 언리얼 엔진 콘솔 명령어 실행
+            try:
+                # 방법 1: EditorSubsystem을 통한 실행 (가장 안전한 방법)
+                editor_subsystem = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
+                if editor_subsystem:
+                    world = editor_subsystem.get_editor_world()
+                    if world:
+                        unreal.SystemLibrary.execute_console_command(world, full_command)
+                        return True
+            except:
+                pass
+            
+            try:
+                # 방법 2: 현재 월드 가져오기
+                world = unreal.EditorLevelLibrary.get_editor_world()
+                if world:
+                    unreal.SystemLibrary.execute_console_command(world, full_command)
+                    return True
+            except:
+                pass
+            
+            try:
+                # 방법 3: 게임 인스턴스를 통한 실행
+                game_instance = unreal.GameplayStatics.get_game_instance(unreal.EditorLevelLibrary.get_editor_world())
+                if game_instance:
+                    world = game_instance.get_world()
+                    if world:
+                        unreal.SystemLibrary.execute_console_command(world, full_command)
+                        return True
+            except:
+                pass
+            
+            # 모든 방법이 실패한 경우
+            return False
+            
         except Exception as e:
-            print(f"❌ 실행 실패: {e}")
+            print(f"❌ 명령어 실행 실패: {e}")
             return False
     
     def search_commands(self, query):
@@ -199,7 +239,7 @@ if PYSIDE_AVAILABLE:
             main_layout.setContentsMargins(5, 5, 5, 5)
             
             # 스플리터로 고정 크기 분할
-            splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+            splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
             
             # 왼쪽: 카테고리 및 명령어 버튼들 (유동적 크기)
             left_widget = self.create_left_panel()
@@ -208,8 +248,8 @@ if PYSIDE_AVAILABLE:
             
             # 오른쪽: 상세 정보 및 제어 (고정 크기)
             right_widget = self.create_right_panel()
-            right_widget.setMinimumWidth(250)
-            right_widget.setMaximumWidth(250)  # 오른쪽만 고정
+            right_widget.setMinimumWidth(220)
+            right_widget.setMaximumWidth(220)  # 오른쪽만 고정
             splitter.addWidget(right_widget)
             
             # 스플리터 설정
@@ -224,43 +264,17 @@ if PYSIDE_AVAILABLE:
             
             # 언리얼 슬레이트에 부모 지정 (qt_simple_example.py 방식)
             self.setup_unreal_parenting()
+            
+            # 초기 탭 상태 올바르게 설정 (즐겨찾기 버튼 상태 반영)
+            QtCore.QTimer.singleShot(50, self.refresh_current_tab)
         
         def setup_unreal_parenting(self):
-            """언리얼 슬레이트에 윈도우 부모 지정 - qt_simple_example.py 방식"""
+            """언리얼 슬레이트에 윈도우 부모 지정"""
             try:
-                # qt_simple_example.py와 동일한 방식
                 unreal.parent_external_window_to_slate(self.winId())
-                print("✅ Console Cat이 언리얼 슬레이트에 연결됨")
             except Exception as e:
-                print(f"⚠️ 언리얼 슬레이트 연결 실패: {e}")
                 # 실패해도 계속 실행
-        
-        def refresh_all_tabs(self):
-            """모든 탭 새로고침"""
-            current_tab = self.category_tabs.currentIndex()
-            
-            # 탭 다시 생성
-            self.category_tabs.clear()
-            
-            # 전체 탭
-            all_tab = self.create_commands_tab(self.data_manager.all_commands)
-            self.category_tabs.addTab(all_tab, "📋 전체")
-            
-            # 스코프별 탭
-            for scope in sorted(self.data_manager.commands.keys()):
-                commands = self.data_manager.commands[scope]
-                tab = self.create_commands_tab(commands)
-                self.category_tabs.addTab(tab, f"📂 {scope}")
-            
-            # 즐겨찾기 탭 (업데이트된 즐겨찾기로)
-            fav_commands = [cmd for cmd in self.data_manager.all_commands 
-                           if cmd.get('command') in self.data_manager.favorites]
-            fav_tab = self.create_commands_tab(fav_commands)
-            self.category_tabs.addTab(fav_tab, "⭐ 즐겨찾기")
-            
-            # 원래 탭으로 복원
-            if current_tab < self.category_tabs.count():
-                self.category_tabs.setCurrentIndex(current_tab)
+                pass
         
         def refresh_button_styles(self):
             """버튼 스타일 새로고침 (현재 탭만)"""
@@ -269,10 +283,9 @@ if PYSIDE_AVAILABLE:
                 # 현재 탭의 모든 버튼 찾기
                 buttons = current_widget.findChildren(QtWidgets.QPushButton)
                 for btn in buttons:
-                    # 버튼의 툴팁에서 명령어 추출
-                    tooltip = btn.toolTip()
-                    if "] " in tooltip:
-                        command = tooltip.split("] ")[1].split("\n")[0]
+                    # 메인 명령어 버튼인지 확인 (크기로 판단)
+                    if btn.size().width() > 100:  # 메인 버튼
+                        command = btn.text()
                         # 즐겨찾기 상태에 따라 스타일 적용
                         self.apply_button_style(btn, command)
         
@@ -324,33 +337,35 @@ if PYSIDE_AVAILABLE:
             
             layout.addLayout(search_layout)
             
-            # 카테고리 탭
+            # 즐겨찾기 필터 토글
+            filter_layout = QtWidgets.QHBoxLayout()
+            self.favorites_filter = QtWidgets.QCheckBox("⭐ 즐겨찾기만 보기")
+            self.favorites_filter.toggled.connect(self.on_favorites_filter_changed)
+            filter_layout.addWidget(self.favorites_filter)
+            filter_layout.addStretch()
+            layout.addLayout(filter_layout)
+            
+            # 카테고리 탭 (즐겨찾기 탭 제거)
             self.category_tabs = QtWidgets.QTabWidget()
             
             # 전체 탭
-            all_tab = self.create_commands_tab(self.data_manager.all_commands)
-            self.category_tabs.addTab(all_tab, "📋 전체")
+            all_tab = self.create_commands_tab(self.data_manager.all_commands, "all")
+            self.category_tabs.addTab(all_tab, "� 전체")
             
             # 스코프별 탭
             for scope in sorted(self.data_manager.commands.keys()):
                 commands = self.data_manager.commands[scope]
-                tab = self.create_commands_tab(commands)
+                tab = self.create_commands_tab(commands, scope)
                 self.category_tabs.addTab(tab, f"📂 {scope}")
             
-            # 즐겨찾기 탭
-            fav_commands = [cmd for cmd in self.data_manager.all_commands 
-                           if cmd.get('command') in self.data_manager.favorites]
-            fav_tab = self.create_commands_tab(fav_commands)
-            self.category_tabs.addTab(fav_tab, "⭐ 즐겨찾기")
-            
-            # 탭 변경 시 버튼 스타일 새로고침
+            # 탭 변경 시 이벤트
             self.category_tabs.currentChanged.connect(self.on_tab_changed)
             
             layout.addWidget(self.category_tabs)
             
             return widget
         
-        def create_commands_tab(self, commands):
+        def create_commands_tab(self, commands, scope="all"):
             """명령어 탭 생성"""
             widget = QtWidgets.QWidget()
             layout = QtWidgets.QVBoxLayout(widget)
@@ -358,44 +373,258 @@ if PYSIDE_AVAILABLE:
             # 스크롤 영역
             scroll = QtWidgets.QScrollArea()
             scroll.setWidgetResizable(True)
-            scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-            scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+            scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+            scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
             
             # 버튼 컨테이너 (1열 레이아웃)
             button_widget = QtWidgets.QWidget()
             button_layout = QtWidgets.QVBoxLayout(button_widget)
             button_layout.setSpacing(1)
             
-            # 명령어 버튼들 생성 (1열)
-            for cmd in commands:
-                btn = self.create_command_button(cmd)
-                button_layout.addWidget(btn)
+            # scope 정보를 프로퍼티로 저장
+            button_widget.setProperty("scope", scope)
             
-            # 빈 공간 채우기
-            button_layout.addStretch()
+            # 명령어 버튼들 생성 (1열)
+            self.update_tab_commands(button_layout, commands)
             
             scroll.setWidget(button_widget)
             layout.addWidget(scroll)
             
             return widget
         
-        def create_command_button(self, cmd):
-            """명령어 버튼 생성"""
+        def is_widget_valid(self, widget):
+            """Qt 위젯이 유효한지 검사"""
+            if widget is None:
+                return False
+            try:
+                # C++ 객체에 접근해서 유효성 검사
+                widget.objectName()
+                return True
+            except RuntimeError:
+                # C++ 객체가 이미 삭제됨
+                return False
+        
+        def replace_tab_content(self, scroll_area, commands):
+            """탭 내용을 완전히 새로 생성해서 교체 (안전한 방식)"""
+            try:
+                # 즐겨찾기 필터 적용
+                if hasattr(self, 'favorites_filter') and self.favorites_filter.isChecked():
+                    filtered_commands = [cmd for cmd in commands if cmd.get('command') in self.data_manager.favorites]
+                    commands = filtered_commands
+                
+                # 새로운 버튼 위젯 생성
+                new_button_widget = QtWidgets.QWidget()
+                new_button_layout = QtWidgets.QVBoxLayout(new_button_widget)
+                new_button_layout.setSpacing(1)
+                
+                # 명령어 버튼들 생성
+                for cmd in commands:
+                    try:
+                        btn_layout = self.create_command_button_with_favorite(cmd)
+                        new_button_layout.addLayout(btn_layout)
+                    except Exception as e:
+                        print(f"   ⚠️ 버튼 생성 실패: {cmd.get('command', 'Unknown')} - {e}")
+                        continue
+                
+                # 빈 공간 채우기
+                new_button_layout.addStretch()
+                
+                # 기존 위젯을 안전하게 교체
+                try:
+                    old_widget = scroll_area.widget()
+                    scroll_area.setWidget(new_button_widget)
+                    
+                    # 기존 위젯이 유효한 경우에만 정리
+                    if self.is_widget_valid(old_widget):
+                        try:
+                            old_widget.setParent(None)
+                            old_widget.deleteLater()
+                        except RuntimeError:
+                            # 삭제 중 오류 발생 시 무시
+                            pass
+                except Exception as e:
+                    # 위젯 교체 중 오류 발생 시 무시하고 진행
+                    pass
+                
+            except Exception as e:
+                print(f"   ❌ 탭 내용 교체 실패: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        def update_tab_commands(self, layout, commands):
+            """탭의 명령어 버튼들 업데이트"""
+            try:
+                # 기존 모든 아이템 제거 (위젯, 레이아웃, 스트레치 포함)
+                self.clear_layout_completely(layout)
+                
+                # 즐겨찾기 필터 적용
+                if hasattr(self, 'favorites_filter') and self.favorites_filter.isChecked():
+                    filtered_commands = [cmd for cmd in commands if cmd.get('command') in self.data_manager.favorites]
+                    commands = filtered_commands
+                
+                # 명령어 버튼들 생성
+                for cmd in commands:
+                    try:
+                        btn_layout = self.create_command_button_with_favorite(cmd)
+                        layout.addLayout(btn_layout)
+                    except Exception as e:
+                        # 버튼 생성 실패 시 건너뛰기
+                        continue
+                
+                # 빈 공간 채우기
+                layout.addStretch()
+                
+                # 즉시 업데이트 적용
+                layout.update()
+                
+            except Exception as e:
+                # 탭 명령어 업데이트 실패 시 무시
+                pass
+                import traceback
+                traceback.print_exc()
+        
+        def clear_layout_completely(self, layout):
+            """레이아웃 완전히 정리 (스트레치 포함)"""
+            try:
+                # 안전한 방식으로 모든 아이템 제거
+                while layout.count():
+                    item = layout.takeAt(0)
+                    if item is None:
+                        break
+                    
+                    try:
+                        # 위젯인 경우
+                        widget = item.widget()
+                        if widget is not None:
+                            widget.setParent(None)
+                            widget.deleteLater()
+                            continue
+                        
+                        # 중첩 레이아웃인 경우
+                        child_layout = item.layout()
+                        if child_layout is not None:
+                            self.clear_layout_completely(child_layout)
+                            child_layout.setParent(None)
+                            child_layout.deleteLater()
+                            continue
+                        
+                        # 스페이서인 경우
+                        spacer = item.spacerItem()
+                        if spacer is not None:
+                            # 스페이서는 takeAt에서 이미 제거됨
+                            del spacer
+                            continue
+                            
+                    except (RuntimeError, AttributeError) as e:
+                        # C++ 객체가 이미 삭제된 경우 등 무시
+                        continue
+                        
+            except Exception as e:
+                # 레이아웃 정리 중 오류 발생 시 간단한 방식으로 폴백
+                self.simple_clear_layout(layout)
+        
+        def simple_clear_layout(self, layout):
+            """간단한 레이아웃 정리 (폴백)"""
+            try:
+                # 가장 간단한 방식
+                for i in reversed(range(layout.count())):
+                    try:
+                        item = layout.itemAt(i)
+                        if item and item.widget():
+                            item.widget().deleteLater()
+                        layout.removeItem(item)
+                    except:
+                        pass
+            except:
+                pass
+        
+        def create_command_button_with_favorite(self, cmd):
+            """명령어 버튼 + 즐겨찾기 버튼 생성"""
             command = cmd.get('command', '')
             help_kr = cmd.get('help_kr', '')
             scope = cmd.get('scope', '')
             
-            # 버튼 텍스트 (명령어만)
-            btn = QtWidgets.QPushButton(command)
-            btn.setFixedHeight(28)
-            btn.setMinimumWidth(100)
+            # 수평 레이아웃
+            btn_layout = QtWidgets.QHBoxLayout()
+            btn_layout.setSpacing(1)  # 버튼 간 간격 줄임
+            btn_layout.setContentsMargins(0, 0, 0, 0)
+            
+            # 메인 명령어 버튼
+            main_btn = QtWidgets.QPushButton(command)
+            main_btn.setFixedHeight(28)
+            main_btn.setMinimumWidth(100)
             
             # 툴팁에 상세 정보
             tooltip = f"🔧 명령어: {command}\n📂 카테고리: {scope}\n📖 설명: {help_kr}"
-            btn.setToolTip(tooltip)
+            main_btn.setToolTip(tooltip)
             
             # 클릭 이벤트
-            btn.clicked.connect(lambda checked, c=cmd: self.on_command_button_clicked(c))
+            main_btn.clicked.connect(lambda checked, c=cmd: self.on_command_button_clicked(c))
+            
+            # 즐겨찾기 버튼
+            fav_btn = QtWidgets.QPushButton()
+            fav_btn.setFixedSize(32, 28)  # 약간 더 넓게
+            fav_btn.setToolTip("즐겨찾기 추가/제거")
+            
+            # 즐겨찾기 상태에 따른 아이콘 설정
+            is_favorite = command in self.data_manager.favorites
+            fav_btn.setText("⭐" if is_favorite else "☆")
+            
+            # 즐겨찾기 버튼 스타일 (원래 버튼과 일체감)
+            if is_favorite:
+                fav_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #FFB347;
+                        border: 1px solid #FF8C00;
+                        color: #000000;
+                        font-weight: bold;
+                        border-radius: 3px;
+                        padding: 2px;
+                        font-size: 14pt;
+                        text-align: center;
+                    }
+                    QPushButton:hover {
+                        background-color: #FFA500;
+                        border-color: #FF7F00;
+                    }
+                    QPushButton:pressed {
+                        background-color: #FF8C00;
+                        border-color: #FF6347;
+                    }
+                """)
+            else:
+                fav_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #4A4A4A;
+                        border: 1px solid #666666;
+                        color: #CCCCCC;
+                        border-radius: 3px;
+                        padding: 2px;
+                        font-size: 14pt;
+                        text-align: center;
+                    }
+                    QPushButton:hover {
+                        background-color: #5A5A5A;
+                        border-color: #777777;
+                        color: #FFFFFF;
+                    }
+                    QPushButton:pressed {
+                        background-color: #3A3A3A;
+                        border-color: #555555;
+                    }
+                """)
+            
+            # 즐겨찾기 토글 이벤트
+            fav_btn.clicked.connect(lambda checked, c=command: self.toggle_favorite(c))
+            
+            # 레이아웃에 추가
+            btn_layout.addWidget(main_btn)
+            btn_layout.addWidget(fav_btn)
+            
+            # 즐겨찾기 상태에 따른 스타일 적용
+            self.apply_button_style(main_btn, command)
+            
+            return btn_layout
             
             # 즐겨찾기 스타일 적용
             self.apply_button_style(btn, command)
@@ -406,26 +635,31 @@ if PYSIDE_AVAILABLE:
             """오른쪽 패널 생성 (상세 정보)"""
             widget = QtWidgets.QWidget()
             layout = QtWidgets.QVBoxLayout(widget)
+            layout.setSpacing(6)  # 그룹 간 간격 줄임
+            layout.setContentsMargins(4, 4, 4, 4)  # 외부 여백 줄임
             
             # 명령어 정보 그룹
             info_group = QtWidgets.QGroupBox("📋 명령어 정보")
             info_layout = QtWidgets.QVBoxLayout(info_group)
+            info_layout.setSpacing(4)  # 간격 줄임
+            info_layout.setContentsMargins(8, 8, 8, 8)  # 여백 줄임
             
             # 명령어 이름
             self.cmd_label = QtWidgets.QLabel("명령어를 선택하세요")
-            self.cmd_label.setStyleSheet("font-weight: bold; font-size: 14pt; color: #2E86AB;")
+            self.cmd_label.setStyleSheet("font-weight: bold; font-size: 12pt; color: #2E86AB;")  # 폰트 크기 줄임
             info_layout.addWidget(self.cmd_label)
             
             # 스코프
             self.scope_label = QtWidgets.QLabel("")
-            self.scope_label.setStyleSheet("color: #666666;")
+            self.scope_label.setStyleSheet("color: #666666; font-size: 9pt;")  # 폰트 크기 추가
             info_layout.addWidget(self.scope_label)
             
             # 설명
             info_layout.addWidget(QtWidgets.QLabel("📖 설명:"))
             self.desc_kr = QtWidgets.QTextEdit()
             self.desc_kr.setReadOnly(True)
-            self.desc_kr.setMaximumHeight(80)
+            self.desc_kr.setMaximumHeight(65)  # 높이 줄임
+            self.desc_kr.setMinimumHeight(65)  # 최소 높이 설정
             info_layout.addWidget(self.desc_kr)
             
             layout.addWidget(info_group)
@@ -433,6 +667,8 @@ if PYSIDE_AVAILABLE:
             # 실행 그룹
             exec_group = QtWidgets.QGroupBox("🚀 실행")
             exec_layout = QtWidgets.QVBoxLayout(exec_group)
+            exec_layout.setSpacing(4)  # 간격 줄임
+            exec_layout.setContentsMargins(8, 8, 8, 8)  # 여백 줄임
             
             # 인자 입력
             exec_layout.addWidget(QtWidgets.QLabel("매개변수 (선택사항):"))
@@ -440,36 +676,60 @@ if PYSIDE_AVAILABLE:
             self.args_input.setPlaceholderText("예: 1920x1080w")
             exec_layout.addWidget(self.args_input)
             
-            # 버튼들
-            btn_layout = QtWidgets.QHBoxLayout()
-            
+            # 실행 버튼
             self.execute_btn = QtWidgets.QPushButton("▶️ 실행")
             self.execute_btn.clicked.connect(self.on_execute_clicked)
             self.execute_btn.setEnabled(False)
-            btn_layout.addWidget(self.execute_btn)
-            
-            self.favorite_btn = QtWidgets.QPushButton("⭐ 즐겨찾기")
-            self.favorite_btn.clicked.connect(self.on_favorite_clicked)
-            self.favorite_btn.setEnabled(False)
-            btn_layout.addWidget(self.favorite_btn)
-            
-            exec_layout.addLayout(btn_layout)
+            exec_layout.addWidget(self.execute_btn)
             
             layout.addWidget(exec_group)
+            
+            # 데이터 관리 그룹 추가
+            data_group = self.create_data_management_group()
+            layout.addWidget(data_group)
             
             # 프리셋 명령어 그룹
             preset_group = self.create_preset_group()
             layout.addWidget(preset_group)
             
-            # 빈 공간
-            layout.addStretch()
+            # 약간의 여백만 추가 (빈 공간 최소화)
+            layout.addStretch(1)
             
             return widget
+        
+        def create_data_management_group(self):
+            """데이터 관리 그룹 생성"""
+            group = QtWidgets.QGroupBox("🗂️ 데이터 관리")
+            layout = QtWidgets.QVBoxLayout(group)
+            layout.setSpacing(4)  # 간격 줄임
+            layout.setContentsMargins(8, 8, 8, 8)  # 여백 줄임
+            
+            # 데이터 파일 생성 버튼
+            generate_btn = QtWidgets.QPushButton("🔧 데이터 파일 생성")
+            generate_btn.setToolTip("generate_console_command_list.py를 실행하여 콘솔 명령어 데이터 파일을 생성합니다")
+            generate_btn.clicked.connect(self.on_generate_data_clicked)
+            layout.addWidget(generate_btn)
+            
+            # 데이터 파일 편집 버튼
+            edit_btn = QtWidgets.QPushButton("📝 데이터 폴더 열기")
+            edit_btn.setToolTip("콘솔 명령어 데이터 파일이 저장된 폴더를 엽니다")
+            edit_btn.clicked.connect(self.on_edit_data_clicked)
+            layout.addWidget(edit_btn)
+            
+            # 데이터 새로고침 버튼
+            refresh_btn = QtWidgets.QPushButton("🔄 데이터 새로고침")
+            refresh_btn.setToolTip("수정된 데이터 파일을 다시 불러옵니다")
+            refresh_btn.clicked.connect(self.on_refresh_data_clicked)
+            layout.addWidget(refresh_btn)
+            
+            return group
         
         def create_preset_group(self):
             """프리셋 명령어 그룹 생성"""
             group = QtWidgets.QGroupBox("⚡ 빠른 실행")
             layout = QtWidgets.QGridLayout(group)
+            layout.setSpacing(3)  # 간격 줄임
+            layout.setContentsMargins(8, 8, 8, 8)  # 여백 줄임
             
             presets = [
                 ("🧹 지우기", "stat none"),
@@ -670,13 +930,6 @@ if PYSIDE_AVAILABLE:
             self.desc_kr.setText(help_kr)
             
             self.execute_btn.setEnabled(True)
-            self.favorite_btn.setEnabled(True)
-            
-            # 즐겨찾기 버튼 업데이트
-            if command in self.data_manager.favorites:
-                self.favorite_btn.setText("⭐ 즐겨찾기 해제")
-            else:
-                self.favorite_btn.setText("☆ 즐겨찾기 추가")
         
         def on_execute_clicked(self):
             """실행 버튼 클릭"""
@@ -694,31 +947,152 @@ if PYSIDE_AVAILABLE:
             else:
                 self.statusBar().showMessage("❌ 실행 실패", 3000)
         
-        def on_favorite_clicked(self):
-            """즐겨찾기 버튼 클릭"""
-            if not self.current_command:
-                return
-            
-            command = self.current_command.get('command')
-            
+        def toggle_favorite(self, command):
+            """즐겨찾기 토글 (명령어별 즐겨찾기 버튼용)"""
             if command in self.data_manager.favorites:
                 self.data_manager.favorites.remove(command)
-                self.favorite_btn.setText("☆ 즐겨찾기 추가")
                 self.statusBar().showMessage("즐겨찾기에서 제거됨", 2000)
             else:
                 self.data_manager.favorites.append(command)
-                self.favorite_btn.setText("⭐ 즐겨찾기 해제")
                 self.statusBar().showMessage("즐겨찾기에 추가됨", 2000)
             
             self.data_manager.save_favorites()
             
-            # 즉시 UI 업데이트
-            self.refresh_all_tabs()
-            self.refresh_button_styles()
+            # 항상 현재 탭 새로고침 (즐겨찾기 버튼 아이콘 즉시 반영)
+            self.refresh_current_tab()
+        
+        def on_favorites_filter_changed(self, checked):
+            """즐겨찾기 필터 토글"""
+            try:
+                # 현재 탭만 새로고침
+                self.refresh_current_tab()
+            except Exception as e:
+                # 즐겨찾기 필터 변경 중 오류 발생 시 무시
+                pass
+        
+        def refresh_current_tab(self):
+            """현재 탭만 새로고침"""
+            try:
+                current_index = self.category_tabs.currentIndex()
+                current_widget = self.category_tabs.currentWidget()
+                
+                if not current_widget:
+                    return
+                
+                # 스크롤 영역 찾기
+                scroll_area = current_widget.findChild(QtWidgets.QScrollArea)
+                if not scroll_area:
+                    return
+                
+                button_widget = scroll_area.widget()
+                if not button_widget:
+                    return
+                
+                button_layout = button_widget.layout()
+                if not button_layout:
+                    return
+                
+                # 현재 탭에 해당하는 명령어들 가져오기
+                tab_text = self.category_tabs.tabText(current_index)
+                if current_index == 0:  # 전체 탭
+                    commands = self.data_manager.all_commands
+                    scope = "전체"
+                else:
+                    # 스코프별 탭
+                    scope = tab_text.replace("📂 ", "")
+                    commands = self.data_manager.get_scope_commands(scope)
+                
+                # 버튼들 업데이트 (새로운 방식: 위젯 교체)
+                self.replace_tab_content(scroll_area, commands)
+                
+                # 강제 UI 업데이트 (안전하게)
+                try:
+                    if self.is_widget_valid(current_widget):
+                        current_widget.update()
+                    if self.is_widget_valid(scroll_area):
+                        scroll_area.update()
+                except RuntimeError:
+                    # 위젯이 이미 삭제된 경우 무시
+                    pass
+                    
+            except Exception as e:
+                # 탭 새로고침 중 오류 발생 시 무시
+                pass
+        
+        def refresh_favorite_buttons(self):
+            """즐겨찾기 버튼들만 업데이트"""
+            current_widget = self.category_tabs.currentWidget()
+            if not current_widget:
+                return
+            
+            # 모든 즐겨찾기 버튼 찾기
+            fav_buttons = current_widget.findChildren(QtWidgets.QPushButton)
+            for btn in fav_buttons:
+                # 즐겨찾기 버튼인지 확인 (크기로 판단)
+                if btn.size().width() == 32 and btn.size().height() == 28:
+                    # 해당 버튼의 부모 위젯에서 명령어 찾기
+                    parent_widget = btn.parent()
+                    if parent_widget:
+                        # 형제 위젯들 중에서 메인 버튼 찾기
+                        siblings = parent_widget.findChildren(QtWidgets.QPushButton)
+                        for sibling in siblings:
+                            if sibling != btn and sibling.size().width() > 100:  # 메인 버튼
+                                command = sibling.text()
+                                is_favorite = command in self.data_manager.favorites
+                                btn.setText("⭐" if is_favorite else "☆")
+                                # 메인 버튼 스타일도 업데이트
+                                self.apply_button_style(sibling, command)
+                                break
+        
+        def refresh_all_tabs(self):
+            """모든 탭 새로고침 (기존 함수 수정)"""
+            current_tab = self.category_tabs.currentIndex()
+            
+            # 각 탭 새로고침 (탭을 다시 만들지 않고 내용만 업데이트)
+            for i in range(self.category_tabs.count()):
+                tab_widget = self.category_tabs.widget(i)
+                if not tab_widget:
+                    continue
+                
+                scroll_area = tab_widget.findChild(QtWidgets.QScrollArea)
+                if not scroll_area:
+                    continue
+                
+                button_widget = scroll_area.widget()
+                if not button_widget:
+                    continue
+                
+                button_layout = button_widget.layout()
+                if not button_layout:
+                    continue
+                
+                # 탭에 해당하는 명령어들 가져오기
+                if i == 0:  # 전체 탭
+                    commands = self.data_manager.all_commands
+                else:
+                    # 스코프별 탭
+                    tab_text = self.category_tabs.tabText(i)
+                    scope = tab_text.replace("📂 ", "")
+                    commands = self.data_manager.get_scope_commands(scope)
+                
+                # 임시로 탭을 변경해서 업데이트
+                self.category_tabs.setCurrentIndex(i)
+                self.update_tab_commands(button_layout, commands)
+            
+            # 원래 탭으로 복원
+            self.category_tabs.setCurrentIndex(current_tab)
         
         def on_tab_changed(self, index):
-            """탭 변경 시 버튼 스타일 새로고침"""
-            self.refresh_button_styles()
+            """탭 변경 시 이벤트"""
+            # 원래 탭 인덱스 저장
+            self._original_tab_index = index
+            
+            # 탭 변경 시 항상 해당 탭 새로고침 (즐겨찾기 버튼 상태 정확히 반영)
+            # 새로운 탭으로 변경될 때 기존 탭의 내용을 올바르게 로드
+            # 탭 변경 시 동작
+            
+            # 약간의 지연 후 새로고침 (탭 변경이 완전히 완료된 후)
+            QtCore.QTimer.singleShot(10, self.refresh_current_tab)
         
         def execute_preset(self, command):
             """프리셋 명령어 실행"""
@@ -774,6 +1148,111 @@ if PYSIDE_AVAILABLE:
                 self.statusBar().showMessage(f"✅ 언어 전환: {language_name} (재시작 필요)", 5000)
             else:
                 self.statusBar().showMessage("❌ 언어 전환 실패", 3000)
+        
+        def on_generate_data_clicked(self):
+            """데이터 파일 생성 버튼 클릭"""
+            try:
+                if generate_console_command_list is None:
+                    self.statusBar().showMessage("❌ generate_console_command_list.py를 찾을 수 없습니다", 5000)
+                    return
+                
+                self.statusBar().showMessage("🔧 데이터 파일 생성 중...", 2000)
+                
+                # 백그라운드에서 실행 (UI 블록 방지)
+                QtCore.QTimer.singleShot(100, self.run_generator_file)
+                
+            except Exception as e:
+                self.statusBar().showMessage(f"❌ 데이터 파일 생성 실패: {e}", 5000)
+        
+        def run_generator_file(self):
+            """generate_console_command_list.py 실행"""
+            try:
+                if generate_console_command_list is None:
+                    self.statusBar().showMessage("❌ generate_console_command_list.py를 찾을 수 없습니다", 5000)
+                    return
+                
+                # main 함수 실행
+                if hasattr(generate_console_command_list, 'main'):
+                    generate_console_command_list.main()
+                    self.statusBar().showMessage("✅ 데이터 파일 생성 완료", 3000)
+                    # 2초 후 데이터 새로고침
+                    QtCore.QTimer.singleShot(2000, self.on_refresh_data_clicked)
+                else:
+                    self.statusBar().showMessage("❌ generate_console_command_list에 main 함수가 없습니다", 5000)
+                
+            except Exception as e:
+                self.statusBar().showMessage(f"❌ 데이터 생성 중 오류: {e}", 5000)
+        
+        def on_edit_data_clicked(self):
+            """데이터 폴더 열기 버튼 클릭"""
+            try:
+                import subprocess
+                import os
+                
+                if DATA_DIR.exists():
+                    # Windows에서 폴더 열기
+                    if os.name == 'nt':  # Windows
+                        subprocess.Popen(['explorer', str(DATA_DIR)])
+                    else:  # macOS, Linux
+                        subprocess.Popen(['open' if sys.platform == 'darwin' else 'xdg-open', str(DATA_DIR)])
+                    
+                    self.statusBar().showMessage(f"📁 데이터 폴더 열기: {DATA_DIR}", 3000)
+                else:
+                    self.statusBar().showMessage("❌ 데이터 폴더가 존재하지 않습니다. 먼저 데이터 파일을 생성하세요.", 5000)
+                    
+            except Exception as e:
+                self.statusBar().showMessage(f"❌ 폴더 열기 실패: {e}", 5000)
+        
+        def on_refresh_data_clicked(self):
+            """데이터 새로고침 버튼 클릭"""
+            try:
+                self.statusBar().showMessage("🔄 데이터 새로고침 중...", 1000)
+                
+                # 데이터 다시 로드
+                old_count = len(self.data_manager.all_commands)
+                self.data_manager.load_data()
+                new_count = len(self.data_manager.all_commands)
+                
+                if new_count > 0:
+                    # 모든 탭 새로고침
+                    self.refresh_all_tabs_after_data_reload()
+                    
+                    # 상태바 업데이트
+                    self.statusBar().showMessage(f"✅ 데이터 새로고침 완료: {new_count}개 명령어 ({new_count - old_count:+d})", 5000)
+                else:
+                    self.statusBar().showMessage("⚠️ 데이터 파일이 없습니다. 먼저 데이터 파일을 생성하세요.", 5000)
+                    
+            except Exception as e:
+                self.statusBar().showMessage(f"❌ 데이터 새로고침 실패: {e}", 5000)
+        
+        def refresh_all_tabs_after_data_reload(self):
+            """데이터 새로고침 후 모든 탭 다시 생성"""
+            try:
+                current_tab_index = self.category_tabs.currentIndex()
+                
+                # 모든 탭 제거
+                self.category_tabs.clear()
+                
+                # 탭 다시 생성
+                # 전체 탭
+                all_tab = self.create_commands_tab(self.data_manager.all_commands, "all")
+                self.category_tabs.addTab(all_tab, "📋 전체")
+                
+                # 스코프별 탭
+                for scope in sorted(self.data_manager.commands.keys()):
+                    commands = self.data_manager.commands[scope]
+                    tab = self.create_commands_tab(commands, scope)
+                    self.category_tabs.addTab(tab, f"📂 {scope}")
+                
+                # 원래 탭 인덱스로 복원 (가능한 경우)
+                if current_tab_index < self.category_tabs.count():
+                    self.category_tabs.setCurrentIndex(current_tab_index)
+                
+                # 현재 탭 새로고침
+                QtCore.QTimer.singleShot(50, self.refresh_current_tab)
+                
+            except Exception as e:
+                pass  # 오류 무시
 
 
 # ============================================================================
@@ -805,11 +1284,13 @@ def main():
     # Unreal Slate에 부모 지정 (qt_simple_example.py와 동일)
     try:
         unreal.parent_external_window_to_slate(window.winId())
-        print("✅ Console Cat 메인 윈도우가 언리얼 슬레이트에 연결됨")
+        # 슬레이트 연결 성공
+        pass
     except Exception as e:
-        print(f"⚠️ 메인 함수에서 슬레이트 연결 실패: {e}")
+        # 슬레이트 연결 실패 시 무시
+        pass
     
-    print("🐱 Console Cat이 시작되었습니다!")
+    print("Console Cat이 시작되었습니다!")
     return window
 
 

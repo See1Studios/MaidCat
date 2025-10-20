@@ -18,8 +18,25 @@
         "D:/GitHub/See1Unreal5/Content/Python/Lib/site-packages"
     ],
     "python.envFile": "${workspaceFolder}/.env",
-    "files.associations": {
-        "*.uplugin": "jsonc",
-        "*.uproject": "jsonc"
+    "python.defaultInterpreterPath": "C:/Program Files/Epic Games/UE_5.5/Engine/Binaries/ThirdParty/Python3/Win64/python.exe",
+    "python.languageServer": "Pylance",
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingImports": "none",
+        "reportMissingTypeStubs": "none",
+        "reportUnknownMemberType": "none",
+        "reportUnknownArgumentType": "none",
+        "reportUnknownVariableType": "none",
+        "reportAttributeAccessIssue": "warning",
+        "reportOptionalMemberAccess": "warning",
+        "reportOptionalCall": "warning",
+        "reportOptionalIterable": "warning",
+        "reportOptionalContextManager": "warning",
+        "reportOptionalOperand": "warning",
+        "reportGeneralTypeIssues": "none",
+        "reportUntypedFunctionDecorator": "none",
+        "reportUntypedClassDecorator": "none",
+        "reportUntypedBaseClass": "none",
+        "reportUntypedNamedTuple": "none"
     }
 }
