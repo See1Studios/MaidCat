@@ -3,7 +3,7 @@ MaidCat Console Runner 🐱
 데이터 파일 기반 Qt 콘솔 명령어 실행기
 
 특징:
-- generate_console_command_list.py로 생성된 JSON 데이터 활용
+- data_generator.py로 생성된 JSON 데이터 활용
 - 카테고리별 버튼 그리드 UI
 - 즐겨찾기 및 히스토리 관리
 - 검색 및 필터링
@@ -22,6 +22,12 @@ except ImportError:
         print("Alternative: pip install PySide2")
         PYSIDE_AVAILABLE = False
 
+"""
+Console Cat GUI Module
+
+PySide6 기반 Unreal Engine 콘솔 명령어 실행기
+"""
+
 import unreal
 import json
 import sys
@@ -31,12 +37,14 @@ from pathlib import Path
 
 # 같은 패키지의 데이터 생성 모듈 import
 try:
-    from . import generate_console_command_list
+    from . import data_generator
 except ImportError:
-    try:
-        import generate_console_command_list
-    except ImportError:
-        generate_console_command_list = None
+    # 직접 실행 시 fallback
+    import data_generator
+
+def get_generator_module():
+    """data_generator 모듈 반환"""
+    return data_generator
 
 
 # ============================================================================
@@ -73,7 +81,7 @@ class ConsoleCatDataManager:
         """명령어 데이터 로드"""
         if not DATA_DIR.exists():
             print(f"⚠️ 데이터 폴더가 없습니다: {DATA_DIR}")
-            print("먼저 generate_console_command_list.py를 실행하세요!")
+            print("먼저 data_generator.py를 실행하세요!")
             return
         
         json_files = list(DATA_DIR.glob("*.json"))
@@ -706,7 +714,7 @@ if PYSIDE_AVAILABLE:
             
             # 데이터 파일 생성 버튼
             generate_btn = QtWidgets.QPushButton("🔧 데이터 파일 생성")
-            generate_btn.setToolTip("generate_console_command_list.py를 실행하여 콘솔 명령어 데이터 파일을 생성합니다")
+            generate_btn.setToolTip("data_generator.py를 실행하여 콘솔 명령어 데이터 파일을 생성합니다")
             generate_btn.clicked.connect(self.on_generate_data_clicked)
             layout.addWidget(generate_btn)
             
@@ -1152,8 +1160,9 @@ if PYSIDE_AVAILABLE:
         def on_generate_data_clicked(self):
             """데이터 파일 생성 버튼 클릭"""
             try:
-                if generate_console_command_list is None:
-                    self.statusBar().showMessage("❌ generate_console_command_list.py를 찾을 수 없습니다", 5000)
+                generator_module = get_generator_module()
+                if generator_module is None:
+                    self.statusBar().showMessage("❌ data_generator.py를 찾을 수 없습니다", 5000)
                     return
                 
                 self.statusBar().showMessage("🔧 데이터 파일 생성 중...", 2000)
@@ -1165,20 +1174,21 @@ if PYSIDE_AVAILABLE:
                 self.statusBar().showMessage(f"❌ 데이터 파일 생성 실패: {e}", 5000)
         
         def run_generator_file(self):
-            """generate_console_command_list.py 실행"""
+            """data_generator.py 실행"""
             try:
-                if generate_console_command_list is None:
-                    self.statusBar().showMessage("❌ generate_console_command_list.py를 찾을 수 없습니다", 5000)
+                generator_module = get_generator_module()
+                if generator_module is None:
+                    self.statusBar().showMessage("❌ data_generator.py를 찾을 수 없습니다", 5000)
                     return
                 
                 # main 함수 실행
-                if hasattr(generate_console_command_list, 'main'):
-                    generate_console_command_list.main()
+                if hasattr(generator_module, 'main'):
+                    generator_module.main()
                     self.statusBar().showMessage("✅ 데이터 파일 생성 완료", 3000)
                     # 2초 후 데이터 새로고침
                     QtCore.QTimer.singleShot(2000, self.on_refresh_data_clicked)
                 else:
-                    self.statusBar().showMessage("❌ generate_console_command_list에 main 함수가 없습니다", 5000)
+                    self.statusBar().showMessage("❌ data_generator에 main 함수가 없습니다", 5000)
                 
             except Exception as e:
                 self.statusBar().showMessage(f"❌ 데이터 생성 중 오류: {e}", 5000)
