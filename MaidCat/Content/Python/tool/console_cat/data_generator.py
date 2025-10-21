@@ -21,11 +21,11 @@ import re
 # 처리할 명령어 스코프 (명령어의 '.' 앞부분)
 # 예시: SCOPES_TO_PROCESS = ["r", "a", "sg"]
 # 비워두면 모든 명령어를 하나의 파일로 처리
-SCOPES_TO_PROCESS = ["r", "a"]
+SCOPES_TO_PROCESS = ["r", "ShowFlag","sg"]
 
 # 테스트 모드 설정 (빠른 테스트를 위해 소수의 명령어만 처리)
 TEST_MODE_ENABLED = True
-TEST_MODE_COMMAND_LIMIT = 5  # 테스트 모드에서 스코프당 처리할 명령어 수
+TEST_MODE_COMMAND_LIMIT = 10  # 테스트 모드에서 스코프당 처리할 명령어 수
 
 # 출력 디렉토리 및 파일 경로
 # ConsoleHelp.html과 같은 위치(Saved 디렉토리)에 JSON 파일 저장
@@ -37,7 +37,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TRANSLATION_DICT_FILE = os.path.join(SCRIPT_DIR, "translation_dictionary.json")
 
 # API 요청 딜레이 (공개 API 사용 시 예의를 지키기 위한 대기 시간)
-REQUEST_DELAY_SECONDS = 0.05
+REQUEST_DELAY_SECONDS = 0.01
 
 # ============================================================================
 # 유틸리티 함수들 (Utility Functions)
@@ -55,18 +55,57 @@ def load_translation_dictionary():
         unreal.log_warning(f"번역 사전 파일을 찾을 수 없습니다: {TRANSLATION_DICT_FILE}")
         unreal.log("기본 빈 사전을 생성합니다.")
         
-        # 기본 사전 생성
+        # 기본 사전 생성 (버튼 라벨용으로 확장)
         default_dict = {
             "Landscape": "랜드스케이프",
             "Render": "렌더",
             "Texture": "텍스처",
             "Material": "머티리얼",
             "Shader": "셰이더",
-            "Component": "컴포넌트",
+            "Component": "컴포넌트", 
             "Actor": "액터",
             "Light": "라이트",
             "Build": "빌드",
-            "Cache": "캐시"
+            "Cache": "캐시",
+            "Max": "최대",
+            "Min": "최소",
+            "Size": "크기",
+            "Quality": "품질",
+            "Level": "레벨",
+            "Distance": "거리",
+            "Scale": "스케일",
+            "Count": "개수",
+            "Enable": "활성화",
+            "Disable": "비활성화",
+            "Show": "표시",
+            "Hide": "숨기기",
+            "Debug": "디버그",
+            "Performance": "성능",
+            "Memory": "메모리",
+            "GPU": "GPU",
+            "CPU": "CPU",
+            "LOD": "LOD",
+            "Streaming": "스트리밍",
+            "Compression": "압축",
+            "Async": "비동기",
+            "Sync": "동기",
+            "Force": "강제",
+            "Auto": "자동",
+            "Manual": "수동",
+            "Preview": "미리보기",
+            "Editor": "에디터",
+            "Game": "게임",
+            "World": "월드",
+            "Screen": "화면",
+            "Resolution": "해상도",
+            "Frame": "프레임",
+            "Rate": "비율",
+            "Limit": "제한",
+            "Override": "재정의",
+            "Reset": "리셋",
+            "Clear": "지우기",
+            "Reload": "다시로드",
+            "Refresh": "새로고침"
         }
         
         try:
@@ -127,6 +166,47 @@ def translate_text_google(text):
     except Exception as e:
         unreal.log_error(f"번역 중 오류 발생: {e}")
         return None
+
+def create_user_friendly_label(command_name, translation_dict):
+    """
+    명령어명을 버튼 라벨용으로 사용자 친화적으로 변환 (마지막 스코프만 처리)
+    
+    Args:
+        command_name (str): 원본 명령어명 (예: "r.Texture.MaxSize")
+        translation_dict (dict): 번역 사전
+        
+    Returns:
+        str: 사용자 친화적인 라벨 (예: "Max Size" - 마지막 부분만)
+    """
+    if not command_name:
+        return ""
+    
+    # 점(.)으로 분할하여 마지막 부분만 추출
+    parts = command_name.split('.')
+    
+    # 마지막 스코프만 처리 (카테고리 제외)
+    if len(parts) > 1:
+        last_part = parts[-1]  # 마지막 요소만 사용
+    else:
+        last_part = command_name  # 점이 없으면 전체 사용
+    
+    # CamelCase를 공백으로 분리
+    # 예: "MaxSize" -> "Max Size"
+    spaced_part = re.sub(r'([a-z])([A-Z])', r'\1 \2', last_part)
+    
+    # 숫자 앞에 공백 추가
+    # 예: "Texture2D" -> "Texture 2D"
+    spaced_part = re.sub(r'([a-zA-Z])(\d)', r'\1 \2', spaced_part)
+    spaced_part = re.sub(r'(\d)([a-zA-Z])', r'\1 \2', spaced_part)
+    
+    # 커스텀 사전으로 용어 치환
+    translated_part = apply_custom_dictionary(spaced_part, translation_dict)
+    
+    # 연속된 공백 정리
+    final_label = re.sub(r'\s+', ' ', translated_part).strip()
+    
+    return final_label if final_label else last_part
+
 
 def apply_custom_dictionary(text, dictionary):
     """
@@ -259,7 +339,7 @@ def ensure_output_directory():
 # 메인 처리 함수
 # ============================================================================
 
-def generate_command_list_for_scopes():
+def run():
     """
     ConsoleHelp.html을 읽어서 스코프별로 필터링하고,
     번역하여 개별 JSON 파일로 저장하는 메인 함수
@@ -350,9 +430,31 @@ def generate_command_list_for_scopes():
                     # API 호출 간 대기
                     time.sleep(REQUEST_DELAY_SECONDS)
 
+                # 커맨드명을 버튼 라벨용으로 가공 (번역 API 포함)
+                command_kr = ""
+                if command_name:
+                    # 1단계: 사용자 친화적으로 변환 (커스텀 사전 적용)
+                    friendly_label = create_user_friendly_label(command_name, translation_map)
+                    
+                    # 2단계: Google Translate API로 추가 번역
+                    if friendly_label and friendly_label != command_name:
+                        # 이미 어느 정도 번역된 경우 API로 보완
+                        translated_label = translate_text_google(friendly_label)
+                        if translated_label and translated_label != "TRANSLATION_FAILED":
+                            command_kr = translated_label
+                        else:
+                            command_kr = friendly_label  # API 실패시 커스텀 사전 결과 사용
+                        
+                        # API 호출 간 대기
+                        time.sleep(REQUEST_DELAY_SECONDS)
+                    else:
+                        # 커스텀 사전으로 변환되지 않은 경우 원본 사용
+                        command_kr = friendly_label
+
                 all_commands_data.append({
                     "command": command_name,
-                    "help_en": help_text_en,
+                    "command_kr": command_kr,
+                    "help": help_text_en,
                     "help_kr": help_text_kr,
                 })
         
@@ -377,4 +479,4 @@ def generate_command_list_for_scopes():
 # ============================================================================
 
 if __name__ == "__main__":
-    generate_command_list_for_scopes()
+    run()

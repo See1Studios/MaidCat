@@ -34,18 +34,9 @@ import sys
 import os
 import subprocess
 from pathlib import Path
-
-# 같은 패키지의 데이터 생성 모듈 import
-try:
-    from . import data_generator
-except ImportError:
-    # 직접 실행 시 fallback
-    import data_generator
-
-def get_generator_module():
-    """data_generator 모듈 반환"""
-    return data_generator
-
+import tool.console_cat.data_generator as data_generator
+import importlib
+importlib.reload(data_generator)
 
 # ============================================================================
 # 설정
@@ -205,8 +196,9 @@ class ConsoleCatDataManager:
         
         for cmd in self.all_commands:
             if (query_lower in cmd.get('command', '').lower() or
+                query_lower in cmd.get('command_kr', '').lower() or
                 query_lower in cmd.get('help_kr', '').lower() or
-                query_lower in cmd.get('help_en', '').lower()):
+                query_lower in cmd.get('help', '').lower()):
                 results.append(cmd)
         
         return results
@@ -345,11 +337,22 @@ if PYSIDE_AVAILABLE:
             
             layout.addLayout(search_layout)
             
-            # 즐겨찾기 필터 토글
+            # 한글/영어 토글 및 즐겨찾기 필터
             filter_layout = QtWidgets.QHBoxLayout()
+            
+            # 버튼 표시 언어 토글 버튼 (에디터 언어와 별개)
+            self.button_display_toggle = QtWidgets.QPushButton("�️ 한글")
+            self.button_display_toggle.setFixedWidth(80)
+            self.button_display_toggle.setToolTip("버튼 표시 언어 전환 (한글/영어) - 에디터 언어와 별개")
+            self.button_display_toggle.clicked.connect(self.toggle_button_language)
+            self.display_korean = True  # 기본값은 한국어
+            filter_layout.addWidget(self.button_display_toggle)
+            
+            # 즐겨찾기 필터 토글
             self.favorites_filter = QtWidgets.QCheckBox("⭐ 즐겨찾기만 보기")
             self.favorites_filter.toggled.connect(self.on_favorites_filter_changed)
             filter_layout.addWidget(self.favorites_filter)
+            
             filter_layout.addStretch()
             layout.addLayout(filter_layout)
             
@@ -549,6 +552,7 @@ if PYSIDE_AVAILABLE:
         def create_command_button_with_favorite(self, cmd):
             """명령어 버튼 + 즐겨찾기 버튼 생성"""
             command = cmd.get('command', '')
+            command_kr = cmd.get('command_kr', '')
             help_kr = cmd.get('help_kr', '')
             scope = cmd.get('scope', '')
             
@@ -557,10 +561,17 @@ if PYSIDE_AVAILABLE:
             btn_layout.setSpacing(1)  # 버튼 간 간격 줄임
             btn_layout.setContentsMargins(0, 0, 0, 0)
             
-            # 메인 명령어 버튼
-            main_btn = QtWidgets.QPushButton(command)
+            # 메인 명령어 버튼 (원래대로 QPushButton 사용)
+            main_btn = QtWidgets.QPushButton()
             main_btn.setFixedHeight(28)
             main_btn.setMinimumWidth(100)
+            
+            # 한글/영어 토글 상태에 따른 텍스트 설정
+            display_korean = getattr(self, 'display_korean', True)  # 기본값은 한국어
+            if display_korean and command_kr:
+                main_btn.setText(command_kr)
+            else:
+                main_btn.setText(command)
             
             # 툴팁에 상세 정보
             tooltip = f"🔧 명령어: {command}\n📂 카테고리: {scope}\n📖 설명: {help_kr}"
@@ -568,17 +579,18 @@ if PYSIDE_AVAILABLE:
             
             # 클릭 이벤트
             main_btn.clicked.connect(lambda checked, c=cmd: self.on_command_button_clicked(c))
+            main_btn.setProperty("command", command)  # 버튼에 command 저장
             
             # 즐겨찾기 버튼
             fav_btn = QtWidgets.QPushButton()
-            fav_btn.setFixedSize(32, 28)  # 약간 더 넓게
+            fav_btn.setFixedSize(32, 28)
             fav_btn.setToolTip("즐겨찾기 추가/제거")
             
             # 즐겨찾기 상태에 따른 아이콘 설정
             is_favorite = command in self.data_manager.favorites
             fav_btn.setText("⭐" if is_favorite else "☆")
             
-            # 즐겨찾기 버튼 스타일 (원래 버튼과 일체감)
+            # 즐겨찾기 버튼 스타일
             if is_favorite:
                 fav_btn.setStyleSheet("""
                     QPushButton {
@@ -633,11 +645,6 @@ if PYSIDE_AVAILABLE:
             self.apply_button_style(main_btn, command)
             
             return btn_layout
-            
-            # 즐겨찾기 스타일 적용
-            self.apply_button_style(btn, command)
-            
-            return btn
         
         def create_right_panel(self):
             """오른쪽 패널 생성 (상세 정보)"""
@@ -759,12 +766,12 @@ if PYSIDE_AVAILABLE:
             self.console_toggle_btn.clicked.connect(self.toggle_console_messages)
             layout.addWidget(self.console_toggle_btn, (len(presets) + 1) // 2, 0, 1, 2)  # 전체 너비로 배치
             
-            # 언어 토글 (특별 처리)
+            # 에디터 언어 토글 (특별 처리)
             self.current_language = "ko"  # 기본값은 한국어
-            self.language_toggle_btn = QtWidgets.QPushButton("🌐 한국어")
-            self.language_toggle_btn.setToolTip("언리얼 에디터 언어 전환 (한국어/영어)")
-            self.language_toggle_btn.clicked.connect(self.toggle_language)
-            layout.addWidget(self.language_toggle_btn, (len(presets) + 1) // 2 + 1, 0, 1, 2)  # 전체 너비로 배치
+            self.editor_language_toggle_btn = QtWidgets.QPushButton("🌐 에디터 한국어")
+            self.editor_language_toggle_btn.setToolTip("언리얼 에디터 언어 전환 (한국어/영어) - 에디터 재시작 필요")
+            self.editor_language_toggle_btn.clicked.connect(self.toggle_editor_language)
+            layout.addWidget(self.editor_language_toggle_btn, (len(presets) + 1) // 2 + 1, 0, 1, 2)  # 전체 너비로 배치
             
             for i, (name, cmd) in enumerate(presets):
                 btn = QtWidgets.QPushButton(name)
@@ -917,6 +924,47 @@ if PYSIDE_AVAILABLE:
             """
             self.setStyleSheet(style)
         
+        def toggle_button_language(self):
+            """버튼 표시 언어 토글 (한글/영어) - 에디터 언어와 별개"""
+            self.display_korean = not self.display_korean
+            
+            if self.display_korean:
+                self.button_display_toggle.setText("�️ 한글")
+                self.button_display_toggle.setStyleSheet("")  # 기본 스타일
+            else:
+                self.button_display_toggle.setText("�️ English")
+                self.button_display_toggle.setStyleSheet("background-color: #2E8B57; color: white;")  # 녹색 (에디터 언어와 구분)
+            
+            # 모든 탭의 버튼들 새로고침
+            self.refresh_all_button_texts()
+            
+            self.statusBar().showMessage(f"✅ 버튼 표시 언어: {'한국어' if self.display_korean else '영어'}", 3000)
+        
+        def refresh_all_button_texts(self):
+            """모든 탭의 버튼 텍스트 새로고침"""
+            for i in range(self.category_tabs.count()):
+                tab_widget = self.category_tabs.widget(i)
+                if tab_widget:
+                    # 탭 내의 모든 QPushButton 찾기
+                    buttons = tab_widget.findChildren(QtWidgets.QPushButton)
+                    for btn in buttons:
+                        # 메인 명령어 버튼인지 확인 (command 프로퍼티가 있는지)
+                        command = btn.property("command")
+                        if command:
+                            # 해당 명령어의 데이터 찾기
+                            cmd_data = None
+                            for cmd in self.data_manager.all_commands:
+                                if cmd.get('command') == command:
+                                    cmd_data = cmd
+                                    break
+                            
+                            if cmd_data:
+                                command_kr = cmd_data.get('command_kr', '')
+                                if self.display_korean and command_kr:
+                                    btn.setText(command_kr)
+                                else:
+                                    btn.setText(command)
+        
         def on_search_changed(self, text):
             """검색어 변경"""
             # 현재는 단순 구현, 향후 실시간 필터링 구현 가능
@@ -930,10 +978,14 @@ if PYSIDE_AVAILABLE:
         def display_command_info(self, cmd):
             """명령어 정보 표시"""
             command = cmd.get('command', '')
+            command_kr = cmd.get('command_kr', '')
             scope = cmd.get('scope', '')
             help_kr = cmd.get('help_kr', '설명 없음')
             
-            self.cmd_label.setText(command)
+            # 명령어명 표시 (한국어가 있으면 한국어 우선)
+            display_name = command_kr if command_kr else command
+            self.cmd_label.setText(display_name)
+            
             self.scope_label.setText(f"카테고리: {scope}")
             self.desc_kr.setText(help_kr)
             
@@ -1045,12 +1097,13 @@ if PYSIDE_AVAILABLE:
                         siblings = parent_widget.findChildren(QtWidgets.QPushButton)
                         for sibling in siblings:
                             if sibling != btn and sibling.size().width() > 100:  # 메인 버튼
-                                command = sibling.text()
-                                is_favorite = command in self.data_manager.favorites
-                                btn.setText("⭐" if is_favorite else "☆")
-                                # 메인 버튼 스타일도 업데이트
-                                self.apply_button_style(sibling, command)
-                                break
+                                command = sibling.property("command")  # 저장된 command 프로퍼티 사용
+                                if command:
+                                    is_favorite = command in self.data_manager.favorites
+                                    btn.setText("⭐" if is_favorite else "☆")
+                                    # 메인 버튼 스타일도 업데이트
+                                    self.apply_button_style(sibling, command)
+                                    break
         
         def refresh_all_tabs(self):
             """모든 탭 새로고침 (기존 함수 수정)"""
@@ -1134,33 +1187,33 @@ if PYSIDE_AVAILABLE:
             else:
                 self.statusBar().showMessage("❌ 콘솔 메시지 토글 실패", 3000)
         
-        def toggle_language(self):
-            """언리얼 에디터 언어 토글 (한국어/영어)"""
+        def toggle_editor_language(self):
+            """언리얼 에디터 언어 토글 (한국어/영어) - 에디터 재시작 필요"""
             if self.current_language == "ko":
                 # 영어로 전환
                 command = "culture=en.us"
                 self.current_language = "en"
-                self.language_toggle_btn.setText("🌐 English")
-                self.language_toggle_btn.setStyleSheet("background-color: #4169E1; color: white;")  # 파란색 배경
+                self.editor_language_toggle_btn.setText("🌐 에디터 English")
+                self.editor_language_toggle_btn.setStyleSheet("background-color: #4169E1; color: white;")  # 파란색 배경
             else:
                 # 한국어로 전환
                 command = "culture=ko.kr"
                 self.current_language = "ko"
-                self.language_toggle_btn.setText("🌐 한국어")
-                self.language_toggle_btn.setStyleSheet("")  # 기본 스타일로 복원
+                self.editor_language_toggle_btn.setText("🌐 에디터 한국어")
+                self.editor_language_toggle_btn.setStyleSheet("")  # 기본 스타일로 복원
             
             success = self.data_manager.execute_command(command)
             
             if success:
                 language_name = "영어" if self.current_language == "en" else "한국어"
-                self.statusBar().showMessage(f"✅ 언어 전환: {language_name} (재시작 필요)", 5000)
+                self.statusBar().showMessage(f"✅ 에디터 언어 전환: {language_name} (재시작 필요)", 5000)
             else:
-                self.statusBar().showMessage("❌ 언어 전환 실패", 3000)
+                self.statusBar().showMessage("❌ 에디터 언어 전환 실패", 3000)
         
         def on_generate_data_clicked(self):
             """데이터 파일 생성 버튼 클릭"""
             try:
-                generator_module = get_generator_module()
+                generator_module = data_generator
                 if generator_module is None:
                     self.statusBar().showMessage("❌ data_generator.py를 찾을 수 없습니다", 5000)
                     return
@@ -1176,14 +1229,14 @@ if PYSIDE_AVAILABLE:
         def run_generator_file(self):
             """data_generator.py 실행"""
             try:
-                generator_module = get_generator_module()
+                generator_module = data_generator
                 if generator_module is None:
                     self.statusBar().showMessage("❌ data_generator.py를 찾을 수 없습니다", 5000)
                     return
                 
                 # main 함수 실행
-                if hasattr(generator_module, 'main'):
-                    generator_module.main()
+                if hasattr(generator_module, 'run'):
+                    generator_module.run()
                     self.statusBar().showMessage("✅ 데이터 파일 생성 완료", 3000)
                     # 2초 후 데이터 새로고침
                     QtCore.QTimer.singleShot(2000, self.on_refresh_data_clicked)
