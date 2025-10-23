@@ -137,9 +137,6 @@ class TAPythonTool:
         self.root.title("🐍 TA Python Tool")
         self.root.geometry("1000x700")
         
-        # 파이썬 아이콘 설정
-        self._set_window_icon()
-        
         # 초기 이벤트 큐 정리
         self.root.update_idletasks()
         self.root.update()
@@ -161,215 +158,14 @@ class TAPythonTool:
         self.load_default_config()
     
 
-    def _find_python_icon(self):
-        """파이썬 설치본에서 아이콘 파일 찾기"""
-        try:
-            # 파이썬 실행 파일 경로에서 설치 디렉토리 찾기
-            python_dir = os.path.dirname(sys.executable)
-            
-            # 가능한 아이콘 경로들
-            icon_paths = [
-                os.path.join(python_dir, "DLLs", "py.ico"),  # 메인 파이썬 아이콘
-                os.path.join(python_dir, "Lib", "idlelib", "Icons", "idle_48.png"),  # IDLE 48x48
-                os.path.join(python_dir, "Lib", "idlelib", "Icons", "idle_32.png"),  # IDLE 32x32
-                os.path.join(python_dir, "Lib", "idlelib", "Icons", "idle_16.png"),  # IDLE 16x16
-            ]
-            
-            # 존재하는 첫 번째 아이콘 반환
-            for icon_path in icon_paths:
-                if os.path.exists(icon_path):
-                    logger.debug(f"파이썬 아이콘 발견: {icon_path}")
-                    return icon_path
-            
-            logger.warning("파이썬 아이콘을 찾을 수 없습니다.")
-            return None
-            
-        except Exception as e:
-            logger.error(f"파이썬 아이콘 찾기 중 오류: {e}")
-            return None
-    
-    def _create_python_emoji_icon(self):
-        """파이썬 이모지를 사용한 간단한 아이콘 생성"""
-        try:
-            # Tkinter PhotoImage로 간단한 텍스트 아이콘 생성
-            import tkinter.font as tkFont
-            
-            # 임시 캔버스 생성
-            temp_canvas = tk.Canvas(self.root, width=32, height=32)
-            
-            # 폰트 설정
-            font = tkFont.Font(family="Segoe UI Emoji", size=24)
-            
-            # 배경과 텍스트로 간단한 아이콘 생성
-            temp_canvas.create_rectangle(0, 0, 32, 32, fill="#3776ab", outline="")  # 파이썬 블루
-            temp_canvas.create_text(16, 16, text="🐍", font=font, fill="white")
-            
-            # PostScript로 변환 후 이미지화 (복잡하므로 단순화)
-            logger.debug("이모지 아이콘 생성 시도")
-            
-            # 캔버스 제거
-            temp_canvas.destroy()
-            
-        except Exception as e:
-            logger.debug(f"이모지 아이콘 생성 실패: {e}")
 
-    def _get_python_icon_info(self):
-        """파이썬 아이콘 정보 반환 (디버깅용)"""
-        try:
-            icon_path = self._find_python_icon()
-            python_dir = os.path.dirname(sys.executable)
-            
-            info = {
-                "python_executable": sys.executable,
-                "python_dir": python_dir,
-                "found_icon": icon_path,
-                "icon_exists": os.path.exists(icon_path) if icon_path else False
-            }
-            
-            # 가능한 모든 아이콘 경로 확인
-            possible_icons = []
-            icon_dirs = [
-                os.path.join(python_dir, "DLLs"),
-                os.path.join(python_dir, "Lib", "idlelib", "Icons"),
-            ]
-            
-            for icon_dir in icon_dirs:
-                if os.path.exists(icon_dir):
-                    for ext in ['.ico', '.png', '.bmp']:
-                        for file in os.listdir(icon_dir):
-                            if file.lower().endswith(ext):
-                                full_path = os.path.join(icon_dir, file)
-                                possible_icons.append({
-                                    "file": file,
-                                    "path": full_path,
-                                    "size": os.path.getsize(full_path) if os.path.exists(full_path) else 0
-                                })
-            
-            info["available_icons"] = possible_icons
-            return info
-            
-        except Exception as e:
-            logger.error(f"아이콘 정보 수집 중 오류: {e}")
-            return {"error": str(e)}
 
-    def _set_window_icon(self):
-        """윈도우 아이콘 설정"""
-        try:
-            icon_path = self._find_python_icon()
-            
-            if icon_path and os.path.exists(icon_path):
-                # .ico 파일인 경우
-                if icon_path.lower().endswith('.ico'):
-                    self.root.iconbitmap(icon_path)
-                    logger.debug(f"ICO 아이콘 설정 완료: {icon_path}")
-                    return
-                
-                # .png 파일인 경우 (PIL 필요)
-                elif icon_path.lower().endswith('.png'):
-                    try:
-                        from PIL import Image, ImageTk
-                        
-                        # PNG 이미지 로드
-                        image = Image.open(icon_path)
-                        # 적절한 크기로 리사이즈 (32x32)
-                        image = image.resize((32, 32), Image.Resampling.LANCZOS)
-                        icon = ImageTk.PhotoImage(image)
-                        
-                        # 윈도우 아이콘 설정
-                        self.root.iconphoto(True, icon)
-                        # 참조 유지를 위해 인스턴스 변수로 저장
-                        self._window_icon = icon
-                        logger.debug(f"PNG 아이콘 설정 완료: {icon_path}")
-                        return
-                        
-                    except ImportError:
-                        logger.warning("PIL/Pillow가 설치되지 않아 PNG 아이콘을 사용할 수 없습니다.")
-                        # PNG 아이콘 없이 기본 상태로 진행
-                    except Exception as e:
-                        logger.error(f"PNG 아이콘 설정 중 오류: {e}")
-            
-            # 아이콘 설정에 실패한 경우 기본 아이콘 사용
-            logger.debug("파이썬 설치본 아이콘을 찾을 수 없어 기본 시스템 아이콘을 사용합니다.")
-            
-        except Exception as e:
-            logger.error(f"윈도우 아이콘 설정 중 오류: {e}")
 
-    def show_python_icon_info(self):
-        """파이썬 아이콘 정보 표시 다이얼로그"""
-        try:
-            info = self._get_python_icon_info()
-            
-            dialog = tk.Toplevel(self.root)
-            self._setup_dialog(dialog, "🐍 파이썬 아이콘 정보", 600, 500, modal=True)
-            
-            # 스크롤 가능한 텍스트 위젯
-            text_frame = ttk.Frame(dialog)
-            text_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-            
-            text_widget = tk.Text(text_frame, wrap=tk.WORD, width=70, height=25)
-            scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=text_widget.yview)
-            text_widget.configure(yscrollcommand=scrollbar.set)
-            
-            text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-            
-            # 정보 텍스트 구성
-            info_text = "🐍 파이썬 아이콘 정보\n"
-            info_text += "=" * 50 + "\n\n"
-            
-            if "error" in info:
-                info_text += f"❌ 오류: {info['error']}\n"
-            else:
-                info_text += f"📁 파이썬 실행파일: {info.get('python_executable', 'N/A')}\n"
-                info_text += f"📁 파이썬 설치 디렉토리: {info.get('python_dir', 'N/A')}\n"
-                info_text += f"🎯 선택된 아이콘: {info.get('found_icon', 'N/A')}\n"
-                info_text += f"✅ 아이콘 존재 여부: {info.get('icon_exists', False)}\n\n"
-                
-                available_icons = info.get('available_icons', [])
-                if available_icons:
-                    info_text += f"📋 사용 가능한 아이콘들 ({len(available_icons)}개):\n"
-                    info_text += "-" * 50 + "\n"
-                    
-                    for icon in available_icons:
-                        size_kb = icon['size'] / 1024 if icon['size'] > 0 else 0
-                        info_text += f"📄 {icon['file']}\n"
-                        info_text += f"   경로: {icon['path']}\n"
-                        info_text += f"   크기: {size_kb:.1f} KB\n\n"
-                else:
-                    info_text += "❌ 사용 가능한 아이콘을 찾을 수 없습니다.\n"
-            
-            # 사용법 안내
-            info_text += "\n" + "=" * 50 + "\n"
-            info_text += "💡 아이콘 사용 방법:\n\n"
-            info_text += "1. ICO 파일 (.ico):\n"
-            info_text += "   - 윈도우 네이티브 아이콘 형식\n"
-            info_text += "   - root.iconbitmap(파일경로) 로 사용\n\n"
-            info_text += "2. PNG 파일 (.png):\n"
-            info_text += "   - PIL/Pillow 라이브러리 필요\n"
-            info_text += "   - root.iconphoto(True, PhotoImage객체) 로 사용\n\n"
-            info_text += "3. 현재 상태:\n"
-            current_icon = info.get('found_icon', 'N/A')
-            if current_icon and current_icon != 'N/A':
-                info_text += f"   ✅ {current_icon} 사용 중\n"
-            else:
-                info_text += "   ❌ 기본 시스템 아이콘 사용 중\n"
-            
-            text_widget.insert(tk.END, info_text)
-            text_widget.configure(state=tk.DISABLED)  # 읽기 전용
-            
-            # 버튼 프레임
-            button_frame = ttk.Frame(dialog)
-            button_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
-            
-            ttk.Button(button_frame, text="📋 클립보드에 복사", 
-                      command=lambda: self._copy_to_clipboard(info_text)).pack(side=tk.LEFT, padx=5)
-            ttk.Button(button_frame, text="❌ 닫기", 
-                      command=dialog.destroy).pack(side=tk.RIGHT, padx=5)
-            
-        except Exception as e:
-            error_msg = f"아이콘 정보 표시 중 오류: {str(e)}"
-            logger.error(error_msg)
-            self._show_error("오류", error_msg)
+
+
+
+
+
 
     def show_log_viewer(self):
         """로그 뷰어 다이얼로그"""
@@ -768,7 +564,6 @@ class TAPythonTool:
         # 도구 메뉴
         tools_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="🔧 도구", menu=tools_menu)
-        tools_menu.add_command(label="🐍 파이썬 아이콘 정보", command=self.show_python_icon_info)
         tools_menu.add_separator()
         tools_menu.add_command(label="📋 로그 보기", command=self.show_log_viewer)
     
