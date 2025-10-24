@@ -10,14 +10,9 @@ import logging
 import os
 import sys
 import tkinter as tk
+import traceback
 from tkinter import ttk, messagebox, filedialog
 from typing import Dict, List, Any
-
-try:
-    import unreal
-    UNREAL_AVAILABLE = True
-except ImportError:
-    UNREAL_AVAILABLE = False
 
 try:
     import unreal
@@ -533,12 +528,402 @@ class TAPythonTool:
             return os.path.join(script_dir, "MenuConfig.json")
     
     def setup_ui(self):
-        """UI 구성"""
+        """UI 구성 - 새로운 좌우 분할 레이아웃"""
         self._setup_menubar()
-        self._setup_main_frame()
+        self._setup_main_layout()  # 기존 _setup_main_frame 대신
         self._setup_status_bar()
         self._setup_keyboard_shortcuts()
-        self.setup_tabs()
+    
+    def _setup_main_layout(self):
+        """메인 레이아웃 설정 - 가로 3개 패널 (카테고리 20%, 메뉴 아이템 30%, 편집 영역 50%)"""
+        # 상단 정보 프레임 먼저 설정
+        info_frame = ttk.Frame(self.root)
+        info_frame.pack(fill=tk.X, padx=10, pady=(10, 5))
+        self._setup_info_frame(info_frame)
+        
+        # 메인 컨테이너 (수평 분할)
+        main_paned = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
+        main_paned.pack(fill=tk.BOTH, expand=True, padx=5, pady=(0, 25))  # 상태바 공간 확보
+        
+        # 첫 번째 패널 - 카테고리 리스트 (20%)
+        self.category_panel = self._create_panel(main_paned, "📂 메뉴 카테고리")
+        main_paned.add(self.category_panel, weight=2)  # 20% 비율을 위해 weight 2
+        
+        # 두 번째 패널 - 메뉴 아이템 리스트 (30%)  
+        self.menu_panel = self._create_panel(main_paned, "📄 메뉴 아이템을 선택하세요")
+        main_paned.add(self.menu_panel, weight=3)  # 30% 비율을 위해 weight 3
+        
+        # 세 번째 패널 - 아이템 편집 영역 (50%)
+        self.edit_panel = self._create_panel(main_paned, "✏️ 아이템을 선택하세요")
+        main_paned.add(self.edit_panel, weight=5)  # 50% 비율을 위해 weight 5
+        
+        # 각 패널 설정
+        self._setup_category_panel(self.category_panel)
+        self._setup_menu_panel(self.menu_panel)
+        self._setup_edit_panel(self.edit_panel)
+        
+        # 초기 분할 위치 설정 (20%, 50%, 100%)
+        self.root.after(100, lambda: self._set_panel_proportions(main_paned))
+    
+    def _create_panel(self, parent, title):
+        """일관된 스타일의 패널 생성"""
+        panel = ttk.LabelFrame(parent, text=title, padding=(10, 5))
+        return panel
+    
+    def _set_panel_proportions(self, paned_window):
+        """패널 비율 설정 (20%, 30%, 50%)"""
+        try:
+            total_width = paned_window.winfo_width()
+            if total_width > 100:  # 최소 크기 확인
+                first_pos = int(total_width * 0.20)  # 첫 번째 구분선: 20% 위치
+                second_pos = int(total_width * 0.50)  # 두 번째 구분선: 50% 위치 (20% + 30%)
+                
+                paned_window.sashpos(0, first_pos)
+                paned_window.sashpos(1, second_pos)
+        except tk.TclError:
+            # 위젯이 아직 준비되지 않은 경우 다시 시도
+            self.root.after(100, lambda: self._set_panel_proportions(paned_window))
+    
+    def _setup_category_panel(self, panel):
+        """카테고리 패널 설정"""
+        # 리스트박스 프레임
+        list_frame = ttk.Frame(panel)
+        list_frame.pack(fill=tk.BOTH, expand=True, pady=(5, 5))
+        
+        # 스크롤바가 있는 리스트박스
+        scrollbar = ttk.Scrollbar(list_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.category_listbox = tk.Listbox(
+            list_frame,
+            yscrollcommand=scrollbar.set,
+            font=("맑은 고딕", 9),
+            selectmode=tk.SINGLE
+        )
+        self.category_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.config(command=self.category_listbox.yview)
+        
+        # 이벤트 바인딩
+        self.category_listbox.bind('<<ListboxSelect>>', self.on_category_select)
+        self.category_listbox.bind('<Button-3>', self.on_category_right_click)
+        
+        # 버튼들
+        button_frame = ttk.Frame(panel)
+        button_frame.pack(fill=tk.X, pady=(5, 0))
+        
+        ttk.Button(button_frame, text="➕ 새 카테고리", command=self.add_new_category).pack(fill=tk.X, pady=1)
+        ttk.Button(button_frame, text="🗑️ 카테고리 삭제", command=self.delete_selected_category).pack(fill=tk.X, pady=1)
+        
+        # 카테고리 우클릭 메뉴
+        self.category_context_menu = tk.Menu(self.root, tearoff=0)
+        self.category_context_menu.add_command(label="🗑️ 카테고리 삭제", command=self.delete_selected_category)
+        
+        # 카테고리 데이터 저장용
+        self.category_data = {}
+        
+        # 기존 코드 호환성을 위한 tabs 초기화
+        self.tabs = {}
+        
+        # 카테고리 목록 로드
+        self.refresh_category_list()
+    
+    def _setup_menu_panel(self, panel):
+        """메뉴 아이템 패널 설정"""
+        # 트리뷰 컨테이너
+        self.menu_tree_frame = ttk.Frame(panel)
+        self.menu_tree_frame.pack(fill=tk.BOTH, expand=True, pady=(5, 5))
+        
+        # 컨트롤 버튼들
+        button_frame = ttk.Frame(panel)
+        button_frame.pack(fill=tk.X, pady=(5, 0))
+        
+        # 첫 번째 줄: 추가 관련 버튼들
+        btn_row1 = ttk.Frame(button_frame)
+        btn_row1.pack(fill=tk.X, pady=(0, 3))
+        
+        self.add_item_btn = ttk.Button(btn_row1, text="➕ 추가", state=tk.DISABLED)
+        self.add_item_btn.pack(side=tk.LEFT, padx=(0, 5))
+        
+        self.add_submenu_btn = ttk.Button(btn_row1, text="📁 서브메뉴 추가", state=tk.DISABLED)
+        self.add_submenu_btn.pack(side=tk.LEFT, padx=(0, 5))
+        
+        # 두 번째 줄: 편집 관련 버튼들
+        btn_row2 = ttk.Frame(button_frame)
+        btn_row2.pack(fill=tk.X)
+        
+        self.delete_item_btn = ttk.Button(btn_row2, text="🗑️ 삭제", state=tk.DISABLED)
+        self.delete_item_btn.pack(side=tk.LEFT, padx=(0, 5))
+        
+        self.move_up_btn = ttk.Button(btn_row2, text="⬆️ 위로", state=tk.DISABLED)
+        self.move_up_btn.pack(side=tk.LEFT, padx=(0, 5))
+        
+        self.move_down_btn = ttk.Button(btn_row2, text="⬇️ 아래로", state=tk.DISABLED)
+        self.move_down_btn.pack(side=tk.LEFT)
+        
+        # 현재 선택된 카테고리 ID
+        self.current_category_id = None
+        self.current_menu_treeview = None
+    
+    def _setup_edit_panel(self, panel):
+        """편집 패널 설정"""
+        # 편집 폼 컨테이너
+        self.edit_form_frame = ttk.Frame(panel)
+        self.edit_form_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # 현재 위젯들 저장용
+        self.current_widgets = None
+    
+    def update_panel_titles(self, category_name=None, item_name=None):
+        """패널 제목들을 현재 선택 상태에 따라 업데이트"""
+        try:
+            # 카테고리 패널은 항상 고정
+            self.category_panel.configure(text="📂 메뉴 카테고리")
+            
+            # 메뉴 아이템 패널
+            if category_name:
+                menu_title = f"📄 {category_name}"
+                self.menu_panel.configure(text=menu_title)
+            else:
+                self.menu_panel.configure(text="📄 카테고리를 선택하세요")
+            
+            # 편집 패널
+            if item_name:
+                edit_title = f"✏️ {item_name}"
+                if len(edit_title) > 50:  # 제목이 너무 길면 축약
+                    edit_title = f"✏️ {item_name[:45]}..."
+                self.edit_panel.configure(text=edit_title)
+            elif category_name:
+                self.edit_panel.configure(text="✏️ 아이템을 선택하세요")
+            else:
+                self.edit_panel.configure(text="✏️ 카테고리를 선택하세요")
+        except Exception as e:
+            logger.error(f"패널 제목 업데이트 중 오류: {e}")
+    
+
+    
+    def refresh_category_list(self):
+        """카테고리 리스트 새로고침"""
+        self.category_listbox.delete(0, tk.END)
+        self.category_data = {}
+        
+        # 설정 파일에서 실제로 존재하는 카테고리만 표시
+        available_categories = self._get_available_categories(self._get_all_menu_categories())
+        
+        for category_id, category_name in available_categories:
+            self.category_listbox.insert(tk.END, category_name)
+            self.category_data[len(self.category_data)] = (category_id, category_name)
+    
+    def on_category_select(self, event):
+        """카테고리 선택 이벤트"""
+        selection = self.category_listbox.curselection()
+        if not selection:
+            return
+        
+        index = selection[0]
+        if index in self.category_data:
+            category_id, category_name = self.category_data[index]
+            self.show_category_content(category_id, category_name)
+    
+    def on_category_right_click(self, event):
+        """카테고리 우클릭 이벤트"""
+        # 클릭한 위치의 아이템 선택
+        index = self.category_listbox.nearest(event.y)
+        self.category_listbox.selection_clear(0, tk.END)
+        self.category_listbox.selection_set(index)
+        
+        # 컨텍스트 메뉴 표시
+        self.category_context_menu.post(event.x_root, event.y_root)
+    
+    def add_new_category(self):
+        """새 카테고리 추가"""
+        dialog = NewCategoryDialog(self.root)
+        self.root.wait_window(dialog.dialog)
+        
+        if dialog.result:
+            if len(dialog.result) == 4:  # 새 형식: (id, name, is_anchor, has_section)
+                category_id, category_name, is_anchor, has_section = dialog.result
+            else:  # 이전 호환성: (id, name)
+                category_id, category_name = dialog.result
+                is_anchor = "." in category_id
+                has_section = True if is_anchor else None
+            
+            # 중복 확인
+            if category_id in self.config_data:
+                self._show_warning("경고", f"카테고리 '{category_id}'가 이미 존재합니다.")
+                return
+            
+            # 새 카테고리 추가
+            category_data = {"items": []}
+            
+            # Tool Menu Anchor인 경우 HasSection 추가
+            if is_anchor and has_section is not None:
+                category_data["HasSection"] = has_section
+            
+            self.config_data[category_id] = category_data
+            self.mark_as_modified()
+            self.refresh_category_list()
+            
+            category_type = "Tool Menu Anchor" if is_anchor else "메뉴 카테고리"
+            self.update_status(f"🆕 {category_type} '{category_name}' 추가됨!")
+    
+    def delete_selected_category(self):
+        """선택된 카테고리 삭제"""
+        selection = self.category_listbox.curselection()
+        if not selection:
+            self._show_warning("경고", "삭제할 카테고리를 선택하세요.")
+            return
+        
+        index = selection[0]
+        if index not in self.category_data:
+            return
+        
+        category_id, category_name = self.category_data[index]
+        
+        # 아이템 개수 확인
+        item_count = len(self.config_data.get(category_id, {}).get("items", []))
+        
+        # 삭제 확인
+        confirm_msg = f"정말로 '{category_name}' 카테고리를 삭제하시겠습니까?\n\n"
+        confirm_msg += f"• {item_count}개의 메뉴 아이템이 함께 삭제됩니다.\n"
+        confirm_msg += "• 이 작업은 되돌릴 수 없습니다."
+        
+        if messagebox.askyesno("카테고리 삭제 확인", confirm_msg, icon="warning"):
+            # config_data에서 제거
+            if category_id in self.config_data:
+                del self.config_data[category_id]
+            
+            # UI 초기화
+            if self.current_category_id == category_id:
+                self.clear_content_area()
+            
+            self.mark_as_modified()
+            self.refresh_category_list()
+            self.update_status(f"🗑️ 카테고리 '{category_name}' 삭제됨!")
+    
+    def show_category_content(self, category_id, category_name):
+        """선택된 카테고리의 내용을 표시"""
+        self.current_category_id = category_id
+        
+        # 패널 제목 업데이트 (카테고리 선택됨, 아이템은 아직 선택 안됨)
+        self.update_panel_titles(category_name=category_name)
+        
+        # 기존 트리뷰 제거
+        for widget in self.menu_tree_frame.winfo_children():
+            widget.destroy()
+        
+        # 새 트리뷰 생성
+        self.current_menu_treeview = self._create_menu_treeview(self.menu_tree_frame, category_id)
+        
+        # 편집 폼 제거
+        for widget in self.edit_form_frame.winfo_children():
+            widget.destroy()
+        
+        # 새 편집 폼 생성
+        self.current_widgets = self._create_edit_form(self.edit_form_frame, category_id)
+        self.current_widgets['treeview'] = self.current_menu_treeview
+        
+        # 기존 코드 호환성을 위해 tabs에도 저장
+        self.tabs[category_id] = self.current_widgets
+        
+        # 버튼 활성화
+        self._enable_menu_buttons()
+        
+        # 트리뷰에 데이터 로드
+        self.refresh_tab(category_id)
+    
+    def _create_menu_treeview(self, parent, category_id):
+        """메뉴 트리뷰 생성"""
+        tree_frame = ttk.Frame(parent)
+        tree_frame.pack(fill=tk.BOTH, expand=True)
+        
+        columns = ("type",)
+        treeview = ttk.Treeview(tree_frame, columns=columns, show="tree headings")
+        treeview.heading("#0", text="이름", anchor=tk.W)
+        treeview.heading("type", text="타입", anchor=tk.W)
+        treeview.column("#0", width=200, minwidth=150)
+        treeview.column("type", width=80, minwidth=60)
+        
+        # 세로 스크롤바
+        tree_scrollbar_y = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=treeview.yview)
+        treeview.configure(yscrollcommand=tree_scrollbar_y.set)
+        
+        treeview.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        tree_scrollbar_y.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # 트리뷰 선택 이벤트
+        treeview.bind("<<TreeviewSelect>>", lambda e: self.on_item_select(category_id))
+        
+        return treeview
+    
+    def _enable_menu_buttons(self):
+        """메뉴 버튼들 활성화"""
+        if self.current_category_id:
+            self.add_item_btn.configure(
+                state=tk.NORMAL, 
+                command=lambda: self.add_item(self.current_category_id)
+            )
+            self.add_submenu_btn.configure(
+                state=tk.NORMAL, 
+                command=lambda: self.add_submenu(self.current_category_id)
+            )
+            self.delete_item_btn.configure(
+                state=tk.NORMAL, 
+                command=lambda: self.delete_item(self.current_category_id)
+            )
+            self.move_up_btn.configure(
+                state=tk.NORMAL, 
+                command=lambda: self.move_item_up(self.current_category_id)
+            )
+            self.move_down_btn.configure(
+                state=tk.NORMAL, 
+                command=lambda: self.move_item_down(self.current_category_id)
+            )
+    
+    def clear_content_area(self):
+        """내용 영역 초기화"""
+        self.current_category_id = None
+        
+        # 패널 제목 초기화
+        self.update_panel_titles()
+        
+        # 트리뷰 제거
+        for widget in self.menu_tree_frame.winfo_children():
+            widget.destroy()
+        
+        # 편집 폼 제거
+        for widget in self.edit_form_frame.winfo_children():
+            widget.destroy()
+        
+        # 버튼 비활성화
+        self.add_item_btn.configure(state=tk.DISABLED)
+        self.add_submenu_btn.configure(state=tk.DISABLED)
+        self.delete_item_btn.configure(state=tk.DISABLED)
+        self.move_up_btn.configure(state=tk.DISABLED)
+        self.move_down_btn.configure(state=tk.DISABLED)
+        
+        self.current_widgets = None
+        self.current_menu_treeview = None
+    
+    def create_category_content(self, parent, category_id):
+        """카테고리 내용 생성 (기존 create_tab_content와 동일)"""
+        # 메인 컨테이너
+        main_container = ttk.Frame(parent)
+        main_container.pack(fill=tk.BOTH, expand=True)
+        
+        # 좌측: 아이템 목록
+        left_frame = self._create_left_panel(main_container, category_id)
+        
+        # 구분선
+        separator = ttk.Separator(main_container, orient='vertical')
+        separator.pack(side=tk.LEFT, fill=tk.Y, padx=5)
+        
+        # 우측: 아이템 편집
+        widgets = self._create_right_panel(main_container, category_id)
+        
+        # 트리뷰 위젯을 위젯 딕셔너리에 추가
+        widgets['treeview'] = left_frame['treeview']
+        
+        return widgets
     
     def _setup_menubar(self):
         """메뉴바 설정"""
@@ -564,21 +949,15 @@ class TAPythonTool:
         # 도구 메뉴
         tools_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="🔧 도구", menu=tools_menu)
+        tools_menu.add_command(label="🔄 Tool Menu 새로고침", command=self.refresh_tool_menus)
         tools_menu.add_separator()
         tools_menu.add_command(label="📋 로그 보기", command=self.show_log_viewer)
     
     def _setup_main_frame(self):
-        """메인 프레임 설정"""
-        # 메인 프레임
-        main_frame = ttk.Frame(self.root)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(10, 0))
-        
-        # 상단 정보
-        self._setup_info_frame(main_frame)
-        
-        # 노트북 (탭)
-        self.notebook = ttk.Notebook(main_frame)
-        self.notebook.pack(fill=tk.BOTH, expand=True)
+        """메인 프레임 설정 - 더 이상 사용되지 않음"""
+        pass
+    
+
     
     def _setup_info_frame(self, parent):
         """상단 정보 프레임 설정"""
@@ -666,12 +1045,10 @@ class TAPythonTool:
         else:
             self.load_default_config()
     
-    def setup_tabs(self):
-        """탭들 설정"""
-        self.tabs = {}
-        
-        # 각 메뉴 카테고리별로 탭 생성
-        menu_categories = [
+    def _get_all_menu_categories(self):
+        """모든 메뉴 카테고리 목록 반환"""
+        return [
+            # 전통적인 메뉴 카테고리들
             ("OnSelectFolderMenu", "폴더 메뉴"),
             ("OnSelectAssetsMenu", "에셋 메뉴"),
             ("OnMainMenu", "메인 메뉴"),
@@ -679,34 +1056,83 @@ class TAPythonTool:
             ("OnToolBarChameleon", "Chameleon 툴바"),
             ("OnOutlineMenu", "아웃라인 메뉴"),
             ("OnMaterialEditorMenu", "머티리얼 에디터"),
-            ("OnTabContextMenu", "탭 컨텍스트")
+            ("OnPhysicsAssetEditorMenu", "Physics Asset 에디터"),
+            ("OnControlRigEditorMenu", "ControlRig 에디터"),
+            ("OnTabContextMenu", "탭 컨텍스트"),
+            
+            # Tool Menu Anchor 카테고리들
+            ("AssetEditor.AnimationBlueprintEditor.MainMenu", "애니메이션 BP 에디터 메뉴"),
+            ("AssetEditor.AnimationEditor.MainMenu", "애니메이션 에디터 메뉴"),
+            ("AssetEditor.SkeletalMeshEditor.ToolBar", "스켈레탈 메시 에디터 툴바"),
+            ("AssetEditor.StaticMeshEditor.ToolBar", "스태틱 메시 에디터 툴바"),
+            ("ContentBrowser.AddNewContextMenu", "콘텐츠 브라우저 새로 추가"),
+            ("ContentBrowser.AssetContextMenu", "에셋 컨텍스트 메뉴"),
+            ("ContentBrowser.AssetContextMenu.AnimBlueprint", "애니메이션 BP 컨텍스트"),
+            ("ContentBrowser.AssetContextMenu.AnimSequence", "애니메이션 시퀀스 컨텍스트"),
+            ("ContentBrowser.AssetContextMenu.SkeletalMesh", "스켈레탈 메시 컨텍스트"),
+            ("ContentBrowser.AssetContextMenu.StaticMesh", "스태틱 메시 컨텍스트"),
+            ("ContentBrowser.AssetContextMenu.World", "월드 컨텍스트"),
+            ("ContentBrowser.FolderContextMenu", "폴더 컨텍스트 메뉴"),
+            ("ContentBrowser.ToolBar", "콘텐츠 브라우저 툴바"),
+            ("Kismet.SubobjectEditorContextMenu", "컴포넌트 컨텍스트 메뉴"),
+            ("Kismet.SCSEditorContextMenu", "SCS 에디터 컨텍스트"),
+            ("ControlRigEditor.RigHierarchy.ContextMenu", "리그 계층 컨텍스트"),
+            ("ControlRigEditor.RigHierarchy.DragDropMenu", "리그 드래그드롭 메뉴"),
+            ("LevelEditor.ActorContextMenu.AssetToolsSubMenu", "액터 에셋 도구 서브메뉴"),
+            ("LevelEditor.ActorContextMenu.LevelSubMenu", "액터 레벨 서브메뉴"),
+            ("LevelEditor.InViewportPanel", "뷰포트 패널"),
+            ("LevelEditor.LevelEditorSceneOutliner.ContextMenu.LevelSubMenu", "아웃라이너 레벨 서브메뉴"),
+            ("LevelEditor.LevelEditorToolBar", "레벨 에디터 툴바"),
+            ("LevelEditor.LevelEditorToolBar.AddQuickMenu", "빠른 추가 메뉴"),
+            ("LevelEditor.LevelEditorToolBar.User", "사용자 툴바"),
+            ("LevelEditor.LevelViewportToolBar.Options", "뷰포트 옵션"),
+            ("LevelEditor.LevelViewportToolBar.View", "뷰포트 보기"),
+            ("LevelEditor.MainMenu.Build", "빌드 메뉴"),
+            ("LevelEditor.MainMenu.File", "파일 메뉴"),
+            ("LevelEditor.MainMenu.Help", "도움말 메뉴"),
+            ("LevelEditor.MainMenu.Select", "선택 메뉴"),
+            ("LevelEditor.MainMenu.Tools", "도구 메뉴"),
+            ("LevelEditor.MainMenu.Window", "윈도우 메뉴"),
+            ("LevelEditor.StatusBar.ToolBar", "상태바 툴바"),
+            ("MainFrame.MainMenu.Asset", "메인 에셋 메뉴"),
+            ("MainFrame.MainMenu.Tools", "메인 도구 메뉴"),
+            ("MainFrame.MainMenu.Window", "메인 윈도우 메뉴"),
+            ("StatusBar.ToolBar.SourceControl", "소스 컨트롤 툴바")
         ]
+    
+
+    
+    def _get_available_categories(self, all_categories):
+        """설정 파일에 실제로 존재하는 카테고리만 반환"""
+        available_categories = []
         
-        for category_id, category_name in menu_categories:
-            tab_frame = ttk.Frame(self.notebook)
-            self.notebook.add(tab_frame, text=category_name)
-            self.tabs[category_id] = self.create_tab_content(tab_frame, category_id)
+        # 기본 카테고리들 (처음 10개)
+        default_categories = {
+            "OnSelectFolderMenu", "OnSelectAssetsMenu", "OnMainMenu", "OnToolbar",
+            "OnToolBarChameleon", "OnOutlineMenu", "OnMaterialEditorMenu",
+            "OnPhysicsAssetEditorMenu", "OnControlRigEditorMenu", "OnTabContextMenu"
+        }
+        
+        # 기본 카테고리들은 항상 표시 (데이터가 없어도)
+        for category_id, category_name in all_categories:
+            if category_id in default_categories:
+                available_categories.append((category_id, category_name))
+        
+        # Tool Menu Anchor들은 설정 파일에 실제로 존재하는 것만 표시
+        if self.config_data:
+            for category_id, category_name in all_categories:
+                if category_id not in default_categories and category_id in self.config_data:
+                    available_categories.append((category_id, category_name))
+        
+        return available_categories
+    
+    def refresh_tabs_if_needed(self):
+        """새로운 카테고리가 추가되었을 때 카테고리 리스트 새로고침"""
+        self.refresh_category_list()
     
     def create_tab_content(self, parent, category_id):
-        """탭 내용 생성"""
-        # 메인 컨테이너
-        main_container = ttk.Frame(parent)
-        main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        
-        # 좌측: 아이템 목록
-        left_frame = self._create_left_panel(main_container, category_id)
-        
-        # 구분선
-        separator = ttk.Separator(main_container, orient='vertical')
-        separator.pack(side=tk.LEFT, fill=tk.Y, padx=5)
-        
-        # 우측: 아이템 편집
-        widgets = self._create_right_panel(main_container, category_id)
-        
-        # 트리뷰 위젯을 위젯 딕셔너리에 추가
-        widgets['treeview'] = left_frame['treeview']
-        
-        return widgets
+        """탭 내용 생성 - 새 레이아웃에서는 create_category_content와 동일"""
+        return self.create_category_content(parent, category_id)
     
     def _create_left_panel(self, parent, category_id):
         """좌측 패널 (아이템 목록) 생성"""
@@ -717,6 +1143,9 @@ class TAPythonTool:
         left_frame.pack_propagate(False)
         left_frame.configure(width=380)
         
+        # 카테고리 정보 및 설정
+        self._create_category_info_section(left_frame, category_id)
+        
         ttk.Label(left_frame, text="메뉴 아이템", font=("Arial", 9, "bold")).pack(anchor=tk.W, padx=5, pady=2)
         
         # 트리뷰 생성
@@ -726,6 +1155,77 @@ class TAPythonTool:
         self._create_control_buttons(left_frame, category_id)
         
         return {'treeview': treeview}
+    
+    def _create_category_info_section(self, parent, category_id):
+        """카테고리 정보 및 설정 섹션 생성"""
+        info_frame = ttk.LabelFrame(parent, text="카테고리 설정")
+        info_frame.pack(fill=tk.X, padx=5, pady=(5, 10))
+        
+        # 카테고리 이름 표시
+        display_name = category_id.replace(".", " > ") if "." in category_id else category_id
+        ttk.Label(info_frame, text=f"카테고리: {display_name}", 
+                 font=("Arial", 8, "bold")).pack(anchor=tk.W, padx=5, pady=2)
+        
+        # Tool Menu Anchor인지 확인
+        is_tool_menu_anchor = "." in category_id and category_id not in [
+            "OnSelectFolderMenu", "OnSelectAssetsMenu", "OnMainMenu", "OnToolbar",
+            "OnToolBarChameleon", "OnOutlineMenu", "OnMaterialEditorMenu",
+            "OnPhysicsAssetEditorMenu", "OnControlRigEditorMenu", "OnTabContextMenu"
+        ]
+        
+        if is_tool_menu_anchor:
+            # HasSection 설정 (Tool Menu Anchor만)
+            has_section_var = tk.BooleanVar()
+            # 현재 설정값 로드
+            current_has_section = self.config_data.get(category_id, {}).get("HasSection", True)
+            has_section_var.set(current_has_section)
+            
+            has_section_check = ttk.Checkbutton(
+                info_frame, 
+                text="HasSection (구분선 표시)", 
+                variable=has_section_var,
+                command=lambda: self._update_category_has_section(category_id, has_section_var.get())
+            )
+            has_section_check.pack(anchor=tk.W, padx=5, pady=2)
+            
+            # 툴팁 추가
+            tooltip_text = """Tool Menu Anchor의 구분선 표시 여부를 설정합니다.
+
+• 체크: 구분선이 표시됩니다 (기본값)
+• 체크 해제: 구분선이 숨겨집니다 (툴바에서 권장)"""
+            self.create_tooltip(has_section_check, tooltip_text)
+            
+            # 툴바인 경우 권장사항 표시
+            if "ToolBar" in category_id or "Toolbar" in category_id:
+                ttk.Label(info_frame, text="💡 툴바에서는 HasSection=false 권장", 
+                         font=("Arial", 7), foreground="blue").pack(anchor=tk.W, padx=5, pady=1)
+    
+    def _update_category_has_section(self, category_id, has_section_value):
+        """카테고리의 HasSection 값 업데이트"""
+        try:
+            # config_data에서 카테고리 확인/생성
+            if category_id not in self.config_data:
+                self.config_data[category_id] = {"items": []}
+            
+            # HasSection 값 설정
+            if has_section_value:
+                self.config_data[category_id]["HasSection"] = True
+            else:
+                self.config_data[category_id]["HasSection"] = False
+            
+            # 변경사항 추적
+            self.mark_as_modified()
+            
+            # 상태 메시지
+            status_msg = f"✅ HasSection = {has_section_value}" if has_section_value else f"❌ HasSection = {has_section_value}"
+            self.update_status(f"🔧 '{category_id}' {status_msg}")
+            
+            logger.debug(f"카테고리 '{category_id}'의 HasSection을 {has_section_value}로 설정")
+            
+        except Exception as e:
+            error_msg = f"HasSection 설정 중 오류: {str(e)}"
+            logger.error(error_msg)
+            self._show_error("오류", error_msg)
     
     def _create_treeview(self, parent, category_id):
         """트리뷰 위젯 생성"""
@@ -810,15 +1310,21 @@ class TAPythonTool:
         # 명령어 필드
         widgets.update(self._create_command_field(edit_frame))
         
-        # Chameleon 필드
+        # canExecuteAction 필드 (새로 추가)
+        widgets.update(self._create_can_execute_action_field(edit_frame))
+        
+        # Chameleon 필드 (순서 변경)
         widgets.update(self._create_chameleon_field(edit_frame))
+        
+        # 아이콘 필드 (새로 추가)
+        widgets.update(self._create_icon_field(edit_frame))
         
         # 업데이트 버튼
         widgets.update(self._create_update_button(edit_frame, category_id))
         
         # 그리드 가중치
         edit_frame.columnconfigure(1, weight=1)
-        edit_frame.rowconfigure(3, weight=1)
+        edit_frame.rowconfigure(3, weight=1)  # 명령어 필드가 확장되도록
         
         return widgets
     
@@ -863,18 +1369,159 @@ class TAPythonTool:
         return {'command_text': command_text}
     
     def _create_chameleon_field(self, parent):
-        """Chameleon Tools 입력 필드 생성"""
-        ttk.Label(parent, text="Chameleon:").grid(row=4, column=0, sticky=tk.W, padx=(0, 5), pady=2)
+        """Chameleon Tools 설정 필드 생성"""
+        chameleon_frame = ttk.LabelFrame(parent, text="Chameleon Tools 설정")
+        chameleon_frame.grid(row=6, column=0, columnspan=2, sticky=tk.W+tk.E, pady=5)
+        chameleon_frame.columnconfigure(1, weight=1)
+        
+        # Chameleon Tools 경로
+        ttk.Label(chameleon_frame, text="JSON 파일 경로:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+        
+        # 경로 입력과 파일 선택 버튼을 같은 줄에 배치
+        path_frame = ttk.Frame(chameleon_frame)
+        path_frame.grid(row=0, column=1, sticky=tk.W+tk.E, padx=5, pady=2)
+        path_frame.columnconfigure(0, weight=1)
+        
         chameleon_var = tk.StringVar()
-        chameleon_entry = ttk.Entry(parent, textvariable=chameleon_var, width=40)
-        chameleon_entry.grid(row=4, column=1, sticky=tk.W+tk.E, pady=2)
-        return {'chameleon_var': chameleon_var, 'chameleon_entry': chameleon_entry}
+        chameleon_entry = ttk.Entry(path_frame, textvariable=chameleon_var)
+        chameleon_entry.grid(row=0, column=0, sticky=tk.W+tk.E, padx=(0, 5))
+        
+        # 파일 선택 버튼
+        def select_chameleon_file():
+            file_path = filedialog.askopenfilename(
+                title="Chameleon Tools JSON 파일 선택",
+                filetypes=[
+                    ("JSON 파일", "*.json"),
+                    ("모든 파일", "*.*")
+                ],
+                initialdir=self._get_chameleon_tools_directory()
+            )
+            if file_path:
+                # 상대 경로로 변환
+                relative_path = self._convert_to_relative_path(file_path)
+                chameleon_var.set(relative_path)
+        
+        chameleon_button = ttk.Button(path_frame, text="📁", command=select_chameleon_file, width=3)
+        chameleon_button.grid(row=0, column=1)
+        
+        # 간단한 예시 하나만
+        example_text = "예시: ../Python/Example/MinimalExample.json"
+        ttk.Label(chameleon_frame, text=example_text, font=("Arial", 8), 
+                 foreground="gray").grid(row=1, column=0, columnspan=2, sticky=tk.W, padx=5, pady=1)
+        
+        return {'chameleon_var': chameleon_var, 'chameleon_entry': chameleon_entry, 'chameleon_button': chameleon_button}
+    
+    def _create_can_execute_action_field(self, parent):
+        """canExecuteAction 입력 필드 생성"""
+        ttk.Label(parent, text="canExecuteAction:").grid(row=5, column=0, sticky=tk.NW+tk.W, padx=(0, 5), pady=2)
+        
+        can_exec_frame = ttk.Frame(parent)
+        can_exec_frame.grid(row=5, column=1, sticky=tk.W+tk.E+tk.N+tk.S, pady=2)
+        
+        can_execute_text = tk.Text(can_exec_frame, height=3, width=40, wrap=tk.WORD)
+        can_exec_scrollbar = ttk.Scrollbar(can_exec_frame, orient=tk.VERTICAL, command=can_execute_text.yview)
+        can_execute_text.configure(yscrollcommand=can_exec_scrollbar.set)
+        
+        can_execute_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        can_exec_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # 툴팁 추가
+        self.create_tooltip(can_execute_text, 
+                           "메뉴 항목 클릭 가능 여부를 결정하는 Python 코드\n"
+                           "True를 반환하면 클릭 가능, False면 비활성화")
+        
+        return {'can_execute_text': can_execute_text}
+    
+    def _create_icon_field(self, parent):
+        """아이콘 설정 필드 생성"""
+        icon_frame = ttk.LabelFrame(parent, text="아이콘 설정")
+        icon_frame.grid(row=7, column=0, columnspan=2, sticky=tk.W+tk.E, pady=5)
+        icon_frame.columnconfigure(1, weight=1)
+        
+        # 아이콘 타입 선택
+        ttk.Label(icon_frame, text="아이콘 타입:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+        icon_type_var = tk.StringVar(value="없음")
+        icon_type_combo = ttk.Combobox(icon_frame, textvariable=icon_type_var, 
+                                      values=["없음", "EditorStyle", "ChameleonStyle", "ImagePath"], 
+                                      state="readonly", width=15)
+        icon_type_combo.grid(row=0, column=1, sticky=tk.W, padx=5, pady=2)
+        
+        # 아이콘 이름/경로
+        ttk.Label(icon_frame, text="아이콘 이름/경로:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
+        icon_name_var = tk.StringVar()
+        icon_name_entry = ttk.Entry(icon_frame, textvariable=icon_name_var, width=40)
+        icon_name_entry.grid(row=1, column=1, sticky=tk.W+tk.E, padx=5, pady=2)
+        
+        # 예시 텍스트
+        example_text = "예: LevelEditor.Tabs.Details (EditorStyle) / Resources/flash_32x.png (ImagePath)"
+        ttk.Label(icon_frame, text=example_text, font=("Arial", 8), 
+                 foreground="gray").grid(row=2, column=0, columnspan=2, sticky=tk.W, padx=5, pady=2)
+        
+        return {
+            'icon_type_var': icon_type_var, 
+            'icon_type_combo': icon_type_combo,
+            'icon_name_var': icon_name_var, 
+            'icon_name_entry': icon_name_entry
+        }
+    
+    def _get_chameleon_tools_directory(self):
+        """Chameleon Tools 디렉토리 경로 반환"""
+        try:
+            # 기본 설정 파일 경로에서 TAPython 디렉토리 찾기
+            config_dir = os.path.dirname(self.default_config_path)
+            tapython_root = os.path.dirname(config_dir)  # TA 폴더에서 한 단계 위로
+            python_dir = os.path.join(tapython_root, "Python")
+            
+            if os.path.exists(python_dir):
+                return python_dir
+            
+            # 대체 경로들 시도
+            alternative_paths = [
+                os.path.join(tapython_root, "Content", "Python"),
+                os.path.join(os.path.dirname(tapython_root), "TAPython", "Python"),
+                os.path.dirname(os.path.abspath(__file__))  # 현재 스크립트 디렉토리
+            ]
+            
+            for path in alternative_paths:
+                if os.path.exists(path):
+                    return path
+            
+            # 마지막 대안: 현재 설정 파일 디렉토리
+            return config_dir
+            
+        except Exception as e:
+            logger.warning(f"Chameleon Tools 디렉토리 찾기 실패: {e}")
+            return os.path.dirname(os.path.abspath(__file__))
+    
+    def _convert_to_relative_path(self, absolute_path):
+        """절대 경로를 TAPython 기준 상대 경로로 변환"""
+        try:
+            # TAPython 루트 디렉토리 찾기
+            config_dir = os.path.dirname(self.default_config_path)
+            tapython_root = os.path.dirname(config_dir)
+            
+            # 절대 경로를 상대 경로로 변환
+            relative_path = os.path.relpath(absolute_path, tapython_root)
+            
+            # 백슬래시를 슬래시로 변환 (JSON에서 사용)
+            relative_path = relative_path.replace('\\', '/')
+            
+            # ../ 로 시작하지 않으면 추가
+            if not relative_path.startswith('../'):
+                relative_path = '../' + relative_path
+            
+            return relative_path
+            
+        except Exception as e:
+            logger.warning(f"상대 경로 변환 실패: {e}")
+            # 실패하면 파일명만 반환
+            return '../Python/' + os.path.basename(absolute_path)
     
     def _create_update_button(self, parent, category_id):
         """업데이트 버튼 생성"""
         update_btn = ttk.Button(parent, text="💾 변경사항 저장", 
                                command=lambda: self.update_item(category_id))
-        update_btn.grid(row=5, column=1, sticky=tk.W, pady=(10, 0))
+        update_btn.grid(row=9, column=1, sticky=tk.W, pady=(10, 0))
         return {'update_btn': update_btn}
     
     def load_default_config(self):
@@ -928,6 +1575,7 @@ class TAPythonTool:
                     break
             
             self.mark_as_saved()  # 로드 후 저장됨 상태로 설정
+            self.refresh_tabs_if_needed()  # 새로운 카테고리 확인 및 탭 추가
             self.refresh_all_tabs()
             self.update_status(f"📂 로드 완료: {os.path.basename(file_path)}")
         except FileNotFoundError:
@@ -1015,7 +1663,6 @@ class TAPythonTool:
         except Exception as e:
             error_msg = f"저장 실패: {str(e)}"
             logger.error(f"저장 오류: {e}")
-            import traceback
             traceback.print_exc()
             self._show_error("오류", error_msg)
             self.update_status(f"❌ 저장 실패: {str(e)}", auto_clear=False)
@@ -1024,14 +1671,6 @@ class TAPythonTool:
         """다른 이름으로 저장"""
         # 초기 디렉토리 결정
         initial_dir = os.path.dirname(self.default_config_path)
-        if UNREAL_AVAILABLE:
-            try:
-                project_dir = unreal.Paths.project_dir()
-                # 프로젝트 디렉토리가 존재하면 그것을 우선 사용
-                if os.path.exists(project_dir):
-                    initial_dir = project_dir
-            except:
-                pass
         
         file_path = filedialog.asksaveasfilename(
             title="MenuConfig.json 저장",
@@ -1063,14 +1702,25 @@ class TAPythonTool:
                 self.update_status(f"❌ 저장 실패: {str(e)}", auto_clear=False)
     
     def refresh_all_tabs(self):
-        """모든 탭 새로고침"""
-        for category_id, tab_widgets in self.tabs.items():
-            self.refresh_tab(category_id)
+        """모든 탭 새로고침 - 새 레이아웃에서는 현재 선택된 카테고리만 새로고침"""
+        if self.current_category_id:
+            self.refresh_current_category()
+    
+    def refresh_current_category(self):
+        """현재 선택된 카테고리 새로고침"""
+        if self.current_category_id and self.current_widgets:
+            self.refresh_tab(self.current_category_id)
     
     def refresh_tab(self, category_id):
         """특정 탭 새로고침"""
-        tab_widgets = self.tabs[category_id]
-        treeview = tab_widgets['treeview']
+        # 현재 선택된 카테고리인지 확인
+        if category_id != self.current_category_id:
+            return
+        
+        if not self.current_menu_treeview:
+            return
+        
+        treeview = self.current_menu_treeview
         
         # 트리뷰 초기화
         for item in treeview.get_children():
@@ -1101,27 +1751,50 @@ class TAPythonTool:
     
     def clear_edit_form(self, category_id):
         """편집 폼 초기화"""
-        tab_widgets = self.tabs[category_id]
+        # 현재 카테고리인지 확인
+        if category_id != self.current_category_id or not self.current_widgets:
+            return
+        
+        # 패널 제목 업데이트 (아이템 선택 해제)
+        category_name = None
+        for cat_id, cat_name in self.category_data.values():
+            if cat_id == self.current_category_id:
+                category_name = cat_name
+                break
+        self.update_panel_titles(category_name=category_name, item_name=None)
+        
+        tab_widgets = self.current_widgets
         tab_widgets['name_var'].set("")
         tab_widgets['tooltip_var'].set("")
         tab_widgets['enabled_var'].set(True)
         tab_widgets['command_text'].delete(1.0, tk.END)
+        tab_widgets['can_execute_text'].delete(1.0, tk.END)
         tab_widgets['chameleon_var'].set("")
+        tab_widgets['icon_type_var'].set("없음")
+        tab_widgets['icon_name_var'].set("")
         
         # 편집 불가능 상태로 설정
         self.set_edit_state(category_id, False)
     
     def set_edit_state(self, category_id, enabled):
         """편집 폼 활성화/비활성화"""
-        tab_widgets = self.tabs[category_id]
+        # 현재 카테고리인지 확인
+        if category_id != self.current_category_id or not self.current_widgets:
+            return
+        
+        tab_widgets = self.current_widgets
         state = tk.NORMAL if enabled else tk.DISABLED
         
         widgets = [
             tab_widgets['name_entry'],
             tab_widgets['tooltip_entry'],
             tab_widgets['chameleon_entry'],
+            tab_widgets['chameleon_button'],  # 파일 피커 버튼 추가
             tab_widgets['enabled_check'],
             tab_widgets['command_text'],
+            tab_widgets['can_execute_text'],
+            tab_widgets['icon_type_combo'],
+            tab_widgets['icon_name_entry'],
             tab_widgets['update_btn']
         ]
         
@@ -1145,8 +1818,15 @@ class TAPythonTool:
     def on_item_select(self, category_id):
         """아이템 선택 이벤트"""
         try:
-            tab_widgets = self.tabs[category_id]
-            treeview = tab_widgets['treeview']
+            # 현재 선택된 카테고리가 아니면 리턴
+            if category_id != self.current_category_id or not self.current_widgets:
+                return
+            
+            if not self.current_menu_treeview:
+                return
+            
+            treeview = self.current_menu_treeview
+            tab_widgets = self.current_widgets
             
             selection = treeview.selection()
             if not selection:
@@ -1161,6 +1841,17 @@ class TAPythonTool:
             if item_data:
                 # 편집 폼에 로드
                 tab_widgets['name_var'].set(item_data.get("name", ""))
+                
+                # 패널 제목 업데이트 (아이템 선택됨)
+                item_name = item_data.get("name", "")
+                category_name = None
+                # 현재 카테고리 이름 찾기
+                for cat_id, cat_name in self.category_data.values():
+                    if cat_id == self.current_category_id:
+                        category_name = cat_name
+                        break
+                self.update_panel_titles(category_name=category_name, item_name=item_name)
+                
                 tab_widgets['tooltip_var'].set(item_data.get("tooltip", ""))
                 
                 # enabled 값 처리: 기본값 True, 명시적으로 False인 경우만 False
@@ -1194,6 +1885,32 @@ class TAPythonTool:
                 
                 # Chameleon
                 tab_widgets['chameleon_var'].set(item_data.get("ChameleonTools", ""))
+                
+                # canExecuteAction (새로 추가)
+                tab_widgets['can_execute_text'].delete(1.0, tk.END)
+                can_execute = item_data.get("canExecuteAction", "")
+                if can_execute:
+                    tab_widgets['can_execute_text'].insert(1.0, can_execute)
+                
+                # 아이콘 설정 (새로 추가)
+                icon_data = item_data.get("icon", {})
+                if icon_data:
+                    if "style" in icon_data:
+                        style = icon_data.get("style", "")
+                        if style == "EditorStyle":
+                            tab_widgets['icon_type_var'].set("EditorStyle")
+                        elif style == "ChameleonStyle":
+                            tab_widgets['icon_type_var'].set("ChameleonStyle")
+                        tab_widgets['icon_name_var'].set(icon_data.get("name", ""))
+                    elif "ImagePathInPlugin" in icon_data:
+                        tab_widgets['icon_type_var'].set("ImagePath")
+                        tab_widgets['icon_name_var'].set(icon_data.get("ImagePathInPlugin", ""))
+                    else:
+                        tab_widgets['icon_type_var'].set("없음")
+                        tab_widgets['icon_name_var'].set("")
+                else:
+                    tab_widgets['icon_type_var'].set("없음")
+                    tab_widgets['icon_name_var'].set("")
                 
                 # 편집 가능 상태로 설정
                 self.set_edit_state(category_id, True)
@@ -1275,7 +1992,11 @@ class TAPythonTool:
     def update_item(self, category_id):
         """아이템 업데이트"""
         try:
-            tab_widgets = self.tabs[category_id]
+            # 현재 선택된 카테고리가 아니면 리턴
+            if category_id != self.current_category_id or not self.current_widgets:
+                return
+            
+            tab_widgets = self.current_widgets
             treeview = tab_widgets['treeview']
             
             selection = treeview.selection()
@@ -1309,6 +2030,32 @@ class TAPythonTool:
             item_data["name"] = name
             item_data["tooltip"] = tab_widgets['tooltip_var'].get().strip()
             item_data["ChameleonTools"] = tab_widgets['chameleon_var'].get().strip()
+            
+            # canExecuteAction 처리 (새로 추가)
+            can_execute_raw = tab_widgets['can_execute_text'].get(1.0, tk.END)
+            can_execute = can_execute_raw.rstrip('\n').strip()
+            if can_execute:
+                item_data["canExecuteAction"] = can_execute
+            elif "canExecuteAction" in item_data:
+                del item_data["canExecuteAction"]  # 빈 값이면 키 삭제
+            
+            # 아이콘 설정 처리 (새로 추가)
+            icon_type = tab_widgets['icon_type_var'].get()
+            icon_name = tab_widgets['icon_name_var'].get().strip()
+            
+            if icon_type != "없음" and icon_name:
+                icon_data = {}
+                if icon_type == "EditorStyle":
+                    icon_data = {"style": "EditorStyle", "name": icon_name}
+                elif icon_type == "ChameleonStyle":
+                    icon_data = {"style": "ChameleonStyle", "name": icon_name}
+                elif icon_type == "ImagePath":
+                    icon_data = {"ImagePathInPlugin": icon_name}
+                
+                if icon_data:
+                    item_data["icon"] = icon_data
+            elif "icon" in item_data:
+                del item_data["icon"]  # 아이콘 설정이 없으면 키 삭제
             
             # 명령어 처리 (Text 위젯의 자동 개행 제거)
             raw_command = tab_widgets['command_text'].get(1.0, tk.END)
@@ -1368,7 +2115,6 @@ class TAPythonTool:
         except Exception as e:
             error_msg = f"아이템 업데이트 중 오류 발생: {str(e)}"
             logger.error(f"update_item 오류: {e}")
-            import traceback
             traceback.print_exc()
             self._show_error("오류", error_msg)
             self.update_status(f"저장 실패: {str(e)}", auto_clear=False)
@@ -1385,13 +2131,18 @@ class TAPythonTool:
     
     def add_submenu_dialog(self, category_id, modal=True):
         """서브메뉴 추가 다이얼로그 (기본적으로 modal로 설정)"""
+        # 현재 카테고리가 없으면 리턴
+        if not self.current_category_id or not self.current_widgets:
+            self._show_warning("경고", "카테고리를 먼저 선택해주세요.")
+            return
+        
         dialog = tk.Toplevel(self.root)
         
         # 사용자가 원하는 경우 modal로 설정
         self._setup_dialog(dialog, "새 서브메뉴 추가", 450, 225, modal=modal)
         
         # 서브메뉴를 추가할 부모 선택
-        tab_widgets = self.tabs[category_id]
+        tab_widgets = self.current_widgets
         treeview = tab_widgets['treeview']
         
         ttk.Label(dialog, text="부모 아이템:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
@@ -1531,12 +2282,18 @@ class TAPythonTool:
         # 부모 아이템 선택 (category_id가 지정된 경우만)
         parent_var = tk.StringVar()
         if category_id is not None:
+            # 현재 카테고리가 있는지 확인
+            if not self.current_category_id or not self.current_widgets:
+                self._show_warning("경고", "카테고리를 먼저 선택해주세요.")
+                dialog.destroy()
+                return
+            
             ttk.Label(dialog, text="부모 아이템:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
             parent_combo = ttk.Combobox(dialog, textvariable=parent_var, state="readonly")
             parent_combo.grid(row=1, column=1, sticky=tk.W+tk.E, padx=5, pady=5)
             
             # 부모 아이템 목록 구성
-            tab_widgets = self.tabs[category_id]
+            tab_widgets = self.current_widgets
             treeview = tab_widgets['treeview']
             parent_items = ["(루트)"]
             self._populate_parent_list(treeview, "", parent_items)
@@ -1610,7 +2367,16 @@ class TAPythonTool:
                 self.refresh_tab(selected_category)
                 self.mark_as_modified()  # 변경사항 추적
                 dialog.destroy()
-                self.update_status(f"➕ 아이템 '{name}' 추가됨")
+                
+                # Tool Menu Anchor인 경우 새로고침 안내
+                if "." in selected_category and selected_category not in [
+                    "OnSelectFolderMenu", "OnSelectAssetsMenu", "OnMainMenu", "OnToolbar", 
+                    "OnToolBarChameleon", "OnOutlineMenu", "OnMaterialEditorMenu", 
+                    "OnPhysicsAssetEditorMenu", "OnControlRigEditorMenu", "OnTabContextMenu"
+                ]:
+                    self.update_status(f"➕ Tool Menu Anchor 아이템 '{name}' 추가됨 - 'TAPython.RefreshToolMenus' 실행 필요")
+                else:
+                    self.update_status(f"➕ 아이템 '{name}' 추가됨")
                 
             except Exception as e:
                 error_msg = f"아이템 추가 중 오류 발생: {str(e)}"
@@ -1628,7 +2394,12 @@ class TAPythonTool:
     
     def delete_item(self, category_id):
         """아이템 삭제"""
-        tab_widgets = self.tabs[category_id]
+        # 현재 카테고리가 없으면 리턴
+        if not self.current_category_id or not self.current_widgets:
+            self._show_warning("경고", "카테고리를 먼저 선택해주세요.")
+            return
+        
+        tab_widgets = self.current_widgets
         treeview = tab_widgets['treeview']
         
         selection = treeview.selection()
@@ -1682,7 +2453,11 @@ class TAPythonTool:
     
     def move_item_up(self, category_id):
         """아이템 위로 이동"""
-        tab_widgets = self.tabs[category_id]
+        # 현재 카테고리가 없으면 리턴
+        if not self.current_category_id or not self.current_widgets:
+            return
+        
+        tab_widgets = self.current_widgets
         treeview = tab_widgets['treeview']
         
         selection = treeview.selection()
@@ -1715,7 +2490,11 @@ class TAPythonTool:
     
     def move_item_down(self, category_id):
         """아이템 아래로 이동"""
-        tab_widgets = self.tabs[category_id]
+        # 현재 카테고리가 없으면 리턴
+        if not self.current_category_id or not self.current_widgets:
+            return
+        
+        tab_widgets = self.current_widgets
         treeview = tab_widgets['treeview']
         
         selection = treeview.selection()
@@ -1822,6 +2601,277 @@ class TAPythonTool:
         
         return False
     
+    def add_tool_menu_anchor_dialog(self):
+        """Tool Menu Anchor 추가 다이얼로그"""
+        dialog = tk.Toplevel(self.root)
+        self._setup_dialog(dialog, "새 Tool Menu Anchor 추가", 600, 400, modal=True)
+        
+        # 메인 프레임
+        main_frame = ttk.Frame(dialog)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # 설명
+        desc_text = """Tool Menu Anchor를 사용하면 Unreal Engine의 다양한 위치에 메뉴를 추가할 수 있습니다.
+아래에서 Anchor 이름을 입력하거나 미리 정의된 목록에서 선택하세요."""
+        ttk.Label(main_frame, text=desc_text, wraplength=550, 
+                 font=("Arial", 9), foreground="gray").pack(anchor=tk.W, pady=(0, 10))
+        
+        # Anchor 입력
+        ttk.Label(main_frame, text="Tool Menu Anchor 이름:").pack(anchor=tk.W, pady=(0, 5))
+        anchor_var = tk.StringVar()
+        anchor_entry = ttk.Entry(main_frame, textvariable=anchor_var, width=60)
+        anchor_entry.pack(fill=tk.X, pady=(0, 10))
+        
+        # 미리 정의된 Anchor 목록
+        ttk.Label(main_frame, text="미리 정의된 Tool Menu Anchors:").pack(anchor=tk.W, pady=(10, 5))
+        
+        # 리스트박스와 스크롤바
+        list_frame = ttk.Frame(main_frame)
+        list_frame.pack(fill=tk.BOTH, expand=True)
+        
+        listbox = tk.Listbox(list_frame, height=10)
+        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=listbox.yview)
+        listbox.configure(yscrollcommand=scrollbar.set)
+        
+        # 미리 정의된 Anchor들 추가
+        predefined_anchors = [
+            "AssetEditor.AnimationBlueprintEditor.MainMenu",
+            "AssetEditor.AnimationEditor.MainMenu",
+            "AssetEditor.SkeletalMeshEditor.ToolBar",
+            "AssetEditor.StaticMeshEditor.ToolBar",
+            "ContentBrowser.AddNewContextMenu",
+            "ContentBrowser.AssetContextMenu",
+            "ContentBrowser.AssetContextMenu.AnimBlueprint",
+            "ContentBrowser.AssetContextMenu.AnimSequence",
+            "ContentBrowser.AssetContextMenu.SkeletalMesh",
+            "ContentBrowser.AssetContextMenu.StaticMesh",
+            "ContentBrowser.AssetContextMenu.World",
+            "ContentBrowser.FolderContextMenu",
+            "ContentBrowser.ToolBar",
+            "Kismet.SubobjectEditorContextMenu",
+            "Kismet.SCSEditorContextMenu",
+            "ControlRigEditor.RigHierarchy.ContextMenu",
+            "LevelEditor.ActorContextMenu.AssetToolsSubMenu",
+            "LevelEditor.LevelEditorToolBar",
+            "LevelEditor.LevelViewportToolBar.Options",
+            "LevelEditor.MainMenu.Build",
+            "LevelEditor.MainMenu.File",
+            "LevelEditor.MainMenu.Tools",
+            "MainFrame.MainMenu.Asset",
+            "MainFrame.MainMenu.Tools"
+        ]
+        
+        for anchor in predefined_anchors:
+            listbox.insert(tk.END, anchor)
+        
+        listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # 리스트박스 선택 시 입력 필드에 복사
+        def on_listbox_select(event):
+            selection = listbox.curselection()
+            if selection:
+                anchor_var.set(listbox.get(selection[0]))
+        
+        listbox.bind("<<ListboxSelect>>", on_listbox_select)
+        
+        # 버튼들
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        # HasSection 설정 (Tool Menu Anchor 전용)
+        has_section_frame = ttk.Frame(main_frame)
+        has_section_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        has_section_var = tk.BooleanVar(value=True)  # 기본값 True
+        has_section_check = ttk.Checkbutton(
+            has_section_frame, 
+            text="HasSection (구분선 표시) - 새 Tool Menu Anchor의 기본 설정", 
+            variable=has_section_var
+        )
+        has_section_check.pack(anchor=tk.W)
+        
+        # 툴팁 추가
+        tooltip_text = """새로 추가될 Tool Menu Anchor의 HasSection 기본값을 설정합니다.
+
+• 체크: 구분선이 표시됩니다 (기본값)
+• 체크 해제: 구분선이 숨겨집니다 (툴바에서 권장)"""
+        self.create_tooltip(has_section_check, tooltip_text)
+        
+        def add_anchor():
+            anchor_name = anchor_var.get().strip()
+            has_section_value = has_section_var.get()
+            
+            if not anchor_name:
+                self._show_warning("경고", "Tool Menu Anchor 이름을 입력해주세요.")
+                return
+            
+            # 새로운 카테고리로 추가
+            if anchor_name not in self.config_data:
+                self.config_data[anchor_name] = {
+                    "HasSection": has_section_value,
+                    "items": []
+                }
+                self.mark_as_modified()
+                
+                # 새로운 카테고리 추가 후 카테고리 리스트 새로고침
+                self.mark_as_modified()
+                self.refresh_category_list()
+                
+                status_msg = f"HasSection={has_section_value}" 
+                self.update_status(f"🔧 Tool Menu Anchor '{anchor_name}' 추가됨 ({status_msg})")
+                dialog.destroy()
+            else:
+                self._show_warning("중복", f"'{anchor_name}'는 이미 존재합니다.")
+        
+        ttk.Button(button_frame, text="✅ 추가", command=add_anchor).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(button_frame, text="❌ 취소", command=dialog.destroy).pack(side=tk.LEFT)
+        
+        anchor_entry.focus_set()
+    
+    def remove_tool_menu_anchor_dialog(self):
+        """Tool Menu Anchor 삭제 다이얼로그"""
+        # 삭제 가능한 Tool Menu Anchor 목록 생성 (기본 카테고리 제외)
+        default_categories = {
+            "OnSelectFolderMenu", "OnSelectAssetsMenu", "OnMainMenu", "OnToolbar",
+            "OnToolBarChameleon", "OnOutlineMenu", "OnMaterialEditorMenu",
+            "OnPhysicsAssetEditorMenu", "OnControlRigEditorMenu", "OnTabContextMenu"
+        }
+        
+        removable_anchors = []
+        for category_id in self.config_data.keys():
+            if category_id not in default_categories:
+                removable_anchors.append(category_id)
+        
+        if not removable_anchors:
+            messagebox.showinfo("정보", "삭제할 수 있는 Tool Menu Anchor가 없습니다.\n기본 메뉴 카테고리는 삭제할 수 없습니다.")
+            return
+        
+        dialog = tk.Toplevel(self.root)
+        self._setup_dialog(dialog, "Tool Menu Anchor 삭제", 500, 350, modal=True)
+        
+        # 메인 프레임
+        main_frame = ttk.Frame(dialog)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # 설명
+        desc_text = """삭제할 Tool Menu Anchor를 선택하세요.
+삭제하면 해당 카테고리의 모든 메뉴 아이템이 함께 제거됩니다.
+기본 메뉴 카테고리는 삭제할 수 없습니다."""
+        ttk.Label(main_frame, text=desc_text, wraplength=450, 
+                 font=("Arial", 9), foreground="red").pack(anchor=tk.W, pady=(0, 10))
+        
+        # 삭제할 Anchor 선택
+        ttk.Label(main_frame, text="삭제할 Tool Menu Anchor:").pack(anchor=tk.W, pady=(0, 5))
+        
+        # 리스트박스와 스크롤바
+        list_frame = ttk.Frame(main_frame)
+        list_frame.pack(fill=tk.BOTH, expand=True)
+        
+        listbox = tk.Listbox(list_frame, height=10)
+        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=listbox.yview)
+        listbox.configure(yscrollcommand=scrollbar.set)
+        
+        # 삭제 가능한 Anchor들 추가
+        for anchor in sorted(removable_anchors):
+            # 아이템 개수도 함께 표시
+            item_count = len(self.config_data.get(anchor, {}).get("items", []))
+            display_text = f"{anchor} ({item_count}개 아이템)"
+            listbox.insert(tk.END, display_text)
+        
+        listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # 선택된 항목 정보 표시
+        info_frame = ttk.Frame(main_frame)
+        info_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        info_label = ttk.Label(info_frame, text="삭제할 항목을 선택하세요.", 
+                              font=("Arial", 9), foreground="gray")
+        info_label.pack(anchor=tk.W)
+        
+        def on_listbox_select(event):
+            selection = listbox.curselection()
+            if selection:
+                selected_text = listbox.get(selection[0])
+                anchor_name = selected_text.split(" (")[0]  # " (n개 아이템)" 부분 제거
+                item_count = len(self.config_data.get(anchor_name, {}).get("items", []))
+                info_label.configure(
+                    text=f"선택: {anchor_name}\n아이템 수: {item_count}개\n⚠️ 이 카테고리의 모든 데이터가 삭제됩니다!",
+                    foreground="red"
+                )
+        
+        listbox.bind("<<ListboxSelect>>", on_listbox_select)
+        
+        # 버튼들
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        def remove_anchor():
+            selection = listbox.curselection()
+            if not selection:
+                self._show_warning("경고", "삭제할 Tool Menu Anchor를 선택해주세요.")
+                return
+            
+            selected_text = listbox.get(selection[0])
+            anchor_name = selected_text.split(" (")[0]  # " (n개 아이템)" 부분 제거
+            item_count = len(self.config_data.get(anchor_name, {}).get("items", []))
+            
+            # 최종 확인
+            confirm_msg = f"정말로 '{anchor_name}'를 삭제하시겠습니까?\n\n"
+            confirm_msg += f"• {item_count}개의 메뉴 아이템이 함께 삭제됩니다.\n"
+            confirm_msg += "• 이 작업은 되돌릴 수 없습니다.\n"
+            confirm_msg += "• 현재 설정을 저장하지 않았다면 먼저 저장하는 것을 권장합니다."
+            
+            if messagebox.askyesno("삭제 확인", confirm_msg, icon="warning"):
+                try:
+                    # config_data에서 제거
+                    if anchor_name in self.config_data:
+                        del self.config_data[anchor_name]
+                    
+                    # 현재 선택된 카테고리가 삭제된 카테고리인 경우 초기화
+                    if self.current_category_id == anchor_name:
+                        self.clear_content_area()
+                    
+                    self.mark_as_modified()
+                    self.refresh_category_list()
+                    self.update_status(f"🗑️ Tool Menu Anchor '{anchor_name}' 삭제됨!")
+                    dialog.destroy()
+                    
+                except Exception as e:
+                    error_msg = f"Tool Menu Anchor 삭제 중 오류: {str(e)}"
+                    logger.error(error_msg)
+                    self._show_error("오류", error_msg)
+        
+        ttk.Button(button_frame, text="🗑️ 삭제", command=remove_anchor).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(button_frame, text="❌ 취소", command=dialog.destroy).pack(side=tk.LEFT)
+        
+        # 첫 번째 항목 자동 선택
+        if removable_anchors:
+            listbox.selection_set(0)
+            on_listbox_select(None)
+    
+    def refresh_tool_menus(self):
+        """Tool Menu 새로고침 (Unreal Engine 명령 실행)"""
+        try:
+            if UNREAL_AVAILABLE:
+                # Unreal Engine에서 Tool Menu 새로고침 명령 실행
+                unreal.SystemLibrary.execute_console_command(unreal.EditorLevelLibrary.get_editor_world(), "TAPython.RefreshToolMenus")
+                self.update_status("🔄 Tool Menu가 새로고침되었습니다!")
+                logger.info("Tool Menu 새로고침 명령 실행됨")
+            else:
+                # 독립 실행 모드에서는 메시지만 표시
+                message = """Tool Menu 새로고침은 Unreal Engine 내에서만 가능합니다.
+
+Unreal Engine의 콘솔에서 다음 명령을 실행하세요:
+TAPython.RefreshToolMenus"""
+                messagebox.showinfo("Tool Menu 새로고침", message)
+                self.update_status("💡 Unreal Engine에서 'TAPython.RefreshToolMenus' 명령을 실행하세요")
+        except Exception as e:
+            error_msg = f"Tool Menu 새로고침 중 오류: {str(e)}"
+            logger.error(error_msg)
+            self._show_error("오류", error_msg)
+    
     def cleanup_resources(self):
         """리소스 정리 메서드 (중복 호출 방지)"""
         if self._resources_cleaned:
@@ -1850,8 +2900,7 @@ def main():
         app.run()
     except Exception as e:
         logger.error(f"애플리케이션 실행 중 오류: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
+        traceback.print_exc()
     finally:
         # 최종 리소스 정리 (앱이 정상적으로 정리되지 않은 경우에만)
         if app and not getattr(app, '_resources_cleaned', False):
@@ -1859,6 +2908,177 @@ def main():
                 app.cleanup_resources()
             except:
                 pass
+
+
+class NewCategoryDialog:
+    """새 카테고리 추가 다이얼로그"""
+    
+    def __init__(self, parent):
+        self.result = None
+        
+        # 다이얼로그 창 생성
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("새 카테고리 추가")
+        self.dialog.geometry("600x600")
+        self.dialog.resizable(False, False)
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+        
+        # 중앙 정렬
+        self.dialog.geometry("+%d+%d" % (parent.winfo_rootx() + 50, parent.winfo_rooty() + 50))
+        
+        self.setup_dialog()
+    
+    def setup_dialog(self):
+        """다이얼로그 UI 설정"""
+        main_frame = ttk.Frame(self.dialog)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        # 제목
+        title_label = ttk.Label(main_frame, text="새 메뉴 카테고리 추가", font=("맑은 고딕", 12, "bold"))
+        title_label.pack(pady=(0, 20))
+        
+        # 카테고리 타입 선택
+        type_frame = ttk.LabelFrame(main_frame, text="카테고리 타입", padding=10)
+        type_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        self.category_type = tk.StringVar(value="traditional")
+        ttk.Radiobutton(type_frame, text="전통적인 메뉴 (예: OnSelectFolderMenu)", 
+                       variable=self.category_type, value="traditional", 
+                       command=self.on_type_change).pack(anchor=tk.W, pady=2)
+        ttk.Radiobutton(type_frame, text="Tool Menu Anchor (예: LevelEditor.MainMenu.Tools)", 
+                       variable=self.category_type, value="anchor", 
+                       command=self.on_type_change).pack(anchor=tk.W, pady=2)
+        
+        # 카테고리 ID 입력
+        ttk.Label(main_frame, text="카테고리 ID:").pack(anchor=tk.W)
+        self.category_id_entry = ttk.Entry(main_frame, width=50)
+        self.category_id_entry.pack(fill=tk.X, pady=(5, 10))
+        
+        # 카테고리 이름 입력
+        ttk.Label(main_frame, text="카테고리 이름:").pack(anchor=tk.W)
+        self.category_name_entry = ttk.Entry(main_frame, width=50)
+        self.category_name_entry.pack(fill=tk.X, pady=(5, 10))
+        
+        # Tool Menu Anchor 전용 옵션
+        self.anchor_options_frame = ttk.LabelFrame(main_frame, text="Tool Menu Anchor 옵션", padding=10)
+        self.anchor_options_frame.pack(fill=tk.X, pady=(10, 15))
+        
+        self.has_section_var = tk.BooleanVar(value=True)
+        self.has_section_check = ttk.Checkbutton(
+            self.anchor_options_frame, 
+            text="HasSection (구분선 표시)", 
+            variable=self.has_section_var
+        )
+        self.has_section_check.pack(anchor=tk.W)
+        
+        # 미리 정의된 Tool Menu Anchor 목록
+        self.predefined_frame = ttk.LabelFrame(main_frame, text="미리 정의된 Tool Menu Anchors", padding=10)
+        self.predefined_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
+        
+        # 리스트박스
+        listbox_frame = ttk.Frame(self.predefined_frame)
+        listbox_frame.pack(fill=tk.BOTH, expand=True)
+        
+        self.anchor_listbox = tk.Listbox(listbox_frame, height=6)
+        scrollbar = ttk.Scrollbar(listbox_frame, orient=tk.VERTICAL, command=self.anchor_listbox.yview)
+        self.anchor_listbox.configure(yscrollcommand=scrollbar.set)
+        
+        # 미리 정의된 Anchor들 추가
+        predefined_anchors = [
+            "LevelEditor.MainMenu.Tools",
+            "LevelEditor.MainMenu.Build", 
+            "LevelEditor.LevelEditorToolBar",
+            "ContentBrowser.ToolBar",
+            "ContentBrowser.AssetContextMenu",
+            "AssetEditor.StaticMeshEditor.ToolBar",
+            "AssetEditor.SkeletalMeshEditor.ToolBar",
+            "MainFrame.MainMenu.Tools"
+        ]
+        
+        for anchor in predefined_anchors:
+            self.anchor_listbox.insert(tk.END, anchor)
+        
+        self.anchor_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # 리스트박스 선택 시 ID 필드에 복사
+        self.anchor_listbox.bind("<<ListboxSelect>>", self.on_anchor_select)
+        
+        # 설명
+        self.info_label = ttk.Label(main_frame, foreground="gray")
+        self.info_label.pack(anchor=tk.W, pady=(0, 15))
+        
+        # 초기 상태 설정
+        self.on_type_change()
+        
+        # 버튼들
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X)
+        
+        ttk.Button(button_frame, text="취소", command=self.cancel).pack(side=tk.RIGHT, padx=(5, 0))
+        ttk.Button(button_frame, text="추가", command=self.ok).pack(side=tk.RIGHT)
+        
+        # Enter 키 바인딩
+        self.dialog.bind('<Return>', lambda e: self.ok())
+        self.dialog.bind('<Escape>', lambda e: self.cancel())
+        
+        # 포커스 설정
+        self.category_id_entry.focus()
+    
+    def on_type_change(self):
+        """카테고리 타입 변경 시 UI 업데이트"""
+        is_anchor = self.category_type.get() == "anchor"
+        
+        # Tool Menu Anchor 전용 옵션 표시/숨김
+        if is_anchor:
+            self.anchor_options_frame.pack(fill=tk.X, pady=(10, 15))
+            self.predefined_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
+            self.info_label.configure(text="• Tool Menu Anchor는 점(.)이 포함된 형식입니다\n• HasSection으로 구분선 표시 여부를 설정할 수 있습니다")
+        else:
+            self.anchor_options_frame.pack_forget()
+            self.predefined_frame.pack_forget()
+            self.info_label.configure(text="• 전통적인 메뉴는 'OnSelectFolderMenu' 같은 형식입니다\n• 카테고리 ID는 고유해야 합니다")
+    
+    def on_anchor_select(self, event):
+        """미리 정의된 Anchor 선택 시 ID 필드에 복사"""
+        selection = self.anchor_listbox.curselection()
+        if selection:
+            anchor_name = self.anchor_listbox.get(selection[0])
+            self.category_id_entry.delete(0, tk.END)
+            self.category_id_entry.insert(0, anchor_name)
+            # 이름 필드가 비어있으면 ID에서 추출해서 채움
+            if not self.category_name_entry.get().strip():
+                display_name = anchor_name.split('.')[-1]  # 마지막 부분만 사용
+                self.category_name_entry.delete(0, tk.END)
+                self.category_name_entry.insert(0, display_name)
+    
+    def ok(self):
+        """확인 버튼"""
+        category_id = self.category_id_entry.get().strip()
+        category_name = self.category_name_entry.get().strip()
+        
+        if not category_id:
+            messagebox.showerror("오류", "카테고리 ID를 입력하세요.")
+            return
+        
+        if not category_name:
+            messagebox.showerror("오류", "카테고리 이름을 입력하세요.")
+            return
+        
+        # Tool Menu Anchor 타입인 경우 추가 정보 포함
+        is_anchor = self.category_type.get() == "anchor"
+        if is_anchor:
+            has_section = self.has_section_var.get()
+            self.result = (category_id, category_name, True, has_section)  # (id, name, is_anchor, has_section)
+        else:
+            self.result = (category_id, category_name, False, None)  # (id, name, is_anchor, has_section)
+        
+        self.dialog.destroy()
+    
+    def cancel(self):
+        """취소 버튼"""
+        self.dialog.destroy()
 
 
 if __name__ == "__main__":
