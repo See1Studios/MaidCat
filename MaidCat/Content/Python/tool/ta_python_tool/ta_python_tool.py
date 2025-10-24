@@ -109,6 +109,75 @@ class ToolTip:
             self.tooltip_window = None
 
 
+# 모든 메뉴 카테고리 정의 (한 곳에서 관리)
+ALL_MENU_CATEGORIES = [
+    # 전통적인 메뉴 카테고리들
+    ("OnSelectFolderMenu", "폴더 메뉴"),
+    ("OnSelectAssetsMenu", "에셋 메뉴"),
+    ("OnMainMenu", "메인 메뉴"),
+    ("OnToolbar", "툴바"),
+    ("OnToolBarChameleon", "Chameleon 툴바"),
+    ("OnOutlineMenu", "아웃라인 메뉴"),
+    ("OnMaterialEditorMenu", "머티리얼 에디터"),
+    ("OnPhysicsAssetEditorMenu", "Physics Asset 에디터"),
+    ("OnControlRigEditorMenu", "ControlRig 에디터"),
+    ("OnTabContextMenu", "탭 컨텍스트"),
+    
+    # 언리얼 엔진 메뉴 카테고리들 (Tool Menu Anchor)
+    ("AssetEditor.AnimationBlueprintEditor.MainMenu", "애니메이션 BP 에디터 메뉴"),
+    ("AssetEditor.AnimationEditor.MainMenu", "애니메이션 에디터 메뉴"),
+    ("AssetEditor.SkeletalMeshEditor.ToolBar", "스켈레탈 메시 에디터 툴바"),
+    ("AssetEditor.StaticMeshEditor.ToolBar", "스태틱 메시 에디터 툴바"),
+    ("ContentBrowser.AddNewContextMenu", "콘텐츠 브라우저 새로 추가"),
+    ("ContentBrowser.AssetContextMenu", "에셋 컨텍스트 메뉴"),
+    ("ContentBrowser.AssetContextMenu.AimOffsetBlendSpace", "AimOffsetBlendSpace 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.AnimBlueprint", "애니메이션 BP 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.AnimMontage", "애니메이션 몽타주 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.AnimSequence", "애니메이션 시퀀스 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.BlendSpace", "BlendSpace 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.BlendSpace1D", "BlendSpace1D 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.CameraAnim", "카메라 애니메이션 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.DatasmithScene", "Datasmith 씬 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.PoseAsset", "포즈 에셋 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.SkeletalMesh", "스켈레탈 메시 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.SkeletalMesh.CreateSkeletalMeshSubmenu", "스켈레탈 메시 생성 서브메뉴"),
+    ("ContentBrowser.AssetContextMenu.Skeleton.CreateSkeletalMeshSubmenu", "스켈레톤 생성 서브메뉴"),
+    ("ContentBrowser.AssetContextMenu.SoundWave", "사운드 웨이브 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.StaticMesh", "스태틱 메시 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.World", "월드 컨텍스트"),
+    ("ContentBrowser.AssetViewOptions", "에셋 뷰 옵션"),
+    ("ContentBrowser.AssetViewOptions.PathViewFilters", "경로 뷰 필터"),
+    ("ContentBrowser.DragDropContextMenu", "드래그드롭 컨텍스트 메뉴"),
+    ("ContentBrowser.FolderContextMenu", "폴더 컨텍스트 메뉴"),
+    ("ContentBrowser.ItemContextMenu.PythonData", "Python 데이터 컨텍스트"),
+    ("ContentBrowser.ToolBar", "콘텐츠 브라우저 툴바"),
+    ("ControlRigEditor.RigHierarchy.ContextMenu", "리그 계층 컨텍스트"),
+    ("ControlRigEditor.RigHierarchy.DragDropMenu", "리그 드래그드롭 메뉴"),
+    ("Kismet.SubobjectEditorContextMenu", "컴포넌트 컨텍스트 메뉴"),
+    ("Kismet.SCSEditorContextMenu", "SCS 에디터 컨텍스트"),
+    ("LevelEditor.ActorContextMenu.AssetToolsSubMenu", "액터 에셋 도구 서브메뉴"),
+    ("LevelEditor.ActorContextMenu.LevelSubMenu", "액터 레벨 서브메뉴"),
+    ("LevelEditor.InViewportPanel", "뷰포트 패널"),
+    ("LevelEditor.LevelEditorSceneOutliner.ContextMenu.LevelSubMenu", "아웃라이너 레벨 서브메뉴"),
+    ("LevelEditor.LevelEditorToolBar", "레벨 에디터 툴바"),
+    ("LevelEditor.LevelEditorToolBar.AddQuickMenu", "빠른 추가 메뉴"),
+    ("LevelEditor.LevelEditorToolBar.User", "사용자 툴바"),
+    ("LevelEditor.LevelViewportToolBar.Options", "뷰포트 옵션"),
+    ("LevelEditor.LevelViewportToolBar.View", "뷰포트 보기"),
+    ("LevelEditor.MainMenu.Build", "빌드 메뉴"),
+    ("LevelEditor.MainMenu.File", "파일 메뉴"),
+    ("LevelEditor.MainMenu.Help", "도움말 메뉴"),
+    ("LevelEditor.MainMenu.Select", "선택 메뉴"),
+    ("LevelEditor.MainMenu.Tools", "도구 메뉴"),
+    ("LevelEditor.MainMenu.Window", "윈도우 메뉴"),
+    ("LevelEditor.StatusBar.ToolBar", "상태바 툴바"),
+    ("MainFrame.MainMenu.Asset", "메인 에셋 메뉴"),
+    ("MainFrame.MainMenu.Tools", "메인 도구 메뉴"),
+    ("MainFrame.MainMenu.Window", "메인 윈도우 메뉴"),
+    ("StatusBar.ToolBar.SourceControl", "소스 컨트롤 툴바")
+]
+
+
 class TAPythonTool:
     """
     TAPython MenuConfig.json 편집기
@@ -432,20 +501,18 @@ class TAPythonTool:
         if hasattr(self, 'save_button'):
             if self.has_unsaved_changes:
                 self.save_button.configure(state=tk.NORMAL)
-                # 버튼 텍스트도 변경하여 시각적 효과 증가
+                # 버튼 텍스트에 * 표시
                 self.save_button.configure(text="💾 저장 *")
-                # 툴팁도 업데이트
-                try:
-                    self.save_button.configure(style="Accent.TButton")
-                except:
-                    pass  # 스타일이 지원되지 않는 경우 무시
             else:
                 self.save_button.configure(state=tk.DISABLED)
                 self.save_button.configure(text="💾 저장")
-                try:
-                    self.save_button.configure(style="TButton")
-                except:
-                    pass  # 스타일이 지원되지 않는 경우 무시
+        
+        # "다른 이름으로 저장" 버튼도 동일하게 처리
+        if hasattr(self, 'save_as_button'):
+            if self.has_unsaved_changes:
+                self.save_as_button.configure(text="📄 다른 이름으로 저장 *")
+            else:
+                self.save_as_button.configure(text="📄 다른 이름으로 저장")
         
         # 상태바에도 저장 상태 표시
         if hasattr(self, 'status_label'):
@@ -736,16 +803,15 @@ class TAPythonTool:
     
     def add_new_category(self):
         """새 카테고리 추가"""
-        dialog = NewCategoryDialog(self.root)
+        dialog = NewCategoryDialog(self.root, self.config_data)
         self.root.wait_window(dialog.dialog)
         
         if dialog.result:
             if len(dialog.result) == 4:  # 새 형식: (id, name, is_anchor, has_section)
-                category_id, category_name, is_anchor, has_section = dialog.result
+                category_id, category_name, _, has_section = dialog.result
             else:  # 이전 호환성: (id, name)
                 category_id, category_name = dialog.result
-                is_anchor = "." in category_id
-                has_section = True if is_anchor else None
+                has_section = True  # 기본값
             
             # 중복 확인
             if category_id in self.config_data:
@@ -755,16 +821,15 @@ class TAPythonTool:
             # 새 카테고리 추가
             category_data = {"items": []}
             
-            # Tool Menu Anchor인 경우 HasSection 추가
-            if is_anchor and has_section is not None:
+            # HasSection 설정 추가
+            if has_section is not None:
                 category_data["HasSection"] = has_section
             
             self.config_data[category_id] = category_data
             self.mark_as_modified()
             self.refresh_category_list()
             
-            category_type = "Tool Menu Anchor" if is_anchor else "메뉴 카테고리"
-            self.update_status(f"🆕 {category_type} '{category_name}' 추가됨!")
+            self.update_status(f"🆕 메뉴 카테고리 '{category_name}' 추가됨!")
     
     def delete_selected_category(self):
         """선택된 카테고리 삭제"""
@@ -979,10 +1044,12 @@ class TAPythonTool:
         button_frame = ttk.Frame(parent)
         button_frame.pack(side=tk.LEFT)
         
+        # 저장 버튼
         self.save_button = ttk.Button(button_frame, text="💾 저장", command=self.save_config, 
-                                     state=tk.DISABLED, style="Accent.TButton")
+                                     state=tk.DISABLED)
         self.save_button.pack(side=tk.LEFT, padx=(0, 5))
         
+        # 다른 이름으로 저장 버튼
         self.save_as_button = ttk.Button(button_frame, text="📄 다른 이름으로 저장", 
                                         command=self.save_as_config)
         self.save_as_button.pack(side=tk.LEFT)
@@ -1047,58 +1114,7 @@ class TAPythonTool:
     
     def _get_all_menu_categories(self):
         """모든 메뉴 카테고리 목록 반환"""
-        return [
-            # 전통적인 메뉴 카테고리들
-            ("OnSelectFolderMenu", "폴더 메뉴"),
-            ("OnSelectAssetsMenu", "에셋 메뉴"),
-            ("OnMainMenu", "메인 메뉴"),
-            ("OnToolbar", "툴바"),
-            ("OnToolBarChameleon", "Chameleon 툴바"),
-            ("OnOutlineMenu", "아웃라인 메뉴"),
-            ("OnMaterialEditorMenu", "머티리얼 에디터"),
-            ("OnPhysicsAssetEditorMenu", "Physics Asset 에디터"),
-            ("OnControlRigEditorMenu", "ControlRig 에디터"),
-            ("OnTabContextMenu", "탭 컨텍스트"),
-            
-            # Tool Menu Anchor 카테고리들
-            ("AssetEditor.AnimationBlueprintEditor.MainMenu", "애니메이션 BP 에디터 메뉴"),
-            ("AssetEditor.AnimationEditor.MainMenu", "애니메이션 에디터 메뉴"),
-            ("AssetEditor.SkeletalMeshEditor.ToolBar", "스켈레탈 메시 에디터 툴바"),
-            ("AssetEditor.StaticMeshEditor.ToolBar", "스태틱 메시 에디터 툴바"),
-            ("ContentBrowser.AddNewContextMenu", "콘텐츠 브라우저 새로 추가"),
-            ("ContentBrowser.AssetContextMenu", "에셋 컨텍스트 메뉴"),
-            ("ContentBrowser.AssetContextMenu.AnimBlueprint", "애니메이션 BP 컨텍스트"),
-            ("ContentBrowser.AssetContextMenu.AnimSequence", "애니메이션 시퀀스 컨텍스트"),
-            ("ContentBrowser.AssetContextMenu.SkeletalMesh", "스켈레탈 메시 컨텍스트"),
-            ("ContentBrowser.AssetContextMenu.StaticMesh", "스태틱 메시 컨텍스트"),
-            ("ContentBrowser.AssetContextMenu.World", "월드 컨텍스트"),
-            ("ContentBrowser.FolderContextMenu", "폴더 컨텍스트 메뉴"),
-            ("ContentBrowser.ToolBar", "콘텐츠 브라우저 툴바"),
-            ("Kismet.SubobjectEditorContextMenu", "컴포넌트 컨텍스트 메뉴"),
-            ("Kismet.SCSEditorContextMenu", "SCS 에디터 컨텍스트"),
-            ("ControlRigEditor.RigHierarchy.ContextMenu", "리그 계층 컨텍스트"),
-            ("ControlRigEditor.RigHierarchy.DragDropMenu", "리그 드래그드롭 메뉴"),
-            ("LevelEditor.ActorContextMenu.AssetToolsSubMenu", "액터 에셋 도구 서브메뉴"),
-            ("LevelEditor.ActorContextMenu.LevelSubMenu", "액터 레벨 서브메뉴"),
-            ("LevelEditor.InViewportPanel", "뷰포트 패널"),
-            ("LevelEditor.LevelEditorSceneOutliner.ContextMenu.LevelSubMenu", "아웃라이너 레벨 서브메뉴"),
-            ("LevelEditor.LevelEditorToolBar", "레벨 에디터 툴바"),
-            ("LevelEditor.LevelEditorToolBar.AddQuickMenu", "빠른 추가 메뉴"),
-            ("LevelEditor.LevelEditorToolBar.User", "사용자 툴바"),
-            ("LevelEditor.LevelViewportToolBar.Options", "뷰포트 옵션"),
-            ("LevelEditor.LevelViewportToolBar.View", "뷰포트 보기"),
-            ("LevelEditor.MainMenu.Build", "빌드 메뉴"),
-            ("LevelEditor.MainMenu.File", "파일 메뉴"),
-            ("LevelEditor.MainMenu.Help", "도움말 메뉴"),
-            ("LevelEditor.MainMenu.Select", "선택 메뉴"),
-            ("LevelEditor.MainMenu.Tools", "도구 메뉴"),
-            ("LevelEditor.MainMenu.Window", "윈도우 메뉴"),
-            ("LevelEditor.StatusBar.ToolBar", "상태바 툴바"),
-            ("MainFrame.MainMenu.Asset", "메인 에셋 메뉴"),
-            ("MainFrame.MainMenu.Tools", "메인 도구 메뉴"),
-            ("MainFrame.MainMenu.Window", "메인 윈도우 메뉴"),
-            ("StatusBar.ToolBar.SourceControl", "소스 컨트롤 툴바")
-        ]
+        return ALL_MENU_CATEGORIES
     
 
     
@@ -1106,22 +1122,10 @@ class TAPythonTool:
         """설정 파일에 실제로 존재하는 카테고리만 반환"""
         available_categories = []
         
-        # 기본 카테고리들 (처음 10개)
-        default_categories = {
-            "OnSelectFolderMenu", "OnSelectAssetsMenu", "OnMainMenu", "OnToolbar",
-            "OnToolBarChameleon", "OnOutlineMenu", "OnMaterialEditorMenu",
-            "OnPhysicsAssetEditorMenu", "OnControlRigEditorMenu", "OnTabContextMenu"
-        }
-        
-        # 기본 카테고리들은 항상 표시 (데이터가 없어도)
-        for category_id, category_name in all_categories:
-            if category_id in default_categories:
-                available_categories.append((category_id, category_name))
-        
-        # Tool Menu Anchor들은 설정 파일에 실제로 존재하는 것만 표시
+        # 모든 카테고리를 동등하게 처리 - 설정 파일에 존재하는 것만 표시
         if self.config_data:
             for category_id, category_name in all_categories:
-                if category_id not in default_categories and category_id in self.config_data:
+                if category_id in self.config_data:
                     available_categories.append((category_id, category_name))
         
         return available_categories
@@ -1166,39 +1170,31 @@ class TAPythonTool:
         ttk.Label(info_frame, text=f"카테고리: {display_name}", 
                  font=("Arial", 8, "bold")).pack(anchor=tk.W, padx=5, pady=2)
         
-        # Tool Menu Anchor인지 확인
-        is_tool_menu_anchor = "." in category_id and category_id not in [
-            "OnSelectFolderMenu", "OnSelectAssetsMenu", "OnMainMenu", "OnToolbar",
-            "OnToolBarChameleon", "OnOutlineMenu", "OnMaterialEditorMenu",
-            "OnPhysicsAssetEditorMenu", "OnControlRigEditorMenu", "OnTabContextMenu"
-        ]
+        # HasSection 설정 (모든 카테고리에 적용 가능)
+        has_section_var = tk.BooleanVar()
+        # 현재 설정값 로드
+        current_has_section = self.config_data.get(category_id, {}).get("HasSection", True)
+        has_section_var.set(current_has_section)
         
-        if is_tool_menu_anchor:
-            # HasSection 설정 (Tool Menu Anchor만)
-            has_section_var = tk.BooleanVar()
-            # 현재 설정값 로드
-            current_has_section = self.config_data.get(category_id, {}).get("HasSection", True)
-            has_section_var.set(current_has_section)
-            
-            has_section_check = ttk.Checkbutton(
-                info_frame, 
-                text="HasSection (구분선 표시)", 
-                variable=has_section_var,
-                command=lambda: self._update_category_has_section(category_id, has_section_var.get())
-            )
-            has_section_check.pack(anchor=tk.W, padx=5, pady=2)
-            
-            # 툴팁 추가
-            tooltip_text = """Tool Menu Anchor의 구분선 표시 여부를 설정합니다.
+        has_section_check = ttk.Checkbutton(
+            info_frame, 
+            text="HasSection (구분선 표시)", 
+            variable=has_section_var,
+            command=lambda: self._update_category_has_section(category_id, has_section_var.get())
+        )
+        has_section_check.pack(anchor=tk.W, padx=5, pady=2)
+        
+        # 툴팁 추가
+        tooltip_text = """메뉴 카테고리의 구분선 표시 여부를 설정합니다.
 
 • 체크: 구분선이 표시됩니다 (기본값)
 • 체크 해제: 구분선이 숨겨집니다 (툴바에서 권장)"""
-            self.create_tooltip(has_section_check, tooltip_text)
-            
-            # 툴바인 경우 권장사항 표시
-            if "ToolBar" in category_id or "Toolbar" in category_id:
-                ttk.Label(info_frame, text="💡 툴바에서는 HasSection=false 권장", 
-                         font=("Arial", 7), foreground="blue").pack(anchor=tk.W, padx=5, pady=1)
+        self.create_tooltip(has_section_check, tooltip_text)
+        
+        # 툴바인 경우 권장사항 표시
+        if "ToolBar" in category_id or "Toolbar" in category_id:
+            ttk.Label(info_frame, text="💡 툴바에서는 HasSection=false 권장", 
+                     font=("Arial", 7), foreground="blue").pack(anchor=tk.W, padx=5, pady=1)
     
     def _update_category_has_section(self, category_id, has_section_value):
         """카테고리의 HasSection 값 업데이트"""
@@ -2368,13 +2364,9 @@ class TAPythonTool:
                 self.mark_as_modified()  # 변경사항 추적
                 dialog.destroy()
                 
-                # Tool Menu Anchor인 경우 새로고침 안내
-                if "." in selected_category and selected_category not in [
-                    "OnSelectFolderMenu", "OnSelectAssetsMenu", "OnMainMenu", "OnToolbar", 
-                    "OnToolBarChameleon", "OnOutlineMenu", "OnMaterialEditorMenu", 
-                    "OnPhysicsAssetEditorMenu", "OnControlRigEditorMenu", "OnTabContextMenu"
-                ]:
-                    self.update_status(f"➕ Tool Menu Anchor 아이템 '{name}' 추가됨 - 'TAPython.RefreshToolMenus' 실행 필요")
+                # 점(.)이 포함된 언리얼 엔진 메뉴인 경우 새로고침 안내
+                if "." in selected_category:
+                    self.update_status(f"➕ 메뉴 아이템 '{name}' 추가됨 - 'TAPython.RefreshToolMenus' 실행 필요")
                 else:
                     self.update_status(f"➕ 아이템 '{name}' 추가됨")
                 
@@ -2601,29 +2593,29 @@ class TAPythonTool:
         
         return False
     
-    def add_tool_menu_anchor_dialog(self):
-        """Tool Menu Anchor 추가 다이얼로그"""
+    def add_new_category_dialog(self):
+        """새 카테고리 추가 다이얼로그"""
         dialog = tk.Toplevel(self.root)
-        self._setup_dialog(dialog, "새 Tool Menu Anchor 추가", 600, 400, modal=True)
+        self._setup_dialog(dialog, "새 카테고리 추가", 600, 400, modal=True)
         
         # 메인 프레임
         main_frame = ttk.Frame(dialog)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
         # 설명
-        desc_text = """Tool Menu Anchor를 사용하면 Unreal Engine의 다양한 위치에 메뉴를 추가할 수 있습니다.
-아래에서 Anchor 이름을 입력하거나 미리 정의된 목록에서 선택하세요."""
+        desc_text = """메뉴 카테고리를 추가하면 Unreal Engine의 다양한 위치에 메뉴를 추가할 수 있습니다.
+아래에서 카테고리 이름을 입력하거나 미리 정의된 목록에서 선택하세요."""
         ttk.Label(main_frame, text=desc_text, wraplength=550, 
                  font=("Arial", 9), foreground="gray").pack(anchor=tk.W, pady=(0, 10))
         
-        # Anchor 입력
-        ttk.Label(main_frame, text="Tool Menu Anchor 이름:").pack(anchor=tk.W, pady=(0, 5))
-        anchor_var = tk.StringVar()
-        anchor_entry = ttk.Entry(main_frame, textvariable=anchor_var, width=60)
-        anchor_entry.pack(fill=tk.X, pady=(0, 10))
+        # 카테고리 입력
+        ttk.Label(main_frame, text="카테고리 이름:").pack(anchor=tk.W, pady=(0, 5))
+        category_var = tk.StringVar()
+        category_entry = ttk.Entry(main_frame, textvariable=category_var, width=60)
+        category_entry.pack(fill=tk.X, pady=(0, 10))
         
-        # 미리 정의된 Anchor 목록
-        ttk.Label(main_frame, text="미리 정의된 Tool Menu Anchors:").pack(anchor=tk.W, pady=(10, 5))
+        # 미리 정의된 카테고리 목록
+        ttk.Label(main_frame, text="미리 정의된 메뉴 카테고리:").pack(anchor=tk.W, pady=(10, 5))
         
         # 리스트박스와 스크롤바
         list_frame = ttk.Frame(main_frame)
@@ -2633,36 +2625,12 @@ class TAPythonTool:
         scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=listbox.yview)
         listbox.configure(yscrollcommand=scrollbar.set)
         
-        # 미리 정의된 Anchor들 추가
-        predefined_anchors = [
-            "AssetEditor.AnimationBlueprintEditor.MainMenu",
-            "AssetEditor.AnimationEditor.MainMenu",
-            "AssetEditor.SkeletalMeshEditor.ToolBar",
-            "AssetEditor.StaticMeshEditor.ToolBar",
-            "ContentBrowser.AddNewContextMenu",
-            "ContentBrowser.AssetContextMenu",
-            "ContentBrowser.AssetContextMenu.AnimBlueprint",
-            "ContentBrowser.AssetContextMenu.AnimSequence",
-            "ContentBrowser.AssetContextMenu.SkeletalMesh",
-            "ContentBrowser.AssetContextMenu.StaticMesh",
-            "ContentBrowser.AssetContextMenu.World",
-            "ContentBrowser.FolderContextMenu",
-            "ContentBrowser.ToolBar",
-            "Kismet.SubobjectEditorContextMenu",
-            "Kismet.SCSEditorContextMenu",
-            "ControlRigEditor.RigHierarchy.ContextMenu",
-            "LevelEditor.ActorContextMenu.AssetToolsSubMenu",
-            "LevelEditor.LevelEditorToolBar",
-            "LevelEditor.LevelViewportToolBar.Options",
-            "LevelEditor.MainMenu.Build",
-            "LevelEditor.MainMenu.File",
-            "LevelEditor.MainMenu.Tools",
-            "MainFrame.MainMenu.Asset",
-            "MainFrame.MainMenu.Tools"
-        ]
+        # 미리 정의된 카테고리들 추가 (Tool Menu Anchor 부분만)
+        predefined_categories = [category_id for category_id, _ in ALL_MENU_CATEGORIES 
+                               if not category_id.startswith('On')]
         
-        for anchor in predefined_anchors:
-            listbox.insert(tk.END, anchor)
+        for category in predefined_categories:
+            listbox.insert(tk.END, category)
         
         listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -2671,7 +2639,7 @@ class TAPythonTool:
         def on_listbox_select(event):
             selection = listbox.curselection()
             if selection:
-                anchor_var.set(listbox.get(selection[0]))
+                category_var.set(listbox.get(selection[0]))
         
         listbox.bind("<<ListboxSelect>>", on_listbox_select)
         
@@ -2679,36 +2647,36 @@ class TAPythonTool:
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill=tk.X, pady=(10, 0))
         
-        # HasSection 설정 (Tool Menu Anchor 전용)
+        # HasSection 설정 (Tool Menu Anchor 스타일 카테고리용)
         has_section_frame = ttk.Frame(main_frame)
         has_section_frame.pack(fill=tk.X, pady=(10, 0))
         
         has_section_var = tk.BooleanVar(value=True)  # 기본값 True
         has_section_check = ttk.Checkbutton(
             has_section_frame, 
-            text="HasSection (구분선 표시) - 새 Tool Menu Anchor의 기본 설정", 
+            text="HasSection (구분선 표시) - 새 카테고리의 기본 설정", 
             variable=has_section_var
         )
         has_section_check.pack(anchor=tk.W)
         
         # 툴팁 추가
-        tooltip_text = """새로 추가될 Tool Menu Anchor의 HasSection 기본값을 설정합니다.
+        tooltip_text = """새로 추가될 카테고리의 HasSection 기본값을 설정합니다.
 
 • 체크: 구분선이 표시됩니다 (기본값)
 • 체크 해제: 구분선이 숨겨집니다 (툴바에서 권장)"""
         self.create_tooltip(has_section_check, tooltip_text)
         
-        def add_anchor():
-            anchor_name = anchor_var.get().strip()
+        def add_category():
+            category_name = category_var.get().strip()
             has_section_value = has_section_var.get()
             
-            if not anchor_name:
-                self._show_warning("경고", "Tool Menu Anchor 이름을 입력해주세요.")
+            if not category_name:
+                self._show_warning("경고", "카테고리 이름을 입력해주세요.")
                 return
             
             # 새로운 카테고리로 추가
-            if anchor_name not in self.config_data:
-                self.config_data[anchor_name] = {
+            if category_name not in self.config_data:
+                self.config_data[category_name] = {
                     "HasSection": has_section_value,
                     "items": []
                 }
@@ -2719,50 +2687,40 @@ class TAPythonTool:
                 self.refresh_category_list()
                 
                 status_msg = f"HasSection={has_section_value}" 
-                self.update_status(f"🔧 Tool Menu Anchor '{anchor_name}' 추가됨 ({status_msg})")
+                self.update_status(f"🔧 카테고리 '{category_name}' 추가됨 ({status_msg})")
                 dialog.destroy()
             else:
-                self._show_warning("중복", f"'{anchor_name}'는 이미 존재합니다.")
+                self._show_warning("중복", f"'{category_name}'는 이미 존재합니다.")
         
-        ttk.Button(button_frame, text="✅ 추가", command=add_anchor).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(button_frame, text="✅ 추가", command=add_category).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(button_frame, text="❌ 취소", command=dialog.destroy).pack(side=tk.LEFT)
         
-        anchor_entry.focus_set()
+        category_entry.focus_set()
     
-    def remove_tool_menu_anchor_dialog(self):
-        """Tool Menu Anchor 삭제 다이얼로그"""
-        # 삭제 가능한 Tool Menu Anchor 목록 생성 (기본 카테고리 제외)
-        default_categories = {
-            "OnSelectFolderMenu", "OnSelectAssetsMenu", "OnMainMenu", "OnToolbar",
-            "OnToolBarChameleon", "OnOutlineMenu", "OnMaterialEditorMenu",
-            "OnPhysicsAssetEditorMenu", "OnControlRigEditorMenu", "OnTabContextMenu"
-        }
+    def remove_category_dialog(self):
+        """카테고리 삭제 다이얼로그 - 모든 카테고리를 동등하게 취급"""
+        # 삭제 가능한 카테고리 목록 생성 (모든 카테고리 삭제 가능)
+        removable_categories = list(self.config_data.keys())
         
-        removable_anchors = []
-        for category_id in self.config_data.keys():
-            if category_id not in default_categories:
-                removable_anchors.append(category_id)
-        
-        if not removable_anchors:
-            messagebox.showinfo("정보", "삭제할 수 있는 Tool Menu Anchor가 없습니다.\n기본 메뉴 카테고리는 삭제할 수 없습니다.")
+        if not removable_categories:
+            messagebox.showinfo("정보", "삭제할 수 있는 카테고리가 없습니다.")
             return
         
         dialog = tk.Toplevel(self.root)
-        self._setup_dialog(dialog, "Tool Menu Anchor 삭제", 500, 350, modal=True)
+        self._setup_dialog(dialog, "카테고리 삭제", 500, 350, modal=True)
         
         # 메인 프레임
         main_frame = ttk.Frame(dialog)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
         # 설명
-        desc_text = """삭제할 Tool Menu Anchor를 선택하세요.
-삭제하면 해당 카테고리의 모든 메뉴 아이템이 함께 제거됩니다.
-기본 메뉴 카테고리는 삭제할 수 없습니다."""
+        desc_text = """삭제할 카테고리를 선택하세요.
+삭제하면 해당 카테고리의 모든 메뉴 아이템이 함께 제거됩니다."""
         ttk.Label(main_frame, text=desc_text, wraplength=450, 
                  font=("Arial", 9), foreground="red").pack(anchor=tk.W, pady=(0, 10))
         
-        # 삭제할 Anchor 선택
-        ttk.Label(main_frame, text="삭제할 Tool Menu Anchor:").pack(anchor=tk.W, pady=(0, 5))
+        # 삭제할 카테고리 선택
+        ttk.Label(main_frame, text="삭제할 카테고리:").pack(anchor=tk.W, pady=(0, 5))
         
         # 리스트박스와 스크롤바
         list_frame = ttk.Frame(main_frame)
@@ -2772,11 +2730,11 @@ class TAPythonTool:
         scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=listbox.yview)
         listbox.configure(yscrollcommand=scrollbar.set)
         
-        # 삭제 가능한 Anchor들 추가
-        for anchor in sorted(removable_anchors):
+        # 삭제 가능한 카테고리들 추가
+        for category in sorted(removable_categories):
             # 아이템 개수도 함께 표시
-            item_count = len(self.config_data.get(anchor, {}).get("items", []))
-            display_text = f"{anchor} ({item_count}개 아이템)"
+            item_count = len(self.config_data.get(category, {}).get("items", []))
+            display_text = f"{category} ({item_count}개 아이템)"
             listbox.insert(tk.END, display_text)
         
         listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -2807,18 +2765,18 @@ class TAPythonTool:
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill=tk.X, pady=(10, 0))
         
-        def remove_anchor():
+        def remove_category():
             selection = listbox.curselection()
             if not selection:
-                self._show_warning("경고", "삭제할 Tool Menu Anchor를 선택해주세요.")
+                self._show_warning("경고", "삭제할 카테고리를 선택해주세요.")
                 return
             
             selected_text = listbox.get(selection[0])
-            anchor_name = selected_text.split(" (")[0]  # " (n개 아이템)" 부분 제거
-            item_count = len(self.config_data.get(anchor_name, {}).get("items", []))
+            category_name = selected_text.split(" (")[0]  # " (n개 아이템)" 부분 제거
+            item_count = len(self.config_data.get(category_name, {}).get("items", []))
             
             # 최종 확인
-            confirm_msg = f"정말로 '{anchor_name}'를 삭제하시겠습니까?\n\n"
+            confirm_msg = f"정말로 '{category_name}'를 삭제하시겠습니까?\n\n"
             confirm_msg += f"• {item_count}개의 메뉴 아이템이 함께 삭제됩니다.\n"
             confirm_msg += "• 이 작업은 되돌릴 수 없습니다.\n"
             confirm_msg += "• 현재 설정을 저장하지 않았다면 먼저 저장하는 것을 권장합니다."
@@ -2826,28 +2784,28 @@ class TAPythonTool:
             if messagebox.askyesno("삭제 확인", confirm_msg, icon="warning"):
                 try:
                     # config_data에서 제거
-                    if anchor_name in self.config_data:
-                        del self.config_data[anchor_name]
+                    if category_name in self.config_data:
+                        del self.config_data[category_name]
                     
                     # 현재 선택된 카테고리가 삭제된 카테고리인 경우 초기화
-                    if self.current_category_id == anchor_name:
+                    if self.current_category_id == category_name:
                         self.clear_content_area()
                     
                     self.mark_as_modified()
                     self.refresh_category_list()
-                    self.update_status(f"🗑️ Tool Menu Anchor '{anchor_name}' 삭제됨!")
+                    self.update_status(f"🗑️ 카테고리 '{category_name}' 삭제됨!")
                     dialog.destroy()
                     
                 except Exception as e:
-                    error_msg = f"Tool Menu Anchor 삭제 중 오류: {str(e)}"
+                    error_msg = f"카테고리 삭제 중 오류: {str(e)}"
                     logger.error(error_msg)
                     self._show_error("오류", error_msg)
         
-        ttk.Button(button_frame, text="🗑️ 삭제", command=remove_anchor).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(button_frame, text="🗑️ 삭제", command=remove_category).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(button_frame, text="❌ 취소", command=dialog.destroy).pack(side=tk.LEFT)
         
         # 첫 번째 항목 자동 선택
-        if removable_anchors:
+        if removable_categories:
             listbox.selection_set(0)
             on_listbox_select(None)
     
@@ -2913,13 +2871,14 @@ def main():
 class NewCategoryDialog:
     """새 카테고리 추가 다이얼로그"""
     
-    def __init__(self, parent):
+    def __init__(self, parent, config_data=None):
         self.result = None
+        self.config_data = config_data or {}
         
         # 다이얼로그 창 생성
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("새 카테고리 추가")
-        self.dialog.geometry("600x600")
+        self.dialog.geometry("600x650")
         self.dialog.resizable(False, False)
         self.dialog.transient(parent)
         self.dialog.grab_set()
@@ -2938,123 +2897,163 @@ class NewCategoryDialog:
         title_label = ttk.Label(main_frame, text="새 메뉴 카테고리 추가", font=("맑은 고딕", 12, "bold"))
         title_label.pack(pady=(0, 20))
         
-        # 카테고리 타입 선택
-        type_frame = ttk.LabelFrame(main_frame, text="카테고리 타입", padding=10)
-        type_frame.pack(fill=tk.X, pady=(0, 15))
-        
-        self.category_type = tk.StringVar(value="traditional")
-        ttk.Radiobutton(type_frame, text="전통적인 메뉴 (예: OnSelectFolderMenu)", 
-                       variable=self.category_type, value="traditional", 
-                       command=self.on_type_change).pack(anchor=tk.W, pady=2)
-        ttk.Radiobutton(type_frame, text="Tool Menu Anchor (예: LevelEditor.MainMenu.Tools)", 
-                       variable=self.category_type, value="anchor", 
-                       command=self.on_type_change).pack(anchor=tk.W, pady=2)
-        
         # 카테고리 ID 입력
         ttk.Label(main_frame, text="카테고리 ID:").pack(anchor=tk.W)
         self.category_id_entry = ttk.Entry(main_frame, width=50)
         self.category_id_entry.pack(fill=tk.X, pady=(5, 10))
+        self.category_id_entry.bind('<KeyRelease>', self._validate_input)
         
         # 카테고리 이름 입력
         ttk.Label(main_frame, text="카테고리 이름:").pack(anchor=tk.W)
         self.category_name_entry = ttk.Entry(main_frame, width=50)
         self.category_name_entry.pack(fill=tk.X, pady=(5, 10))
+        self.category_name_entry.bind('<KeyRelease>', self._validate_input)
         
-        # Tool Menu Anchor 전용 옵션
-        self.anchor_options_frame = ttk.LabelFrame(main_frame, text="Tool Menu Anchor 옵션", padding=10)
-        self.anchor_options_frame.pack(fill=tk.X, pady=(10, 15))
+        # HasSection 옵션 (모든 카테고리에 적용)
+        self.section_options_frame = ttk.LabelFrame(main_frame, text="카테고리 옵션", padding=10)
+        self.section_options_frame.pack(fill=tk.X, pady=(10, 15))
         
         self.has_section_var = tk.BooleanVar(value=True)
         self.has_section_check = ttk.Checkbutton(
-            self.anchor_options_frame, 
+            self.section_options_frame, 
             text="HasSection (구분선 표시)", 
             variable=self.has_section_var
         )
         self.has_section_check.pack(anchor=tk.W)
         
-        # 미리 정의된 Tool Menu Anchor 목록
-        self.predefined_frame = ttk.LabelFrame(main_frame, text="미리 정의된 Tool Menu Anchors", padding=10)
+        # 미리 정의된 메뉴 목록 (참고용)
+        self.predefined_frame = ttk.LabelFrame(main_frame, text="미리 정의된 메뉴 예시", padding=10)
         self.predefined_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
         
         # 리스트박스
         listbox_frame = ttk.Frame(self.predefined_frame)
         listbox_frame.pack(fill=tk.BOTH, expand=True)
         
-        self.anchor_listbox = tk.Listbox(listbox_frame, height=6)
+        self.anchor_listbox = tk.Listbox(listbox_frame, height=8)
         scrollbar = ttk.Scrollbar(listbox_frame, orient=tk.VERTICAL, command=self.anchor_listbox.yview)
         self.anchor_listbox.configure(yscrollcommand=scrollbar.set)
         
-        # 미리 정의된 Anchor들 추가
-        predefined_anchors = [
-            "LevelEditor.MainMenu.Tools",
-            "LevelEditor.MainMenu.Build", 
-            "LevelEditor.LevelEditorToolBar",
-            "ContentBrowser.ToolBar",
-            "ContentBrowser.AssetContextMenu",
-            "AssetEditor.StaticMeshEditor.ToolBar",
-            "AssetEditor.SkeletalMeshEditor.ToolBar",
-            "MainFrame.MainMenu.Tools"
-        ]
-        
-        for anchor in predefined_anchors:
-            self.anchor_listbox.insert(tk.END, anchor)
+        # 리스트박스 선택 시 ID 필드에 복사
+        self.anchor_listbox.bind("<<ListboxSelect>>", self.on_anchor_select)
         
         self.anchor_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # 리스트박스 선택 시 ID 필드에 복사
-        self.anchor_listbox.bind("<<ListboxSelect>>", self.on_anchor_select)
         
         # 설명
         self.info_label = ttk.Label(main_frame, foreground="gray")
         self.info_label.pack(anchor=tk.W, pady=(0, 15))
         
-        # 초기 상태 설정
-        self.on_type_change()
+        # 항상 미리 정의된 목록과 설명 표시
+        self.predefined_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
+        self.info_label.configure(text="• 아래 목록에서 선택하거나 직접 입력하세요\n• 회색 텍스트는 이미 존재하는 카테고리입니다")
+        
+        # 사용 가능한 카테고리 목록 채우기
+        self._populate_available_categories()
         
         # 버튼들
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill=tk.X)
         
         ttk.Button(button_frame, text="취소", command=self.cancel).pack(side=tk.RIGHT, padx=(5, 0))
-        ttk.Button(button_frame, text="추가", command=self.ok).pack(side=tk.RIGHT)
+        self.add_button = ttk.Button(button_frame, text="추가", command=self.add_category, state=tk.DISABLED)
+        self.add_button.pack(side=tk.RIGHT)
         
         # Enter 키 바인딩
-        self.dialog.bind('<Return>', lambda e: self.ok())
+        self.dialog.bind('<Return>', lambda e: self.add_category())
         self.dialog.bind('<Escape>', lambda e: self.cancel())
         
         # 포커스 설정
         self.category_id_entry.focus()
-    
-    def on_type_change(self):
-        """카테고리 타입 변경 시 UI 업데이트"""
-        is_anchor = self.category_type.get() == "anchor"
         
-        # Tool Menu Anchor 전용 옵션 표시/숨김
-        if is_anchor:
-            self.anchor_options_frame.pack(fill=tk.X, pady=(10, 15))
-            self.predefined_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
-            self.info_label.configure(text="• Tool Menu Anchor는 점(.)이 포함된 형식입니다\n• HasSection으로 구분선 표시 여부를 설정할 수 있습니다")
-        else:
-            self.anchor_options_frame.pack_forget()
-            self.predefined_frame.pack_forget()
-            self.info_label.configure(text="• 전통적인 메뉴는 'OnSelectFolderMenu' 같은 형식입니다\n• 카테고리 ID는 고유해야 합니다")
+        # 초기 버튼 상태 설정
+        self._validate_input()
+    
+    def _populate_available_categories(self):
+        """사용 가능한 카테고리 목록 채우기 (이미 존재하는 것은 제외)"""
+        # 중앙화된 카테고리 목록에서 ID만 추출
+        all_categories = [category_id for category_id, _ in ALL_MENU_CATEGORIES]
+        
+        # 이미 존재하는 카테고리와 사용 가능한 카테고리 구분
+        existing_categories = set(self.config_data.keys())
+        
+        for category in sorted(all_categories):
+            if category in existing_categories:
+                # 이미 존재하는 카테고리는 회색으로 표시하고 비활성화
+                self.anchor_listbox.insert(tk.END, f"{category} (이미 존재)")
+                # 마지막 항목의 색상을 회색으로 변경
+                last_index = self.anchor_listbox.size() - 1
+                self.anchor_listbox.itemconfig(last_index, {'fg': 'gray'})
+            else:
+                # 사용 가능한 카테고리는 일반 텍스트로 표시
+                self.anchor_listbox.insert(tk.END, category)
     
     def on_anchor_select(self, event):
-        """미리 정의된 Anchor 선택 시 ID 필드에 복사"""
+        """미리 정의된 메뉴 선택 시 ID 필드에 복사"""
         selection = self.anchor_listbox.curselection()
         if selection:
             anchor_name = self.anchor_listbox.get(selection[0])
+            
+            # 이미 존재하는 카테고리인지 확인
+            if "(이미 존재)" in anchor_name:
+                # 이미 존재하는 카테고리는 추가 버튼 비활성화
+                self.add_button.configure(state=tk.DISABLED)
+                # 선택 해제
+                self.anchor_listbox.selection_clear(0, tk.END)
+                return
+            else:
+                # 사용 가능한 카테고리는 추가 버튼 활성화
+                self.add_button.configure(state=tk.NORMAL)
+            
+            # 사용 가능한 카테고리면 ID 필드에 입력
             self.category_id_entry.delete(0, tk.END)
             self.category_id_entry.insert(0, anchor_name)
-            # 이름 필드가 비어있으면 ID에서 추출해서 채움
-            if not self.category_name_entry.get().strip():
-                display_name = anchor_name.split('.')[-1]  # 마지막 부분만 사용
+            
+            # 중앙화된 카테고리 목록에서 해당하는 표시명 찾기
+            display_name = None
+            for category_id, category_name in ALL_MENU_CATEGORIES:
+                if category_id == anchor_name:
+                    display_name = category_name
+                    break
+            
+            # 표시명을 찾았으면 사용하고, 못 찾았으면 ID의 마지막 부분 사용
+            if display_name:
                 self.category_name_entry.delete(0, tk.END)
                 self.category_name_entry.insert(0, display_name)
+            else:
+                # 백업: ID의 마지막 부분만 사용
+                fallback_name = anchor_name.split('.')[-1]
+                self.category_name_entry.delete(0, tk.END)
+                self.category_name_entry.insert(0, fallback_name)
+            
+            # 입력 필드 변경 후 검증
+            self._validate_input()
+
+    def _validate_input(self, event=None):
+        """입력 필드 내용을 검증하고 추가 버튼 상태를 업데이트합니다."""
+        category_id = self.category_id_entry.get().strip()
+        category_name = self.category_name_entry.get().strip()
+        
+        # 입력값이 있고, 기존 카테고리와 중복되지 않는 경우 버튼 활성화
+        if category_id and category_name and not self._is_existing_category(category_id, category_name):
+            self.add_button.config(state=tk.NORMAL)
+        else:
+            self.add_button.config(state=tk.DISABLED)
+
+    def _is_existing_category(self, category_id, category_name):
+        """카테고리가 이미 존재하는지 확인합니다."""
+        # config_data에서 카테고리 ID 확인
+        if category_id in self.config_data:
+            return True
+        
+        # 카테고리 이름 중복 확인 (필요시 추가 검증)
+        for existing_id in self.config_data.keys():
+            if existing_id == category_name:  # ID로 이름이 사용된 경우
+                return True
+        
+        return False
     
-    def ok(self):
-        """확인 버튼"""
+    def add_category(self):
+        """추가 버튼"""
         category_id = self.category_id_entry.get().strip()
         category_name = self.category_name_entry.get().strip()
         
@@ -3066,13 +3065,9 @@ class NewCategoryDialog:
             messagebox.showerror("오류", "카테고리 이름을 입력하세요.")
             return
         
-        # Tool Menu Anchor 타입인 경우 추가 정보 포함
-        is_anchor = self.category_type.get() == "anchor"
-        if is_anchor:
-            has_section = self.has_section_var.get()
-            self.result = (category_id, category_name, True, has_section)  # (id, name, is_anchor, has_section)
-        else:
-            self.result = (category_id, category_name, False, None)  # (id, name, is_anchor, has_section)
+        # HasSection 정보를 포함한 결과 반환 (모든 카테고리에 적용)
+        has_section = self.has_section_var.get()
+        self.result = (category_id, category_name, False, has_section)  # (id, name, legacy_is_anchor, has_section)
         
         self.dialog.destroy()
     
