@@ -16,8 +16,202 @@ import traceback
 from tkinter import ttk, messagebox, filedialog
 from typing import Dict, List, Any
 
+# ==================== 상수 정의 ====================
+
+# 애플리케이션 설정
+APP_TITLE = "🐍 TA Python Tool"
+APP_GEOMETRY = "1000x700"
+LOG_FILE_NAME = 'ta_python_tool.log'
+
+# UI 크기 및 레이아웃
+DIALOG_PADDING = 20
+STATUS_BAR_HEIGHT = 28
+
+# 파일 경로 관련
+TAPYTHON_PATH = ["TA", "TAPython", "UI", "MenuConfig.json"]
+FILE_TYPES = [("JSON files", "*.json"), ("All files", "*.*")]
+
+# 상태 메시지 지연 시간
+STATUS_CLEAR_DELAY = 3000
+
+# UI 폰트
+FONT_MAIN = ("맑은 고딕", 9)
+FONT_TITLE = ("Arial", 12, "bold")
+FONT_SMALL = ("Arial", 8)
+FONT_CODE = ("Consolas", 9)
+
+# URL 링크
+TAPYTHON_WEBSITE = "https://www.tacolor.xyz/"
+TAPYTHON_GITHUB = "https://github.com/cgerchenhp/UE_TAPython_Plugin_Release/releases"
+UNREAL_ICONS_URL = "https://github.com/EpicKiwi/unreal-engine-editor-icons"
+
 # 중복 초기화 방지
 _logger_initialized = False
+
+# UI 메시지 텍스트
+UI_PLUGIN_NEEDED_TITLE = "🔌"
+UI_PLUGIN_NEEDED_MSG = "TAPython 플러그인이 필요합니다"
+UI_SELECT_OPTION_DESC = """이 도구는 TAPython 플러그인과 함께 작동하도록 설계되었습니다.
+
+다음 옵션 중 하나를 선택하세요:"""
+
+# 가이드 UI 텍스트
+GUIDE_INFO_TITLE = "💡 추가 정보"
+GUIDE_INFO_TEXT = """• TAPython 플러그인은 Unreal Engine용 Python 확장입니다
+• 설치 후 TA 폴더에 MenuConfig.json 파일이 생성됩니다
+• 이 도구는 해당 파일을 편집하여 Python 메뉴를 관리합니다
+• 올바른 경로: [언리얼 프로젝트]/TA/TAPython/UI/MenuConfig.json"""
+
+# 버튼 텍스트
+BTN_CREATE_NEW_CONFIG = "🆕 새 설정 파일 생성"
+BTN_MANUAL_FILE_SELECT = "📂 수동으로 파일 선택"
+BTN_TAPYTHON_WEBSITE = "🌐 TAPython 공식 사이트"
+BTN_GITHUB_REPO = "📁 GitHub 저장소"
+
+# 기본 파일 경로 및 이름
+DEFAULT_CONFIG_FILE = "MenuConfig.json"
+SAVE_DIALOG_TITLE = "MenuConfig.json 파일 저장 위치 선택"
+
+# UI 레이아웃 설정
+CENTER_PADDING = 50
+TITLE_ICON_FONT_SIZE = 48
+TITLE_TEXT_FONT_SIZE = 16
+DESC_FONT_SIZE = 11
+DETAIL_FONT_SIZE = 10
+TEXT_WRAP_LENGTH = 500
+BUTTON_PADY = (0, 10)
+CONTENT_PADY = (0, 30)
+INFO_FRAME_PADY = (0, 20)
+BUTTON_ROW_PADY = (0, 5)
+
+# 기본 설정 구조
+DEFAULT_MENU_CONFIG = {
+    "menu_items": [
+        {
+            "type": "button",
+            "label": "선택된 에셋 정보 출력",
+            "tooltip": "현재 선택된 에셋들의 정보를 출력합니다",
+            "command": "import unreal\nselected = unreal.EditorUtilityLibrary.get_selected_assets()\nfor asset in selected:\n    print(f'Asset: {asset.get_name()}, Class: {asset.get_class().get_name()}')"
+        }
+    ]
+}
+
+# 메시지 텍스트
+MSG_FILE_CREATED_SUCCESS = "새 설정 파일이 생성되었습니다:\n{}\n\n이제 이 파일을 편집할 수 있습니다."
+MSG_FILE_SAVE_FAILED = "파일 저장 실패:\n{}"
+MSG_CONFIG_CREATION_ERROR = "설정 파일 생성 중 오류가 발생했습니다:\n{}"
+
+# 대화상자 제목
+DIALOG_SUCCESS_TITLE = "성공"
+DIALOG_ERROR_TITLE = "오류"
+
+# JSON 파일 설정
+JSON_INDENT = 4
+JSON_ENCODING = 'utf-8'
+
+# 로그 뷰어 설정
+LOG_VIEWER_TITLE = "📋 로그 뷰어"
+LOG_VIEWER_WIDTH = 800
+LOG_VIEWER_HEIGHT = 600
+LOG_LEVEL_LABEL = "로그 레벨:"
+LOG_LEVELS = ["DEBUG", "INFO", "WARNING", "ERROR"]
+LOG_DEFAULT_LEVEL = "DEBUG"
+LOG_REFRESH_BTN = "🔄 새로고침"
+LOG_LEVEL_COMBO_WIDTH = 10
+
+# 클립보드 메시지
+MSG_CLIPBOARD_SUCCESS = "📋 클립보드에 복사되었습니다!"
+MSG_CLIPBOARD_ERROR = "클립보드 복사 실패: {}"
+
+# 검색 설정
+SEARCH_MAX_LEVELS = 10
+
+# 공통 메시지 텍스트
+MSG_NO_CURRENT_FILE = "현재 열린 파일이 없습니다"
+MSG_FILE_NOT_FOUND_WITH_PATH = "파일을 찾을 수 없습니다:\n{}"
+MSG_BROWSER_OPEN_ERROR = "웹 브라우저를 열 수 없습니다:\n{}\n\n오류: {}"
+MSG_FILE_SELECTION_ERROR = "파일 선택 중 오류가 발생했습니다:\n{}"
+MSG_GUIDE_INTERFACE_ERROR = "가이드 인터페이스를 표시할 수 없습니다:\n{}"
+MSG_FOLDER_OPEN_ERROR = "파일 위치를 열 수 없습니다:\n{}\n\n폴더 경로: {}"
+MSG_NO_EDITOR_FOUND = "기본 편집기를 찾을 수 없습니다"
+MSG_EDITOR_LAUNCH_ERROR = "외부 편집기 실행 실패:\n{}"
+MSG_EDITOR_OPEN_ERROR = "파일을 외부 편집기로 열 수 없습니다:\n{}"
+
+# 다이얼로그 공통 제목
+TITLE_WARNING = "경고"
+TITLE_INFO = "알림"
+TITLE_FILE_PERMISSION_TEST = "파일 쓰기 권한 테스트 결과"
+
+
+# 모든 툴 메뉴 정의 (한 곳에서 관리)
+ALL_TOOL_MENUS = [
+    # 전통적인 툴 메뉴들
+    ("OnSelectFolderMenu", "폴더 메뉴"),
+    ("OnSelectAssetsMenu", "에셋 메뉴"),
+    ("OnMainMenu", "메인 메뉴"),
+    ("OnToolbar", "툴바"),
+    ("OnToolBarChameleon", "Chameleon 툴바"),
+    ("OnOutlineMenu", "아웃라인 메뉴"),
+    ("OnMaterialEditorMenu", "머티리얼 에디터"),
+    ("OnPhysicsAssetEditorMenu", "Physics Asset 에디터"),
+    ("OnControlRigEditorMenu", "ControlRig 에디터"),
+    ("OnTabContextMenu", "탭 컨텍스트"),
+    
+    # 언리얼 엔진 툴 메뉴들 (Tool Menu Anchor)
+    ("AssetEditor.AnimationBlueprintEditor.MainMenu", "애니메이션 BP 에디터 메뉴"),
+    ("AssetEditor.AnimationEditor.MainMenu", "애니메이션 에디터 메뉴"),
+    ("AssetEditor.SkeletalMeshEditor.ToolBar", "스켈레탈 메시 에디터 툴바"),
+    ("AssetEditor.StaticMeshEditor.ToolBar", "스태틱 메시 에디터 툴바"),
+    ("ContentBrowser.AddNewContextMenu", "콘텐츠 브라우저 새로 추가"),
+    ("ContentBrowser.AssetContextMenu", "에셋 컨텍스트 메뉴"),
+    ("ContentBrowser.AssetContextMenu.AimOffsetBlendSpace", "AimOffsetBlendSpace 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.AnimBlueprint", "애니메이션 BP 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.AnimMontage", "애니메이션 몽타주 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.AnimSequence", "애니메이션 시퀀스 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.BlendSpace", "BlendSpace 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.BlendSpace1D", "BlendSpace1D 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.CameraAnim", "카메라 애니메이션 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.DatasmithScene", "Datasmith 씬 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.PoseAsset", "포즈 에셋 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.SkeletalMesh", "스켈레탈 메시 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.SkeletalMesh.CreateSkeletalMeshSubmenu", "스켈레탈 메시 생성 서브메뉴"),
+    ("ContentBrowser.AssetContextMenu.Skeleton.CreateSkeletalMeshSubmenu", "스켈레톤 생성 서브메뉴"),
+    ("ContentBrowser.AssetContextMenu.SoundWave", "사운드 웨이브 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.StaticMesh", "스태틱 메시 컨텍스트"),
+    ("ContentBrowser.AssetContextMenu.World", "월드 컨텍스트"),
+    ("ContentBrowser.AssetViewOptions", "에셋 뷰 옵션"),
+    ("ContentBrowser.AssetViewOptions.PathViewFilters", "경로 뷰 필터"),
+    ("ContentBrowser.DragDropContextMenu", "드래그드롭 컨텍스트 메뉴"),
+    ("ContentBrowser.FolderContextMenu", "폴더 컨텍스트 메뉴"),
+    ("ContentBrowser.ItemContextMenu.PythonData", "Python 데이터 컨텍스트"),
+    ("ContentBrowser.ToolBar", "콘텐츠 브라우저 툴바"),
+    ("ControlRigEditor.RigHierarchy.ContextMenu", "리그 계층 컨텍스트"),
+    ("ControlRigEditor.RigHierarchy.DragDropMenu", "리그 드래그드롭 메뉴"),
+    ("Kismet.SubobjectEditorContextMenu", "컴포넌트 컨텍스트 메뉴"),
+    ("Kismet.SCSEditorContextMenu", "SCS 에디터 컨텍스트"),
+    ("LevelEditor.ActorContextMenu.AssetToolsSubMenu", "액터 에셋 도구 서브메뉴"),
+    ("LevelEditor.ActorContextMenu.LevelSubMenu", "액터 레벨 서브메뉴"),
+    ("LevelEditor.InViewportPanel", "뷰포트 패널"),
+    ("LevelEditor.LevelEditorSceneOutliner.ContextMenu.LevelSubMenu", "아웃라이너 레벨 서브메뉴"),
+    ("LevelEditor.LevelEditorToolBar", "레벨 에디터 툴바"),
+    ("LevelEditor.LevelEditorToolBar.AddQuickMenu", "레벨 에디터 빠른 추가 메뉴"),
+    ("LevelEditor.LevelEditorToolBar.User", "레벨 에디터 사용자 툴바"),
+    ("LevelEditor.LevelViewportToolBar.Options", "레벨 에디터 뷰포트 옵션"),
+    ("LevelEditor.LevelViewportToolBar.View", "레벨 에디터 뷰포트 보기"),
+    ("LevelEditor.MainMenu.Build", "레벨 에디터 빌드 메뉴"),
+    ("LevelEditor.MainMenu.File", "레벨 에디터 파일 메뉴"),
+    ("LevelEditor.MainMenu.Help", "레벨 에디터 도움말 메뉴"),
+    ("LevelEditor.MainMenu.Select", "레벨 에디터 선택 메뉴"),
+    ("LevelEditor.MainMenu.Tools", "레벨 에디터 도구 메뉴"),
+    ("LevelEditor.MainMenu.Window", "레벨 에디터 윈도우 메뉴"),
+    ("LevelEditor.StatusBar.ToolBar", "레벨 에디터 상태바 툴바"),
+    ("MainFrame.MainMenu.Asset", "메인 에셋 메뉴"),
+    ("MainFrame.MainMenu.Tools", "메인 도구 메뉴"),
+    ("MainFrame.MainMenu.Window", "메인 윈도우 메뉴"),
+    ("StatusBar.ToolBar.SourceControl", "소스 컨트롤 툴바")
+]
+
+
 
 # 로깅 설정 개선 (리소스 관리)
 def setup_logging():
@@ -148,26 +342,22 @@ class TAPythonGuide:
             
             # 메인 콘텐츠 프레임
             content_frame = ttk.Frame(center_frame)
-            content_frame.grid(row=0, column=0, sticky="", padx=50, pady=50)
+            content_frame.grid(row=0, column=0, sticky="", padx=CENTER_PADDING, pady=CENTER_PADDING)
             
             # 아이콘과 제목
             title_frame = ttk.Frame(content_frame)
-            title_frame.pack(pady=(0, 30))
+            title_frame.pack(pady=CONTENT_PADY)
             
-            ttk.Label(title_frame, text="🔌", font=("Arial", 48)).pack()
-            ttk.Label(title_frame, text="TAPython 플러그인이 필요합니다", 
-                     font=("Arial", 16, "bold"), foreground="red").pack(pady=(10, 0))
+            ttk.Label(title_frame, text=UI_PLUGIN_NEEDED_TITLE, font=("Arial", TITLE_ICON_FONT_SIZE)).pack()
+            ttk.Label(title_frame, text=UI_PLUGIN_NEEDED_MSG, 
+                     font=("Arial", TITLE_TEXT_FONT_SIZE, "bold"), foreground="red").pack(pady=BUTTON_PADY)
             
             # 설명
             desc_frame = ttk.Frame(content_frame)
-            desc_frame.pack(pady=(0, 30), fill=tk.X)
+            desc_frame.pack(pady=CONTENT_PADY, fill=tk.X)
             
-            description = """이 도구는 TAPython 플러그인과 함께 작동하도록 설계되었습니다.
-
-다음 옵션 중 하나를 선택하세요:"""
-            
-            ttk.Label(desc_frame, text=description, justify=tk.CENTER, 
-                     font=("Arial", 11), wraplength=500).pack()
+            ttk.Label(desc_frame, text=UI_SELECT_OPTION_DESC, justify=tk.CENTER, 
+                     font=("Arial", DESC_FONT_SIZE), wraplength=TEXT_WRAP_LENGTH).pack()
             
             # 버튼들
             self._create_guide_buttons(content_frame)
@@ -177,26 +367,26 @@ class TAPythonGuide:
             
         except Exception as e:
             logger.error(f"가이드 인터페이스 표시 중 오류: {e}")
-            messagebox.showerror("오류", f"가이드 인터페이스를 표시할 수 없습니다:\n{e}")
+            messagebox.showerror(DIALOG_ERROR_TITLE, MSG_GUIDE_INTERFACE_ERROR.format(e))
     
     def _create_guide_buttons(self, parent):
         """가이드 버튼들 생성"""
         try:
             button_frame = ttk.Frame(parent)
-            button_frame.pack(pady=(0, 30))
+            button_frame.pack(pady=CONTENT_PADY)
             
             # 첫 번째 줄: 파일 관련 버튼들
             file_row = ttk.Frame(button_frame)
-            file_row.pack(pady=(0, 5))
+            file_row.pack(pady=BUTTON_ROW_PADY)
             
             # 새 설정 파일 생성 버튼
-            create_btn = ttk.Button(file_row, text="� 새 설정 파일 생성",
+            create_btn = ttk.Button(file_row, text=BTN_CREATE_NEW_CONFIG,
                                   command=self._create_new_config_file_guide,
                                   style="Accent.TButton")
             create_btn.pack(side=tk.LEFT, padx=(0, 10))
             
             # 수동 파일 선택 버튼
-            manual_btn = ttk.Button(file_row, text="� 수동으로 파일 선택",
+            manual_btn = ttk.Button(file_row, text=BTN_MANUAL_FILE_SELECT,
                                   command=self._manual_file_selection_guide)
             manual_btn.pack(side=tk.LEFT)
             
@@ -205,13 +395,13 @@ class TAPythonGuide:
             link_row.pack()
             
             # 공식 사이트 버튼
-            website_btn = ttk.Button(link_row, text="🌐 TAPython 공식 사이트",
-                                   command=lambda: self._open_url("https://www.tacolor.xyz/"))
+            website_btn = ttk.Button(link_row, text=BTN_TAPYTHON_WEBSITE,
+                                   command=lambda: self._open_url(TAPYTHON_WEBSITE))
             website_btn.pack(side=tk.LEFT, padx=(0, 10))
             
             # GitHub 저장소 버튼
-            github_btn = ttk.Button(link_row, text="� GitHub 저장소",
-                                  command=lambda: self._open_url("https://github.com/cgerchenhp/UE_TAPython_Plugin_Release/releases"))
+            github_btn = ttk.Button(link_row, text=BTN_GITHUB_REPO,
+                                  command=lambda: self._open_url(TAPYTHON_GITHUB))
             github_btn.pack(side=tk.LEFT)
             
         except Exception as e:
@@ -221,16 +411,11 @@ class TAPythonGuide:
         """가이드 상세 정보 생성"""
         try:
             # 상세 정보 프레임
-            details_frame = ttk.LabelFrame(parent, text="💡 추가 정보", padding=15)
-            details_frame.pack(fill=tk.X, pady=(0, 20))
+            details_frame = ttk.LabelFrame(parent, text=GUIDE_INFO_TITLE, padding=15)
+            details_frame.pack(fill=tk.X, pady=INFO_FRAME_PADY)
             
-            info_text = """• TAPython 플러그인은 Unreal Engine용 Python 확장입니다
-• 설치 후 TA 폴더에 MenuConfig.json 파일이 생성됩니다
-• 이 도구는 해당 파일을 편집하여 Python 메뉴를 관리합니다
-• 올바른 경로: [언리얼 프로젝트]/TA/TAPython/UI/MenuConfig.json"""
-            
-            ttk.Label(details_frame, text=info_text, justify=tk.LEFT, 
-                     font=("Arial", 10), wraplength=500).pack(anchor=tk.W)
+            ttk.Label(details_frame, text=GUIDE_INFO_TEXT, justify=tk.LEFT, 
+                     font=("Arial", DETAIL_FONT_SIZE), wraplength=TEXT_WRAP_LENGTH).pack(anchor=tk.W)
             
         except Exception as e:
             logger.error(f"가이드 상세 정보 생성 중 오류: {e}")
@@ -240,32 +425,19 @@ class TAPythonGuide:
         try:
             # 파일 저장 다이얼로그
             file_path = filedialog.asksaveasfilename(
-                title="MenuConfig.json 파일 저장 위치 선택",
+                title=SAVE_DIALOG_TITLE,
                 defaultextension=".json",
-                filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-                initialfile="MenuConfig.json"
+                filetypes=FILE_TYPES,
+                initialfile=DEFAULT_CONFIG_FILE
             )
             
             if file_path:
-                # 기본 설정 구조
-                default_config = {
-                    "menu_items": [
-                        {
-                            "type": "button",
-                            "label": "선택된 에셋 정보 출력",
-                            "tooltip": "현재 선택된 에셋들의 정보를 출력합니다",
-                            "command": "import unreal\nselected = unreal.EditorUtilityLibrary.get_selected_assets()\nfor asset in selected:\n    print(f'Asset: {asset.get_name()}, Class: {asset.get_class().get_name()}')"
-                        }
-                    ]
-                }
-                
                 # 파일 저장
                 try:
-                    with open(file_path, 'w', encoding='utf-8') as f:
-                        json.dump(default_config, f, indent=4, ensure_ascii=False)
+                    with open(file_path, 'w', encoding=JSON_ENCODING) as f:
+                        json.dump(DEFAULT_MENU_CONFIG, f, indent=JSON_INDENT, ensure_ascii=False)
                     
-                    messagebox.showinfo("성공", f"새 설정 파일이 생성되었습니다:\n{file_path}\n\n"
-                                               "이제 이 파일을 편집할 수 있습니다.")
+                    messagebox.showinfo(DIALOG_SUCCESS_TITLE, MSG_FILE_CREATED_SUCCESS.format(file_path))
                     
                     # 생성된 파일로 도구 재시작
                     if hasattr(self.parent_tool, 'load_config_file'):
@@ -273,11 +445,11 @@ class TAPythonGuide:
                         self.parent_tool.load_config_file(file_path)
                         
                 except Exception as e:
-                    messagebox.showerror("오류", f"파일 저장 실패:\n{e}")
+                    messagebox.showerror(DIALOG_ERROR_TITLE, MSG_FILE_SAVE_FAILED.format(e))
                     
         except Exception as e:
             logger.error(f"새 설정 파일 생성 가이드 중 오류: {e}")
-            messagebox.showerror("오류", f"설정 파일 생성 중 오류가 발생했습니다:\n{e}")
+            messagebox.showerror(DIALOG_ERROR_TITLE, MSG_CONFIG_CREATION_ERROR.format(e))
     
     def _open_url(self, url):
         """웹 브라우저에서 URL 열기"""
@@ -287,7 +459,7 @@ class TAPythonGuide:
             logger.info(f"웹 브라우저에서 열기: {url}")
         except Exception as e:
             logger.error(f"URL 열기 실패: {e}")
-            messagebox.showerror("오류", f"웹 브라우저를 열 수 없습니다:\n{url}\n\n오류: {e}")
+            messagebox.showerror(DIALOG_ERROR_TITLE, MSG_BROWSER_OPEN_ERROR.format(url, e))
     
     def _manual_file_selection_guide(self):
         """수동 파일 선택 가이드"""
@@ -304,7 +476,7 @@ class TAPythonGuide:
                     
         except Exception as e:
             logger.error(f"수동 파일 선택 가이드 중 오류: {e}")
-            messagebox.showerror("오류", f"파일 선택 중 오류가 발생했습니다:\n{e}")
+            messagebox.showerror(DIALOG_ERROR_TITLE, MSG_FILE_SELECTION_ERROR.format(e))
 
 
 class ToolTip:
@@ -334,76 +506,6 @@ class ToolTip:
         if self.tooltip_window:
             self.tooltip_window.destroy()
             self.tooltip_window = None
-
-
-# 모든 툴 메뉴 정의 (한 곳에서 관리)
-ALL_TOOL_MENUS = [
-    # 전통적인 툴 메뉴들
-    ("OnSelectFolderMenu", "폴더 메뉴"),
-    ("OnSelectAssetsMenu", "에셋 메뉴"),
-    ("OnMainMenu", "메인 메뉴"),
-    ("OnToolbar", "툴바"),
-    ("OnToolBarChameleon", "Chameleon 툴바"),
-    ("OnOutlineMenu", "아웃라인 메뉴"),
-    ("OnMaterialEditorMenu", "머티리얼 에디터"),
-    ("OnPhysicsAssetEditorMenu", "Physics Asset 에디터"),
-    ("OnControlRigEditorMenu", "ControlRig 에디터"),
-    ("OnTabContextMenu", "탭 컨텍스트"),
-    
-    # 언리얼 엔진 툴 메뉴들 (Tool Menu Anchor)
-    ("AssetEditor.AnimationBlueprintEditor.MainMenu", "애니메이션 BP 에디터 메뉴"),
-    ("AssetEditor.AnimationEditor.MainMenu", "애니메이션 에디터 메뉴"),
-    ("AssetEditor.SkeletalMeshEditor.ToolBar", "스켈레탈 메시 에디터 툴바"),
-    ("AssetEditor.StaticMeshEditor.ToolBar", "스태틱 메시 에디터 툴바"),
-    ("ContentBrowser.AddNewContextMenu", "콘텐츠 브라우저 새로 추가"),
-    ("ContentBrowser.AssetContextMenu", "에셋 컨텍스트 메뉴"),
-    ("ContentBrowser.AssetContextMenu.AimOffsetBlendSpace", "AimOffsetBlendSpace 컨텍스트"),
-    ("ContentBrowser.AssetContextMenu.AnimBlueprint", "애니메이션 BP 컨텍스트"),
-    ("ContentBrowser.AssetContextMenu.AnimMontage", "애니메이션 몽타주 컨텍스트"),
-    ("ContentBrowser.AssetContextMenu.AnimSequence", "애니메이션 시퀀스 컨텍스트"),
-    ("ContentBrowser.AssetContextMenu.BlendSpace", "BlendSpace 컨텍스트"),
-    ("ContentBrowser.AssetContextMenu.BlendSpace1D", "BlendSpace1D 컨텍스트"),
-    ("ContentBrowser.AssetContextMenu.CameraAnim", "카메라 애니메이션 컨텍스트"),
-    ("ContentBrowser.AssetContextMenu.DatasmithScene", "Datasmith 씬 컨텍스트"),
-    ("ContentBrowser.AssetContextMenu.PoseAsset", "포즈 에셋 컨텍스트"),
-    ("ContentBrowser.AssetContextMenu.SkeletalMesh", "스켈레탈 메시 컨텍스트"),
-    ("ContentBrowser.AssetContextMenu.SkeletalMesh.CreateSkeletalMeshSubmenu", "스켈레탈 메시 생성 서브메뉴"),
-    ("ContentBrowser.AssetContextMenu.Skeleton.CreateSkeletalMeshSubmenu", "스켈레톤 생성 서브메뉴"),
-    ("ContentBrowser.AssetContextMenu.SoundWave", "사운드 웨이브 컨텍스트"),
-    ("ContentBrowser.AssetContextMenu.StaticMesh", "스태틱 메시 컨텍스트"),
-    ("ContentBrowser.AssetContextMenu.World", "월드 컨텍스트"),
-    ("ContentBrowser.AssetViewOptions", "에셋 뷰 옵션"),
-    ("ContentBrowser.AssetViewOptions.PathViewFilters", "경로 뷰 필터"),
-    ("ContentBrowser.DragDropContextMenu", "드래그드롭 컨텍스트 메뉴"),
-    ("ContentBrowser.FolderContextMenu", "폴더 컨텍스트 메뉴"),
-    ("ContentBrowser.ItemContextMenu.PythonData", "Python 데이터 컨텍스트"),
-    ("ContentBrowser.ToolBar", "콘텐츠 브라우저 툴바"),
-    ("ControlRigEditor.RigHierarchy.ContextMenu", "리그 계층 컨텍스트"),
-    ("ControlRigEditor.RigHierarchy.DragDropMenu", "리그 드래그드롭 메뉴"),
-    ("Kismet.SubobjectEditorContextMenu", "컴포넌트 컨텍스트 메뉴"),
-    ("Kismet.SCSEditorContextMenu", "SCS 에디터 컨텍스트"),
-    ("LevelEditor.ActorContextMenu.AssetToolsSubMenu", "액터 에셋 도구 서브메뉴"),
-    ("LevelEditor.ActorContextMenu.LevelSubMenu", "액터 레벨 서브메뉴"),
-    ("LevelEditor.InViewportPanel", "뷰포트 패널"),
-    ("LevelEditor.LevelEditorSceneOutliner.ContextMenu.LevelSubMenu", "아웃라이너 레벨 서브메뉴"),
-    ("LevelEditor.LevelEditorToolBar", "레벨 에디터 툴바"),
-    ("LevelEditor.LevelEditorToolBar.AddQuickMenu", "빠른 추가 메뉴"),
-    ("LevelEditor.LevelEditorToolBar.User", "사용자 툴바"),
-    ("LevelEditor.LevelViewportToolBar.Options", "뷰포트 옵션"),
-    ("LevelEditor.LevelViewportToolBar.View", "뷰포트 보기"),
-    ("LevelEditor.MainMenu.Build", "빌드 메뉴"),
-    ("LevelEditor.MainMenu.File", "파일 메뉴"),
-    ("LevelEditor.MainMenu.Help", "도움말 메뉴"),
-    ("LevelEditor.MainMenu.Select", "선택 메뉴"),
-    ("LevelEditor.MainMenu.Tools", "도구 메뉴"),
-    ("LevelEditor.MainMenu.Window", "윈도우 메뉴"),
-    ("LevelEditor.StatusBar.ToolBar", "상태바 툴바"),
-    ("MainFrame.MainMenu.Asset", "메인 에셋 메뉴"),
-    ("MainFrame.MainMenu.Tools", "메인 도구 메뉴"),
-    ("MainFrame.MainMenu.Window", "메인 윈도우 메뉴"),
-    ("StatusBar.ToolBar.SourceControl", "소스 컨트롤 툴바")
-]
-
 
 
 class TAPythonTool:
@@ -480,60 +582,80 @@ class TAPythonTool:
         """TAPython 플러그인 설치 여부 확인 - 최적화된 버전"""
         try:
             # 이미 계산된 기본 경로가 있으면 빠른 확인
-            if hasattr(self, 'default_config_path') and self.default_config_path:
-                if os.path.exists(self.default_config_path):
-                    logger.info(f"TAPython 설정 파일 발견: {self.default_config_path}")
-                    return True
-                else:
-                    logger.info(f"TAPython 설정 파일 없음: {self.default_config_path}")
-                    return False
-            
+            if self._check_existing_config_path():
+                return True
+                
             # 기본 경로가 없으면 빠른 탐색
-            current_path = os.path.abspath(__file__)
-            logger.info(f"파일 탐색 시작 경로: {current_path}")
-            
-            # 상위 폴더로 올라가면서 목표 파일 찾기 (충분한 단계로 확장)
-            for level in range(10):  # 6에서 10으로 다시 확장
-                current_path = os.path.dirname(current_path)
-                logger.debug(f"탐색 중 ({level+1}/10): {current_path}")
-                
-                # .uproject 파일 확인을 더 효율적으로
-                try:
-                    items = os.listdir(current_path)
-                    has_uproject = any(item.endswith('.uproject') for item in items)
-                    if has_uproject:
-                        uproject_files = [item for item in items if item.endswith('.uproject')]
-                        logger.info(f"언리얼 프로젝트 발견: {current_path}, 파일: {uproject_files}")
-                except (OSError, PermissionError):
-                    logger.debug(f"경로 접근 불가: {current_path}")
-                    continue
-                
-                # 언리얼 프로젝트라면 목표 파일 경로 확인
-                if has_uproject:
-                    target_config_path = os.path.join(current_path, "TA", "TAPython", "UI", "MenuConfig.json")
-                    logger.info(f"목표 파일 경로 확인: {target_config_path}")
-                    
-                    if os.path.exists(target_config_path):
-                        # 파일이 존재하면 해당 경로로 업데이트하고 True 반환
-                        self.default_config_path = target_config_path
-                        logger.info(f"TAPython 설정 파일 발견: {target_config_path}")
-                        return True
-                    else:
-                        # 언리얼 프로젝트는 맞지만 파일이 없으면 기본 경로로 설정
-                        self.default_config_path = target_config_path
-                        logger.info(f"언리얼 프로젝트 발견했지만 MenuConfig.json 없음: {target_config_path}")
-                        return False
-                
-                # 루트 디렉토리에 도달하면 중단
-                if current_path == os.path.dirname(current_path):
-                    break
-            
-            # 언리얼 프로젝트를 찾지 못한 경우
-            logger.warning("언리얼 프로젝트를 찾을 수 없습니다.")
-            return False
+            return self._search_for_config_file()
             
         except Exception as e:
             logger.error(f"TAPython 가용성 확인 중 오류: {e}")
+            return False
+
+    def _check_existing_config_path(self):
+        """기존 설정 파일 경로 확인"""
+        if hasattr(self, 'default_config_path') and self.default_config_path:
+            if os.path.exists(self.default_config_path):
+                logger.info(f"TAPython 설정 파일 발견: {self.default_config_path}")
+                return True
+            else:
+                logger.info(f"TAPython 설정 파일 없음: {self.default_config_path}")
+                return False
+        return False
+
+    def _search_for_config_file(self):
+        """설정 파일 탐색"""
+        current_path = os.path.abspath(__file__)
+        logger.info(f"파일 탐색 시작 경로: {current_path}")
+        
+        # 상위 폴더로 올라가면서 목표 파일 찾기
+        for level in range(SEARCH_MAX_LEVELS):
+            current_path = os.path.dirname(current_path)
+            logger.debug(f"탐색 중 ({level+1}/{SEARCH_MAX_LEVELS}): {current_path}")
+            
+            # 언리얼 프로젝트 확인
+            uproject_result = self._check_unreal_project(current_path)
+            if uproject_result is not None:
+                return uproject_result
+                
+            # 루트 디렉토리에 도달하면 중단
+            if current_path == os.path.dirname(current_path):
+                break
+        
+        # 언리얼 프로젝트를 찾지 못한 경우
+        logger.warning("언리얼 프로젝트를 찾을 수 없습니다.")
+        return False
+
+    def _check_unreal_project(self, path):
+        """주어진 경로에서 언리얼 프로젝트 확인"""
+        try:
+            items = os.listdir(path)
+            has_uproject = any(item.endswith('.uproject') for item in items)
+            
+            if has_uproject:
+                uproject_files = [item for item in items if item.endswith('.uproject')]
+                logger.info(f"언리얼 프로젝트 발견: {path}, 파일: {uproject_files}")
+                return self._check_tapython_config(path)
+                
+        except (OSError, PermissionError):
+            logger.debug(f"경로 접근 불가: {path}")
+            
+        return None
+
+    def _check_tapython_config(self, project_path):
+        """TAPython 설정 파일 존재 확인"""
+        target_config_path = os.path.join(project_path, *TAPYTHON_PATH)
+        logger.info(f"목표 파일 경로 확인: {target_config_path}")
+        
+        if os.path.exists(target_config_path):
+            # 파일이 존재하면 해당 경로로 업데이트하고 True 반환
+            self.default_config_path = target_config_path
+            logger.info(f"TAPython 설정 파일 발견: {target_config_path}")
+            return True
+        else:
+            # 언리얼 프로젝트는 맞지만 파일이 없으면 기본 경로로 설정
+            self.default_config_path = target_config_path
+            logger.info(f"언리얼 프로젝트 발견했지만 MenuConfig.json 없음: {target_config_path}")
             return False
 
 
@@ -541,64 +663,94 @@ class TAPythonTool:
         """로그 뷰어 다이얼로그"""
         try:
             dialog = tk.Toplevel(self.root)
-            self._setup_dialog(dialog, "📋 로그 뷰어", 800, 600, modal=False)
+            self._setup_dialog(dialog, LOG_VIEWER_TITLE, LOG_VIEWER_WIDTH, LOG_VIEWER_HEIGHT, modal=False)
             
             # 메인 프레임
             main_frame = ttk.Frame(dialog)
             main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
             
-            # 로그 레벨 선택
-            level_frame = ttk.Frame(main_frame)
-            level_frame.pack(fill=tk.X, pady=(0, 10))
-            
-            ttk.Label(level_frame, text="로그 레벨:").pack(side=tk.LEFT, padx=(0, 5))
-            level_var = tk.StringVar(value="DEBUG")
-            level_combo = ttk.Combobox(level_frame, textvariable=level_var, 
-                                     values=["DEBUG", "INFO", "WARNING", "ERROR"], 
-                                     state="readonly", width=10)
-            level_combo.pack(side=tk.LEFT, padx=(0, 10))
-            
-            # 새로고침 버튼
-            ttk.Button(level_frame, text="🔄 새로고침", 
-                      command=lambda: self._refresh_log_viewer(text_widget, level_var.get())).pack(side=tk.LEFT, padx=5)
-            
-            # 로그 텍스트 영역
-            text_frame = ttk.Frame(main_frame)
-            text_frame.pack(fill=tk.BOTH, expand=True)
-            
-            text_widget = tk.Text(text_frame, wrap=tk.WORD, font=("Consolas", 9))
-            scrollbar_y = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=text_widget.yview)
-            scrollbar_x = ttk.Scrollbar(text_frame, orient=tk.HORIZONTAL, command=text_widget.xview)
-            text_widget.configure(yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
-            
-            text_widget.grid(row=0, column=0, sticky=tk.NSEW)
-            scrollbar_y.grid(row=0, column=1, sticky=tk.NS)
-            scrollbar_x.grid(row=1, column=0, sticky=tk.EW)
-            
-            text_frame.grid_rowconfigure(0, weight=1)
-            text_frame.grid_columnconfigure(0, weight=1)
-            
-            # 초기 로그 로드
-            self._refresh_log_viewer(text_widget, level_var.get())
-            
-            # 레벨 변경 시 자동 새로고침
-            level_combo.bind("<<ComboboxSelected>>", 
-                           lambda e: self._refresh_log_viewer(text_widget, level_var.get()))
+            # UI 구성 요소 생성
+            text_widget = self._create_log_viewer_ui(main_frame)
             
         except Exception as e:
             error_msg = f"로그 뷰어 표시 중 오류: {str(e)}"
             logger.error(error_msg)
-            self._show_error("오류", error_msg)
+            self._show_error(DIALOG_ERROR_TITLE, error_msg)
+
+    def _create_log_viewer_ui(self, parent):
+        """로그 뷰어 UI 구성 요소 생성"""
+        # 로그 레벨 선택 프레임
+        level_var, level_combo = self._create_log_level_controls(parent)
+        
+        # 로그 텍스트 영역
+        text_widget = self._create_log_text_area(parent)
+        
+        # 새로고침 버튼 추가 (텍스트 위젯이 생성된 후)
+        self._add_refresh_button(level_combo.master, text_widget, level_var)
+        
+        # 초기 로그 로드 및 이벤트 바인딩
+        self._setup_log_viewer_events(text_widget, level_var, level_combo)
+        
+        return text_widget
+
+    def _add_refresh_button(self, parent, text_widget, level_var):
+        """새로고침 버튼 추가"""
+        refresh_btn = ttk.Button(parent, text=LOG_REFRESH_BTN, 
+                                command=lambda: self._refresh_log_viewer(text_widget, level_var.get()))
+        refresh_btn.pack(side=tk.LEFT, padx=5)
+
+    def _setup_log_viewer_events(self, text_widget, level_var, level_combo):
+        """로그 뷰어 이벤트 설정"""
+        # 초기 로그 로드
+        self._refresh_log_viewer(text_widget, level_var.get())
+        
+        # 레벨 변경 시 자동 새로고침
+        level_combo.bind("<<ComboboxSelected>>", 
+                        lambda e: self._refresh_log_viewer(text_widget, level_var.get()))
+
+    def _create_log_level_controls(self, parent):
+        """로그 레벨 선택 컨트롤 생성"""
+        level_frame = ttk.Frame(parent)
+        level_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(level_frame, text=LOG_LEVEL_LABEL).pack(side=tk.LEFT, padx=(0, 5))
+        
+        level_var = tk.StringVar(value=LOG_DEFAULT_LEVEL)
+        level_combo = ttk.Combobox(level_frame, textvariable=level_var, 
+                                 values=LOG_LEVELS, 
+                                 state="readonly", width=LOG_LEVEL_COMBO_WIDTH)
+        level_combo.pack(side=tk.LEFT, padx=(0, 10))
+        
+        return level_var, level_combo
+
+    def _create_log_text_area(self, parent):
+        """로그 텍스트 영역 생성"""
+        text_frame = ttk.Frame(parent)
+        text_frame.pack(fill=tk.BOTH, expand=True)
+        
+        text_widget = tk.Text(text_frame, wrap=tk.WORD, font=FONT_CODE)
+        scrollbar_y = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=text_widget.yview)
+        scrollbar_x = ttk.Scrollbar(text_frame, orient=tk.HORIZONTAL, command=text_widget.xview)
+        text_widget.configure(yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
+        
+        text_widget.grid(row=0, column=0, sticky=tk.NSEW)
+        scrollbar_y.grid(row=0, column=1, sticky=tk.NS)
+        scrollbar_x.grid(row=1, column=0, sticky=tk.EW)
+        
+        text_frame.grid_rowconfigure(0, weight=1)
+        text_frame.grid_columnconfigure(0, weight=1)
+        
+        return text_widget
 
     def _copy_to_clipboard(self, text):
         """텍스트를 클립보드에 복사"""
         try:
             self.root.clipboard_clear()
             self.root.clipboard_append(text)
-            self.update_status("📋 클립보드에 복사되었습니다!")
+            self.update_status(MSG_CLIPBOARD_SUCCESS)
         except Exception as e:
             logger.error(f"클립보드 복사 중 오류: {e}")
-            self._show_error("오류", f"클립보드 복사 실패: {str(e)}")
+            self._show_error(DIALOG_ERROR_TITLE, MSG_CLIPBOARD_ERROR.format(str(e)))
 
     def _refresh_log_viewer(self, text_widget, level):
         """로그 뷰어 새로고침"""
@@ -608,7 +760,7 @@ class TAPythonTool:
             
             # 로그 파일 읽기
             script_dir = os.path.dirname(os.path.abspath(__file__))
-            log_file = os.path.join(script_dir, 'ta_python_tool.log')
+            log_file = os.path.join(script_dir, LOG_FILE_NAME)
             
             if os.path.exists(log_file):
                 with open(log_file, 'r', encoding='utf-8') as f:
@@ -651,6 +803,23 @@ class TAPythonTool:
         """경고 메시지 표시 및 로깅"""
         logger.warning(message)
         messagebox.showwarning(title, message)
+
+    def _show_info(self, title, message):
+        """정보 메시지 표시"""
+        logger.info(message)
+        messagebox.showinfo(title, message)
+
+    def _show_standard_error(self, message):
+        """표준 에러 메시지 표시"""
+        self._show_error(DIALOG_ERROR_TITLE, message)
+
+    def _show_standard_warning(self, message):
+        """표준 경고 메시지 표시"""
+        self._show_warning(TITLE_WARNING, message)
+
+    def _show_standard_info(self, message):
+        """표준 정보 메시지 표시"""
+        self._show_info(TITLE_INFO, message)
     
     def _validate_config_data(self, tool_menu_id):
         """설정 데이터 검증 및 초기화"""
@@ -765,34 +934,14 @@ class TAPythonTool:
             tooltip_text = f"전체 경로: {file_path}"
             self.create_tooltip(self.file_label, tooltip_text)
     
-    def _get_perforce_status_display(self, file_path):
-        """파일의 Perforce 상태를 표시용 텍스트로 반환 - 비활성화됨"""
-        return ""  # Perforce 기능 비활성화
-    
-    def _get_perforce_status_details(self, file_path):
-        """파일의 Perforce 상태 상세 정보를 반환 - 비활성화됨"""
-        return "Perforce 기능이 비활성화되었습니다"
-    
-    def perforce_checkout_current_file(self):
-        """현재 파일을 Perforce에서 체크아웃 - 비활성화됨"""
-        messagebox.showinfo("알림", "Perforce 기능이 비활성화되었습니다.")
-    
-    def perforce_show_file_status(self):
-        """현재 파일의 Perforce 상태를 상세히 표시 - 비활성화됨"""
-        messagebox.showinfo("알림", "Perforce 기능이 비활성화되었습니다.")
-    
-    def perforce_refresh_status(self):
-        """Perforce 상태를 새로고침 - 비활성화됨"""
-        self.update_status("Perforce 기능이 비활성화되었습니다.")
-    
     def open_file_location(self):
         """현재 파일의 위치를 탐색기/파인더에서 열기"""
         if not self.config_file_path:
-            messagebox.showwarning("경고", "현재 열린 파일이 없습니다.")
+            self._show_standard_warning(MSG_NO_CURRENT_FILE)
             return
         
         if not os.path.exists(self.config_file_path):
-            messagebox.showerror("오류", f"파일을 찾을 수 없습니다:\n{self.config_file_path}")
+            self._show_standard_error(MSG_FILE_NOT_FOUND_WITH_PATH.format(self.config_file_path))
             return
         
         file_dir = os.path.dirname(self.config_file_path)
@@ -813,17 +962,17 @@ class TAPythonTool:
                 
         except Exception as e:
             logger.error(f"파일 위치 열기 실패: {e}")
-            messagebox.showerror("오류", f"파일 위치를 열 수 없습니다:\n{e}\n\n폴더 경로: {file_dir}")
+            self._show_standard_error(MSG_FOLDER_OPEN_ERROR.format(e, file_dir))
             self.update_status("❌ 파일 위치 열기 실패", auto_clear=False)
 
     def open_in_external_editor(self):
         """현재 파일을 외부 편집기(VS Code 등)로 열기"""
         if not self.config_file_path:
-            messagebox.showwarning("경고", "현재 열린 파일이 없습니다.")
+            self._show_standard_warning(MSG_NO_CURRENT_FILE)
             return
         
         if not os.path.exists(self.config_file_path):
-            messagebox.showerror("오류", f"파일을 찾을 수 없습니다:\n{self.config_file_path}")
+            self._show_standard_error(MSG_FILE_NOT_FOUND_WITH_PATH.format(self.config_file_path))
             return
         
         try:
@@ -842,17 +991,17 @@ class TAPythonTool:
                 self.update_status(f"📝 외부 편집기에서 파일을 열었습니다: {os.path.basename(self.config_file_path)}")
                 
         except FileNotFoundError:
-            messagebox.showerror("오류", "기본 편집기를 찾을 수 없습니다.")
+            self._show_standard_error(MSG_NO_EDITOR_FOUND)
         except subprocess.CalledProcessError as e:
-            messagebox.showerror("오류", f"외부 편집기 실행 실패:\n{e}")
+            self._show_standard_error(MSG_EDITOR_LAUNCH_ERROR.format(e))
         except Exception as e:
             logger.error(f"외부 편집기로 파일 열기 실패: {e}")
-            messagebox.showerror("오류", f"파일을 외부 편집기로 열 수 없습니다:\n{e}")
+            self._show_standard_error(MSG_EDITOR_OPEN_ERROR.format(e))
 
     def test_file_write_permission(self):
         """현재 파일의 쓰기 권한을 테스트"""
         if not self.config_file_path:
-            messagebox.showwarning("경고", "현재 열린 파일이 없습니다.")
+            self._show_standard_warning(MSG_NO_CURRENT_FILE)
             return
         
         try:
@@ -888,12 +1037,12 @@ class TAPythonTool:
             result_msg.append("")
             result_msg.append(f"최종 결과: {'쓰기 가능' if can_write else '쓰기 불가'}")
             
-            messagebox.showinfo("파일 쓰기 권한 테스트 결과", "\n".join(result_msg))
+            messagebox.showinfo(TITLE_FILE_PERMISSION_TEST, "\n".join(result_msg))
             
         except Exception as e:
             error_msg = f"테스트 중 오류: {str(e)}"
             logger.error(error_msg)
-            messagebox.showerror("오류", error_msg)
+            self._show_standard_error(error_msg)
     
     def on_closing(self):
         """창 닫기 시 리소스 정리 및 저장하지 않은 변경사항 확인"""
@@ -1152,7 +1301,7 @@ class TAPythonTool:
         # 현재 위젯들 저장용
         self.current_widgets = None
     
-    def update_panel_titles(self, category_name=None, item_name=None):
+    def update_panel_titles(self, category_name=None, item_name=None, item_type=None):
         """패널 제목들을 현재 선택 상태에 따라 업데이트"""
         try:
             # 편집 인터페이스가 활성화되어 있을 때만 실행
@@ -1169,11 +1318,16 @@ class TAPythonTool:
             else:
                 self.menu_panel.configure(text="📄 툴 메뉴를 선택하세요")
             
-            # 편집 패널
-            if item_name:
-                edit_title = f"✏️ {item_name}"
-                if len(edit_title) > 50:  # 제목이 너무 길면 축약
-                    edit_title = f"✏️ {item_name[:45]}..."
+            # 편집 패널 - 타입 정보를 우선 표시
+            if item_type and item_name:
+                # 타입별 아이콘과 텍스트
+                type_icons = {
+                    "command": "⚡ 명령어",
+                    "submenu": "📁 서브메뉴", 
+                    "chameleon": "🎨 카멜레온"
+                }
+                type_display = type_icons.get(item_type, f"📄 {item_type}")
+                edit_title = f"✏️ {type_display}"
                 self.edit_panel.configure(text=edit_title)
             elif category_name:
                 self.edit_panel.configure(text="✏️ 엔트리를 선택하세요")
@@ -1379,15 +1533,15 @@ class TAPythonTool:
         # 새 트리뷰 생성
         self.current_menu_treeview = self._create_menu_treeview(self.menu_tree_frame, tool_menu_id)
         
-        # 편집 폼 제거
+        # 편집 폼 제거 (엔트리를 선택할 때까지 표시하지 않음)
         for widget in self.edit_form_frame.winfo_children():
             widget.destroy()
         
-        # 새 편집 폼 생성
-        self.current_widgets = self._create_edit_form(self.edit_form_frame, tool_menu_id)
-        self.current_widgets['treeview'] = self.current_menu_treeview
+        # 안내 메시지 표시
+        self._create_no_selection_message()
         
-        # 기존 코드 호환성을 위해 tabs에도 저장
+        # 기존 코드 호환성을 위해 tabs에 저장할 기본 위젯
+        self.current_widgets = {'treeview': self.current_menu_treeview}
         self.tabs[tool_menu_id] = self.current_widgets
         
         # 버튼 활성화
@@ -1498,12 +1652,6 @@ class TAPythonTool:
         file_menu.add_separator()
         file_menu.add_command(label="📉 최소화\t\tCtrl+M", command=lambda: self.root.iconify())
         
-        # 편집 메뉴
-        edit_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="✏️ 편집", menu=edit_menu)
-        edit_menu.add_command(label="➕ 엔트리 추가", command=lambda: self.add_entry_dialog(modal=True))
-        edit_menu.add_separator()
-        
         # 도구 메뉴
         tools_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="🔧 도구", menu=tools_menu)
@@ -1572,15 +1720,6 @@ class TAPythonTool:
         
         # 파일 경로 표시
         self._setup_file_path_display(info_frame)
-        
-        # Perforce 상태 표시
-        self._setup_perforce_status_display(info_frame)
-    
-    def _setup_main_frame(self):
-        """메인 프레임 설정 - 더 이상 사용되지 않음"""
-        pass
-    
-
     
     def _setup_info_frame(self, parent):
         """상단 정보 프레임 설정"""
@@ -1623,57 +1762,6 @@ class TAPythonTool:
         
         self.file_label = ttk.Label(path_frame, text="파일: 없음", foreground="gray", anchor="w")
         self.file_label.pack(fill=tk.X)
-    
-    def _setup_perforce_status_display(self, parent):
-        """Perforce 상태 표시 설정"""
-        status_frame = ttk.Frame(parent)
-        status_frame.pack(side=tk.RIGHT, padx=(10, 0))
-        
-        # Perforce 상태 라벨
-        self.perforce_status_label = ttk.Label(
-            status_frame, 
-            text="Perforce: 비활성화됨", 
-            font=("Arial", 10, "bold"),
-            foreground="gray"
-        )
-        self.perforce_status_label.pack(side=tk.RIGHT)
-        
-        # 초기 상태 업데이트 (비동기로 처리하여 UI 로딩 속도 향상)
-        self.root.after(500, self._update_perforce_status_display)  # 100ms에서 500ms로 변경하여 초기 로딩 우선
-    
-    def _update_perforce_status_display(self):
-        """Perforce 상태 표시 업데이트 - 비활성화됨"""
-        try:
-            self.perforce_status_label.configure(
-                text="Perforce: 비활성화됨",
-                foreground="gray"
-            )
-            self.create_tooltip(self.perforce_status_label, 
-                              "Perforce 기능이 비활성화되었습니다.")
-                
-        except Exception as e:
-            logger.error(f"Perforce 상태 표시 업데이트 중 오류: {e}")
-            self.perforce_status_label.configure(
-                text="Perforce: 오류",
-                foreground="red"
-            )
-            self.create_tooltip(self.perforce_status_label, 
-                              f"Perforce 상태 확인 중 오류: {str(e)}")
-    
-    def _get_perforce_status_text(self, p4_status):
-        """Perforce 상태에 따른 표시 텍스트, 색상, 툴팁 반환"""
-        status_map = {
-            "edit": ("편집 중", "green", "파일이 체크아웃되어 편집 가능합니다."),
-            "add": ("추가됨", "blue", "새 파일로 추가되었습니다."),
-            "delete": ("삭제 예정", "orange", "파일이 삭제 예정입니다."),
-            "sync": ("읽기 전용", "red", "파일이 읽기 전용 상태입니다. 편집하려면 체크아웃이 필요합니다."),
-            "locked_by_other": ("다른 사용자가 사용 중", "purple", "다른 사용자가 이 파일을 체크아웃했습니다."),
-            "not_in_perforce": ("관리 외", "gray", "파일이 Perforce 관리 하에 있지 않습니다."),
-            "error": ("오류", "red", "Perforce 상태를 확인할 수 없습니다."),
-            "unknown": ("알 수 없음", "gray", "Perforce 상태를 알 수 없습니다.")
-        }
-        
-        return status_map.get(p4_status, ("알 수 없음", "gray", f"알 수 없는 상태: {p4_status}"))
     
     def _setup_status_bar(self):
         """상태바 설정"""
@@ -1922,6 +2010,22 @@ class TAPythonTool:
         
         return widgets
     
+    def _create_no_selection_message(self):
+        """엔트리가 선택되지 않았을 때 표시할 안내 메시지"""
+        message_frame = ttk.Frame(self.edit_form_frame)
+        message_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        # 중앙 정렬을 위한 컨테이너
+        center_frame = ttk.Frame(message_frame)
+        center_frame.pack(expand=True)
+        
+        # 안내 메시지
+        ttk.Label(center_frame, text="📝", font=("Arial", 24)).pack(pady=(0, 10))
+        ttk.Label(center_frame, text="엔트리를 선택하세요", 
+                 font=("맑은 고딕", 12, "bold")).pack(pady=(0, 5))
+        ttk.Label(center_frame, text="왼쪽 목록에서 편집할 엔트리를 선택하면\n여기에 편집 폼이 표시됩니다.", 
+                 font=("맑은 고딕", 9), justify=tk.CENTER, foreground="gray").pack()
+    
     def _create_type_specific_container(self, parent):
         """타입별 전용 UI 컨테이너 생성"""
         # 타입별 UI가 들어갈 컨테이너
@@ -2061,7 +2165,7 @@ class TAPythonTool:
             if file_path:
                 relative_path = self._convert_to_relative_path(file_path)
                 chameleon_var.set(relative_path)
-        
+
         chameleon_button = ttk.Button(path_frame, text="📁 파일 선택", command=select_chameleon_file)
         chameleon_button.pack(side=tk.RIGHT)
         
@@ -2936,8 +3040,24 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
             
             selection = treeview.selection()
             if not selection:
-                self.clear_edit_form(tool_menu_id)
+                # 선택 해제시 편집 폼을 숨기고 안내 메시지 표시
+                for widget in self.edit_form_frame.winfo_children():
+                    widget.destroy()
+                self._create_no_selection_message()
+                # 패널 제목에서 엔트리 이름 제거
+                tool_menu_name = self._get_default_tool_menu_name(tool_menu_id)
+                self.update_panel_titles(category_name=tool_menu_name)
                 return
+            
+            # 아이템이 선택되었을 때 편집 폼 생성 (아직 없다면)
+            if not hasattr(self.current_widgets, 'get') or 'name_var' not in self.current_widgets:
+                # 편집 폼이 없으면 생성
+                for widget in self.edit_form_frame.winfo_children():
+                    widget.destroy()
+                self.current_widgets = self._create_edit_form(self.edit_form_frame, tool_menu_id)
+                self.current_widgets['treeview'] = self.current_menu_treeview
+                self.tabs[tool_menu_id] = self.current_widgets
+                tab_widgets = self.current_widgets
             
             selected_item = selection[0]
             
@@ -2990,7 +3110,7 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
                 # 공통: 아이콘 설정 로드
                 self._load_icon_data(tab_widgets, item_data, entry_type)
                 
-                # 패널 제목 업데이트 (아이템 선택됨)
+                # 패널 제목 업데이트 (아이템 선택됨, 타입 정보 포함)
                 item_name = item_data.get("name", "")
                 category_name = None
                 # 현재 카테고리 이름 찾기
@@ -2998,7 +3118,7 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
                     if cat_id == self.current_tool_menu_id:
                         category_name = cat_name
                         break
-                self.update_panel_titles(category_name=category_name, item_name=item_name)
+                self.update_panel_titles(category_name=category_name, item_name=item_name, item_type=entry_type)
                 
                 # 편집 가능 상태로 설정
                 self.set_edit_state(tool_menu_id, True)
@@ -3803,13 +3923,19 @@ class NewToolMenuAnchorDialog:
         ttk.Label(main_frame, text="툴 메뉴 ID:").pack(anchor=tk.W)
         self.tool_menu_id_entry = ttk.Entry(main_frame, width=50)
         self.tool_menu_id_entry.pack(fill=tk.X, pady=(5, 10))
+        # 다양한 이벤트에 검증 바인딩
         self.tool_menu_id_entry.bind('<KeyRelease>', self._validate_input)
+        self.tool_menu_id_entry.bind('<FocusOut>', self._validate_input)
+        self.tool_menu_id_entry.bind('<Button-1>', self._validate_input)
         
         # 툴 메뉴 이름 입력
         ttk.Label(main_frame, text="툴 메뉴 이름:").pack(anchor=tk.W)
         self.category_name_entry = ttk.Entry(main_frame, width=50)
         self.category_name_entry.pack(fill=tk.X, pady=(5, 10))
+        # 다양한 이벤트에 검증 바인딩
         self.category_name_entry.bind('<KeyRelease>', self._validate_input)
+        self.category_name_entry.bind('<FocusOut>', self._validate_input)
+        self.category_name_entry.bind('<Button-1>', self._validate_input)
         
         # HasSection 옵션 (모든 툴 메뉴에 적용)
         self.section_options_frame = ttk.LabelFrame(main_frame, text="툴 메뉴 옵션", padding=10)
@@ -3860,8 +3986,8 @@ class NewToolMenuAnchorDialog:
         self.add_button = ttk.Button(button_frame, text="추가", command=self.add_category, state=tk.DISABLED)
         self.add_button.pack(side=tk.RIGHT)
         
-        # Enter 키 바인딩
-        self.dialog.bind('<Return>', lambda e: self.add_category())
+        # Enter 키 바인딩 (버튼이 활성화되어 있을 때만 실행)
+        self.dialog.bind('<Return>', lambda e: self.add_category() if self.add_button['state'] == tk.NORMAL else None)
         self.dialog.bind('<Escape>', lambda e: self.cancel())
         
         # 포커스 설정
@@ -3872,60 +3998,52 @@ class NewToolMenuAnchorDialog:
     
     def _populate_available_categories(self):
         """사용 가능한 툴 메뉴 목록 채우기 (이미 존재하는 것은 제외)"""
-        # 중앙화된 툴 메뉴 목록에서 ID만 추출
-        all_categories = [tool_menu_id for tool_menu_id, _ in ALL_TOOL_MENUS]
-        
-        # 이미 존재하는 툴 메뉴와 사용 가능한 툴 메뉴 구분
+        # 이미 존재하는 툴 메뉴 확인
         existing_categories = set(self.config_data.keys())
         
-        for category in sorted(all_categories):
-            if category in existing_categories:
-                # 이미 존재하는 툴 메뉴는 회색으로 표시하고 비활성화
-                self.anchor_listbox.insert(tk.END, f"{category} (이미 존재)")
+        # 툴 메뉴를 ID 순으로 정렬하여 표시
+        sorted_menus = sorted(ALL_TOOL_MENUS, key=lambda x: x[0])
+        
+        for tool_menu_id, category_name in sorted_menus:
+            # ID와 이름을 함께 표시
+            display_text = f"{tool_menu_id} - {category_name}"
+            
+            if tool_menu_id in existing_categories:
+                # 이미 존재하는 툴 메뉴는 회색으로 표시
+                self.anchor_listbox.insert(tk.END, f"{display_text} (이미 존재)")
                 # 마지막 항목의 색상을 회색으로 변경
                 last_index = self.anchor_listbox.size() - 1
                 self.anchor_listbox.itemconfig(last_index, {'fg': 'gray'})
             else:
                 # 사용 가능한 툴 메뉴는 일반 텍스트로 표시
-                self.anchor_listbox.insert(tk.END, category)
+                self.anchor_listbox.insert(tk.END, display_text)
     
     def on_anchor_select(self, event):
         """미리 정의된 메뉴 선택 시 ID 필드에 복사"""
         selection = self.anchor_listbox.curselection()
         if selection:
-            anchor_name = self.anchor_listbox.get(selection[0])
+            selected_text = self.anchor_listbox.get(selection[0])
             
             # 이미 존재하는 툴 메뉴인지 확인
-            if "(이미 존재)" in anchor_name:
-                # 이미 존재하는 툴 메뉴는 추가 버튼 비활성화
-                self.add_button.configure(state=tk.DISABLED)
-                # 선택 해제
+            if "(이미 존재)" in selected_text:
+                # 이미 존재하는 툴 메뉴는 선택 해제하고 아무것도 하지 않음
                 self.anchor_listbox.selection_clear(0, tk.END)
                 return
-            else:
-                # 사용 가능한 툴 메뉴는 추가 버튼 활성화
-                self.add_button.configure(state=tk.NORMAL)
             
-            # 사용 가능한 툴 메뉴면 ID 필드에 입력
+            # 표시 텍스트에서 ID와 이름 추출 ("ID - Name" 형식)
+            if " - " in selected_text:
+                tool_menu_id, category_name = selected_text.split(" - ", 1)
+            else:
+                # 예외 상황: 구분자가 없으면 전체를 ID로 사용
+                tool_menu_id = selected_text
+                category_name = selected_text.split('.')[-1] if '.' in selected_text else selected_text
+            
+            # ID와 이름을 각각의 입력 필드에 설정
             self.tool_menu_id_entry.delete(0, tk.END)
-            self.tool_menu_id_entry.insert(0, anchor_name)
+            self.tool_menu_id_entry.insert(0, tool_menu_id)
             
-            # 중앙화된 툴 메뉴 목록에서 해당하는 표시명 찾기
-            display_name = None
-            for tool_menu_id, category_name in ALL_TOOL_MENUS:
-                if tool_menu_id == anchor_name:
-                    display_name = category_name
-                    break
-            
-            # 표시명을 찾았으면 사용하고, 못 찾았으면 ID의 마지막 부분 사용
-            if display_name:
-                self.category_name_entry.delete(0, tk.END)
-                self.category_name_entry.insert(0, display_name)
-            else:
-                # 백업: ID의 마지막 부분만 사용
-                fallback_name = anchor_name.split('.')[-1]
-                self.category_name_entry.delete(0, tk.END)
-                self.category_name_entry.insert(0, fallback_name)
+            self.category_name_entry.delete(0, tk.END)
+            self.category_name_entry.insert(0, category_name)
             
             # 입력 필드 변경 후 검증
             self._validate_input()
@@ -3934,6 +4052,9 @@ class NewToolMenuAnchorDialog:
         """입력 필드 내용을 검증하고 추가 버튼 상태를 업데이트합니다."""
         tool_menu_id = self.tool_menu_id_entry.get().strip()
         category_name = self.category_name_entry.get().strip()
+        
+        # 디버깅 정보 (개발용)
+        # print(f"Debug - ID: '{tool_menu_id}', Name: '{category_name}', Existing: {self._is_existing_category(tool_menu_id, category_name)}")
         
         # 입력값이 있고, 기존 툴 메뉴와 중복되지 않는 경우 버튼 활성화
         if tool_menu_id and category_name and not self._is_existing_category(tool_menu_id, category_name):
@@ -3965,6 +4086,11 @@ class NewToolMenuAnchorDialog:
         
         if not category_name:
             messagebox.showerror("오류", "툴 메뉴 이름을 입력하세요.")
+            return
+        
+        # 중복 검사
+        if self._is_existing_category(tool_menu_id, category_name):
+            messagebox.showerror("오류", f"툴 메뉴 '{tool_menu_id}'가 이미 존재합니다.")
             return
         
         # HasSection 정보를 포함한 결과 반환 (모든 툴 메뉴에 적용)
