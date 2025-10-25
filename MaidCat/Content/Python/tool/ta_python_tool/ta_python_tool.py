@@ -1041,28 +1041,25 @@ class TAPythonTool:
         button_frame = ttk.Frame(panel)
         button_frame.pack(fill=tk.X, pady=(5, 0))
         
-        # 첫 번째 줄: 추가 관련 버튼들
-        btn_row1 = ttk.Frame(button_frame)
-        btn_row1.pack(fill=tk.X, pady=(0, 3))
+        # 왼쪽 수직 패널: 추가/삭제
+        left_frame = ttk.Frame(button_frame)
+        left_frame.pack(side=tk.LEFT)
         
-        self.add_item_btn = ttk.Button(btn_row1, text="➕ 추가", state=tk.DISABLED)
-        self.add_item_btn.pack(side=tk.LEFT, padx=(0, 5))
+        self.add_btn = ttk.Button(left_frame, text="➕ 추가", state=tk.DISABLED, command=self.show_add_context_menu)
+        self.add_btn.pack(pady=(0, 3))  # 세로 배치
         
-        self.add_submenu_btn = ttk.Button(btn_row1, text="📁 서브메뉴 추가", state=tk.DISABLED)
-        self.add_submenu_btn.pack(side=tk.LEFT, padx=(0, 5))
+        self.delete_item_btn = ttk.Button(left_frame, text="🗑️ 삭제", state=tk.DISABLED)
+        self.delete_item_btn.pack()  # 세로 배치
         
-        # 두 번째 줄: 편집 관련 버튼들
-        btn_row2 = ttk.Frame(button_frame)
-        btn_row2.pack(fill=tk.X)
+        # 오른쪽 수직 패널: 위로/아래로
+        right_frame = ttk.Frame(button_frame)
+        right_frame.pack(side=tk.RIGHT)
         
-        self.delete_item_btn = ttk.Button(btn_row2, text="🗑️ 삭제", state=tk.DISABLED)
-        self.delete_item_btn.pack(side=tk.LEFT, padx=(0, 5))
+        self.move_up_btn = ttk.Button(right_frame, text="⬆️ 위로", state=tk.DISABLED)
+        self.move_up_btn.pack(pady=(0, 3))  # 세로 배치
         
-        self.move_up_btn = ttk.Button(btn_row2, text="⬆️ 위로", state=tk.DISABLED)
-        self.move_up_btn.pack(side=tk.LEFT, padx=(0, 5))
-        
-        self.move_down_btn = ttk.Button(btn_row2, text="⬇️ 아래로", state=tk.DISABLED)
-        self.move_down_btn.pack(side=tk.LEFT)
+        self.move_down_btn = ttk.Button(right_frame, text="⬇️ 아래로", state=tk.DISABLED)
+        self.move_down_btn.pack()  # 세로 배치
         
         # 현재 선택된 카테고리 ID
         self.current_category_id = None
@@ -1268,14 +1265,7 @@ class TAPythonTool:
     def _enable_menu_buttons(self):
         """메뉴 버튼들 활성화"""
         if self.current_category_id:
-            self.add_item_btn.configure(
-                state=tk.NORMAL, 
-                command=lambda: self.add_item(self.current_category_id)
-            )
-            self.add_submenu_btn.configure(
-                state=tk.NORMAL, 
-                command=lambda: self.add_submenu(self.current_category_id)
-            )
+            self.add_btn.configure(state=tk.NORMAL)
             self.delete_item_btn.configure(
                 state=tk.NORMAL, 
                 command=lambda: self.delete_item(self.current_category_id)
@@ -1305,8 +1295,7 @@ class TAPythonTool:
             widget.destroy()
         
         # 버튼 비활성화
-        self.add_item_btn.configure(state=tk.DISABLED)
-        self.add_submenu_btn.configure(state=tk.DISABLED)
+        self.add_btn.configure(state=tk.DISABLED)
         self.delete_item_btn.configure(state=tk.DISABLED)
         self.move_up_btn.configure(state=tk.DISABLED)
         self.move_down_btn.configure(state=tk.DISABLED)
@@ -1796,8 +1785,6 @@ class TAPythonTool:
                     ('command_text', 3),       # 명령어 필드 (row 3)
                     ('can_execute_text', 5),   # canExecuteAction 필드 (row 5)
                     ('enabled_check', 2),      # 활성화 체크박스 (row 2)
-                    ('chameleon_entry', 6),    # Chameleon 전체 프레임 (row 6)
-                    ('icon_type_combo', 7),    # 아이콘 전체 프레임 (row 7)
                 ]
                 
                 for widget_key, row_num in fields_to_hide:
@@ -1819,13 +1806,15 @@ class TAPythonTool:
                                 if grid_info and grid_info.get('row') == row_num:
                                     child.grid_remove()
                 
-                # Chameleon과 아이콘 LabelFrame들 숨기기
+                # Chameleon LabelFrame만 숨기기 (아이콘은 유지)
                 edit_frame = widgets['name_entry'].master
                 for child in edit_frame.winfo_children():
                     if isinstance(child, ttk.LabelFrame):
-                        if ("Chameleon" in child.cget('text') or 
-                            "아이콘" in child.cget('text')):
+                        if "Chameleon" in child.cget('text'):
                             child.grid_remove()
+                        elif "아이콘" in child.cget('text'):
+                            # 아이콘 LabelFrame 명시적으로 표시
+                            child.grid(row=7, column=0, columnspan=2, sticky=tk.W+tk.E, pady=5)
                 
                 # 서브메뉴 전용 안내 표시
                 if 'submenu_info_label' in widgets:
@@ -1833,36 +1822,64 @@ class TAPythonTool:
                 else:
                     # 서브메뉴 안내 라벨 생성
                     parent = widgets['name_entry'].master
-                    info_label = ttk.Label(parent, text="📁 서브메뉴는 하위 아이템들을 그룹화합니다", 
+                    info_label = ttk.Label(parent, text="📁 서브메뉴는 하위 아이템들을 그룹화합니다 (아이콘 설정 가능)", 
                                          foreground="gray", font=("맑은 고딕", 9))
                     info_label.grid(row=1, column=0, columnspan=2, sticky=tk.W, padx=(0, 5), pady=2)
                     widgets['submenu_info_label'] = info_label
             else:
                 # 일반 아이템인 경우 모든 필드 표시
-                fields_to_show = [
-                    ('tooltip_entry', 1),
-                    ('command_text', 3),
-                    ('can_execute_text', 5),
-                    ('enabled_check', 2),
-                ]
+                # 툴팁 필드 복원
+                if 'tooltip_entry' in widgets and widgets['tooltip_entry']:
+                    widgets['tooltip_entry'].grid(row=1, column=1, sticky=tk.W+tk.E, pady=2)
+                    # 툴팁 라벨도 복원
+                    edit_frame = widgets['name_entry'].master
+                    for child in edit_frame.winfo_children():
+                        if (isinstance(child, ttk.Label) and 
+                            hasattr(child, 'cget') and 
+                            child.cget('text') == "툴팁:"):
+                            child.grid(row=1, column=0, sticky=tk.W, padx=(0, 5), pady=2)
+                            break
                 
-                for widget_key, row_num in fields_to_show:
-                    widget = widgets.get(widget_key)
-                    if widget:
-                        # 위젯이 Frame 안에 있는 경우 부모 Frame을 표시
-                        parent = widget.master
-                        if isinstance(parent, ttk.Frame) and parent != widgets['name_entry'].master:
-                            parent.grid()
-                        else:
-                            widget.grid()
+                # 활성화 체크박스 복원
+                if 'enabled_check' in widgets and widgets['enabled_check']:
+                    widgets['enabled_check'].grid(row=2, column=1, sticky=tk.W, pady=2)
                 
-                # Chameleon과 아이콘 LabelFrame들 표시
+                # 명령어 필드 복원 (Frame 단위)
+                if 'command_text' in widgets and widgets['command_text']:
+                    parent = widgets['command_text'].master
+                    if isinstance(parent, ttk.Frame):
+                        parent.grid(row=3, column=1, sticky=tk.W+tk.E+tk.N+tk.S, pady=2)
+                    # 명령어 라벨도 복원
+                    edit_frame = widgets['name_entry'].master
+                    for child in edit_frame.winfo_children():
+                        if (isinstance(child, ttk.Label) and 
+                            hasattr(child, 'cget') and 
+                            child.cget('text') == "명령어:"):
+                            child.grid(row=3, column=0, sticky=tk.NW+tk.W, padx=(0, 5), pady=2)
+                            break
+                
+                # canExecuteAction 필드 복원 (Frame 단위)
+                if 'can_execute_text' in widgets and widgets['can_execute_text']:
+                    parent = widgets['can_execute_text'].master
+                    if isinstance(parent, ttk.Frame):
+                        parent.grid(row=5, column=1, sticky=tk.W+tk.E+tk.N+tk.S, pady=2)
+                    # canExecuteAction 라벨도 복원
+                    edit_frame = widgets['name_entry'].master
+                    for child in edit_frame.winfo_children():
+                        if (isinstance(child, ttk.Label) and 
+                            hasattr(child, 'cget') and 
+                            child.cget('text') == "canExecuteAction:"):
+                            child.grid(row=5, column=0, sticky=tk.NW+tk.W, padx=(0, 5), pady=2)
+                            break
+                
+                # Chameleon과 아이콘 LabelFrame 표시
                 edit_frame = widgets['name_entry'].master
                 for child in edit_frame.winfo_children():
                     if isinstance(child, ttk.LabelFrame):
-                        if ("Chameleon" in child.cget('text') or 
-                            "아이콘" in child.cget('text')):
-                            child.grid()
+                        if "Chameleon" in child.cget('text'):
+                            child.grid(row=6, column=0, columnspan=2, sticky=tk.W+tk.E, pady=5)
+                        elif "아이콘" in child.cget('text'):
+                            child.grid(row=7, column=0, columnspan=2, sticky=tk.W+tk.E, pady=5)
                 
                 # 서브메뉴 안내 라벨 숨기기
                 if 'submenu_info_label' in widgets:
@@ -1872,6 +1889,52 @@ class TAPythonTool:
             logger.error(f"편집 폼 가시성 업데이트 중 오류: {e}")
             import traceback
             logger.error(f"상세 오류: {traceback.format_exc()}")
+    
+    def _load_icon_data(self, tab_widgets, item_data):
+        """아이콘 데이터를 위젯에 로드"""
+        try:
+            icon_data = item_data.get("icon", {})
+            if icon_data:
+                if "style" in icon_data:
+                    style = icon_data.get("style", "")
+                    if style == "EditorStyle":
+                        tab_widgets['icon_type_var'].set("EditorStyle")
+                    elif style == "ChameleonStyle":
+                        tab_widgets['icon_type_var'].set("ChameleonStyle")
+                    tab_widgets['icon_name_var'].set(icon_data.get("name", ""))
+                elif "ImagePathInPlugin" in icon_data:
+                    tab_widgets['icon_type_var'].set("ImagePath")
+                    tab_widgets['icon_name_var'].set(icon_data.get("ImagePathInPlugin", ""))
+                else:
+                    tab_widgets['icon_type_var'].set("없음")
+                    tab_widgets['icon_name_var'].set("")
+            else:
+                tab_widgets['icon_type_var'].set("없음")
+                tab_widgets['icon_name_var'].set("")
+        except Exception as e:
+            logger.error(f"아이콘 데이터 로딩 중 오류: {e}")
+            tab_widgets['icon_type_var'].set("없음")
+            tab_widgets['icon_name_var'].set("")
+    
+    def show_add_context_menu(self):
+        """추가 버튼의 컨텍스트 메뉴 표시"""
+        try:
+            # 컨텍스트 메뉴 생성
+            context_menu = tk.Menu(self.root, tearoff=0)
+            context_menu.add_command(label="📄 아이템 추가", command=lambda: self.add_item(self.current_category_id))
+            context_menu.add_command(label="📁 서브메뉴 추가", command=lambda: self.add_submenu(self.current_category_id))
+            
+            # 버튼 위치에 메뉴 표시
+            try:
+                # 버튼의 절대 위치 계산
+                x = self.add_btn.winfo_rootx()
+                y = self.add_btn.winfo_rooty() + self.add_btn.winfo_height()
+                context_menu.tk_popup(x, y)
+            finally:
+                context_menu.grab_release()
+                
+        except Exception as e:
+            logger.error(f"컨텍스트 메뉴 표시 중 오류: {e}")
     
     def _create_name_field(self, parent):
         """이름 입력 필드 생성"""
@@ -2158,7 +2221,7 @@ class TAPythonTool:
             
             # 버튼들 비활성화
             buttons_to_disable = [
-                'add_item_btn', 'add_submenu_btn', 'delete_item_btn', 
+                'add_btn', 'delete_item_btn', 
                 'move_up_btn', 'move_down_btn', 'save_button'
             ]
             
@@ -2569,34 +2632,18 @@ class TAPythonTool:
                     if can_execute:
                         tab_widgets['can_execute_text'].insert(1.0, can_execute)
                     
-                    # 아이콘 설정 (새로 추가)
-                    icon_data = item_data.get("icon", {})
-                    if icon_data:
-                        if "style" in icon_data:
-                            style = icon_data.get("style", "")
-                            if style == "EditorStyle":
-                                tab_widgets['icon_type_var'].set("EditorStyle")
-                            elif style == "ChameleonStyle":
-                                tab_widgets['icon_type_var'].set("ChameleonStyle")
-                            tab_widgets['icon_name_var'].set(icon_data.get("name", ""))
-                        elif "ImagePathInPlugin" in icon_data:
-                            tab_widgets['icon_type_var'].set("ImagePath")
-                            tab_widgets['icon_name_var'].set(icon_data.get("ImagePathInPlugin", ""))
-                        else:
-                            tab_widgets['icon_type_var'].set("없음")
-                            tab_widgets['icon_name_var'].set("")
-                    else:
-                        tab_widgets['icon_type_var'].set("없음")
-                        tab_widgets['icon_name_var'].set("")
+                    # 아이콘 설정 로드
+                    self._load_icon_data(tab_widgets, item_data)
                 else:
-                    # 서브메뉴인 경우 다른 필드들 초기화
+                    # 서브메뉴인 경우 다른 필드들 초기화 (아이콘은 유지)
                     tab_widgets['tooltip_var'].set("")
                     tab_widgets['enabled_var'].set(True)
                     tab_widgets['command_text'].delete(1.0, tk.END)
                     tab_widgets['chameleon_var'].set("")
                     tab_widgets['can_execute_text'].delete(1.0, tk.END)
-                    tab_widgets['icon_type_var'].set("없음")
-                    tab_widgets['icon_name_var'].set("")
+                    
+                    # 서브메뉴도 아이콘 설정 로드
+                    self._load_icon_data(tab_widgets, item_data)
                 
                 # 데이터 로드 후 편집 폼 필드 가시성 업데이트
                 self._update_form_visibility(tab_widgets, is_submenu)
