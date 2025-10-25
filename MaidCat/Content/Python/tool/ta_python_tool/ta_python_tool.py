@@ -421,7 +421,7 @@ class TAPythonTool:
     - UI 관련: setup_ui, create_tab_content, update_status
     - 파일 관리: load_config_file, save_config, open_config
     - 데이터 관리: refresh_tab, on_item_select, update_item
-    - 엔트리 관리: add_entry, add_submenu, delete_entry, move_entry_*
+    - 엔트리 관리: add_entry, delete_entry, move_entry_*
     - 헬퍼 메서드: _get_item_data_from_tree, _find_parent_by_name 등
     """
     def __init__(self):
@@ -692,6 +692,8 @@ class TAPythonTool:
         """엔트리 타입에 따른 표시 형식 반환"""
         if "items" in item_data:
             return ("📁 서브메뉴", f"📁 {name}")
+        elif item_data.get("ChameleonTools"):
+            return ("🎨 카멜레온", f"🎨 {name}")
         elif item_data.get("command"):
             return ("⚡ 명령어", f"⚡ {name}")
         else:
@@ -1121,7 +1123,7 @@ class TAPythonTool:
         left_frame = ttk.Frame(button_frame)
         left_frame.pack(side=tk.LEFT)
         
-        self.add_btn = ttk.Button(left_frame, text="➕ 추가", state=tk.DISABLED, command=self.show_add_context_menu)
+        self.add_btn = ttk.Button(left_frame, text="➕ 추가", state=tk.DISABLED, command=lambda: self.add_entry(self.current_tool_menu_id))
         self.add_btn.pack(pady=(0, 3))  # 세로 배치
         
         self.delete_item_btn = ttk.Button(left_frame, text="🗑️ 삭제", state=tk.DISABLED)
@@ -1733,14 +1735,8 @@ class TAPythonTool:
         if self.config_data:
             for tool_menu_id, tool_menu_name in all_tool_menus:
                 if tool_menu_id in self.config_data:
-                    # JSON에서 이름을 우선 사용, 없으면 기본 이름 사용
-                    category_data = self.config_data[tool_menu_id]
-                    if isinstance(category_data, dict) and "name" in category_data:
-                        display_name = category_data["name"]
-                    else:
-                        display_name = tool_menu_name  # 폴백: 기본 이름 사용
-                    
-                    available_tool_menus.append((tool_menu_id, display_name))
+                    # JSON의 name 필드는 무시하고 항상 기본 이름 사용
+                    available_tool_menus.append((tool_menu_id, tool_menu_name))
         
         return available_tool_menus
     
@@ -1874,8 +1870,6 @@ class TAPythonTool:
         
         ttk.Button(btn_row1, text="➕ 추가", 
                   command=lambda: self.add_entry(tool_menu_id)).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(btn_row1, text="📁 서브메뉴 추가", 
-                  command=lambda: self.add_submenu(tool_menu_id)).pack(side=tk.LEFT, padx=(0, 5))
         
         # 두 번째 줄: 편집 관련 버튼들
         btn_row2 = ttk.Frame(list_btn_frame)
@@ -1903,31 +1897,20 @@ class TAPythonTool:
         return self._create_edit_form(right_frame, tool_menu_id)
     
     def _create_edit_form(self, parent, tool_menu_id):
-        """편집 폼 생성"""
+        """편집 폼 생성 - 타입별 전용 UI"""
         edit_frame = ttk.Frame(parent)
         edit_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=(5, 5))
         
         # 폼 위젯들 생성
         widgets = {}
         
-        # 이름 필드 (항상 표시)
+        # 공통 필드들: 이름 (항상 표시)
         widgets.update(self._create_name_field(edit_frame))
         
-        # 활성화 체크박스 (항상 표시)
-        widgets.update(self._create_enabled_field(edit_frame))
+        # 타입별 전용 UI를 위한 컨테이너
+        widgets.update(self._create_type_specific_container(edit_frame))
         
-        # 서브메뉴가 아닌 경우에만 표시할 필드들
-        # 툴팁 필드
-        widgets.update(self._create_tooltip_field(edit_frame))
-        
-        # 명령어 필드
-        widgets.update(self._create_command_field(edit_frame))
-        
-        # canExecuteAction 필드
-        widgets.update(self._create_can_execute_action_field(edit_frame))
-        
-        # Chameleon 필드와 아이콘 필드는 모든 타입에서 표시
-        widgets.update(self._create_chameleon_field(edit_frame))
+        # 공통 필드들: 아이콘 (항상 표시)
         widgets.update(self._create_icon_field(edit_frame))
         
         # 업데이트 버튼
@@ -1935,125 +1918,200 @@ class TAPythonTool:
         
         # 그리드 가중치
         edit_frame.columnconfigure(1, weight=1)
-        edit_frame.rowconfigure(3, weight=1)  # 명령어 필드가 확장되도록
+        edit_frame.rowconfigure(2, weight=1)  # 타입별 컨테이너가 확장되도록
         
         return widgets
     
-    def _update_form_visibility(self, widgets, is_submenu):
-        """편집 폼 필드들의 가시성을 엔트리 유형에 따라 업데이트"""
-        try:
-            if is_submenu:
-                # 서브메뉴인 경우 불필요한 필드들과 라벨들을 숨기기 (툴팁은 유지)
-                fields_to_hide = [
-                    ('command_text', 3),       # 명령어 필드 (row 3)
-                    ('can_execute_text', 5),   # canExecuteAction 필드 (row 5)
-                    ('enabled_check', 2),      # 활성화 체크박스 (row 2)
-                ]
-                
-                for widget_key, row_num in fields_to_hide:
-                    widget = widgets.get(widget_key)
-                    if widget:
-                        # 위젯이 Frame 안에 있는 경우 부모 Frame을 숨김
-                        parent = widget.master
-                        if isinstance(parent, ttk.Frame) and parent != widgets['name_entry'].master:
-                            parent.grid_remove()
-                        else:
-                            widget.grid_remove()
-                        
-                        # 같은 행의 라벨도 숨김
-                        edit_frame = widgets['name_entry'].master
-                        for child in edit_frame.winfo_children():
-                            if (hasattr(child, 'grid_info') and 
-                                isinstance(child, ttk.Label)):
-                                grid_info = child.grid_info()
-                                if grid_info and grid_info.get('row') == row_num:
-                                    child.grid_remove()
-                
-                # Chameleon LabelFrame만 숨기기 (아이콘은 유지)
-                edit_frame = widgets['name_entry'].master
-                for child in edit_frame.winfo_children():
-                    if isinstance(child, ttk.LabelFrame):
-                        if "Chameleon" in child.cget('text'):
-                            child.grid_remove()
-                        elif "아이콘" in child.cget('text'):
-                            # 아이콘 LabelFrame 명시적으로 표시
-                            child.grid(row=7, column=0, columnspan=2, sticky=tk.W+tk.E, pady=5)
-                
-                # 서브메뉴 전용 안내 표시
-                if 'submenu_info_label' in widgets:
-                    widgets['submenu_info_label'].grid()
-                else:
-                    # 서브메뉴 안내 라벨 생성 (툴팁 필드 아래에 배치)
-                    parent = widgets['name_entry'].master
-                    info_label = ttk.Label(parent, text="📁 서브메뉴는 하위 엔트리들을 그룹화합니다 (툴팁, 아이콘 설정 가능)", 
-                                         foreground="gray", font=("맑은 고딕", 9))
-                    info_label.grid(row=2, column=0, columnspan=2, sticky=tk.W, padx=(0, 5), pady=2)
-                    widgets['submenu_info_label'] = info_label
-            else:
-                # 일반 아이템인 경우 모든 필드 표시
-                # 툴팁 필드 복원
-                if 'tooltip_entry' in widgets and widgets['tooltip_entry']:
-                    widgets['tooltip_entry'].grid(row=1, column=1, sticky=tk.W+tk.E, pady=2)
-                    # 툴팁 라벨도 복원
-                    edit_frame = widgets['name_entry'].master
-                    for child in edit_frame.winfo_children():
-                        if (isinstance(child, ttk.Label) and 
-                            hasattr(child, 'cget') and 
-                            child.cget('text') == "툴팁:"):
-                            child.grid(row=1, column=0, sticky=tk.W, padx=(0, 5), pady=2)
-                            break
-                
-                # 활성화 체크박스 복원
-                if 'enabled_check' in widgets and widgets['enabled_check']:
-                    widgets['enabled_check'].grid(row=2, column=1, sticky=tk.W, pady=2)
-                
-                # 명령어 필드 복원 (Frame 단위)
-                if 'command_text' in widgets and widgets['command_text']:
-                    parent = widgets['command_text'].master
-                    if isinstance(parent, ttk.Frame):
-                        parent.grid(row=3, column=1, sticky=tk.W+tk.E+tk.N+tk.S, pady=2)
-                    # 명령어 라벨도 복원
-                    edit_frame = widgets['name_entry'].master
-                    for child in edit_frame.winfo_children():
-                        if (isinstance(child, ttk.Label) and 
-                            hasattr(child, 'cget') and 
-                            child.cget('text') == "명령어:"):
-                            child.grid(row=3, column=0, sticky=tk.NW+tk.W, padx=(0, 5), pady=2)
-                            break
-                
-                # canExecuteAction 필드 복원 (Frame 단위)
-                if 'can_execute_text' in widgets and widgets['can_execute_text']:
-                    parent = widgets['can_execute_text'].master
-                    if isinstance(parent, ttk.Frame):
-                        parent.grid(row=5, column=1, sticky=tk.W+tk.E+tk.N+tk.S, pady=2)
-                    # canExecuteAction 라벨도 복원
-                    edit_frame = widgets['name_entry'].master
-                    for child in edit_frame.winfo_children():
-                        if (isinstance(child, ttk.Label) and 
-                            hasattr(child, 'cget') and 
-                            child.cget('text') == "canExecuteAction:"):
-                            child.grid(row=5, column=0, sticky=tk.NW+tk.W, padx=(0, 5), pady=2)
-                            break
-                
-                # Chameleon과 아이콘 LabelFrame 표시
-                edit_frame = widgets['name_entry'].master
-                for child in edit_frame.winfo_children():
-                    if isinstance(child, ttk.LabelFrame):
-                        if "Chameleon" in child.cget('text'):
-                            child.grid(row=6, column=0, columnspan=2, sticky=tk.W+tk.E, pady=5)
-                        elif "아이콘" in child.cget('text'):
-                            child.grid(row=7, column=0, columnspan=2, sticky=tk.W+tk.E, pady=5)
-                
-                # 서브메뉴 안내 라벨 숨기기
-                if 'submenu_info_label' in widgets:
-                    widgets['submenu_info_label'].grid_remove()
-                    
-        except Exception as e:
-            logger.error(f"편집 폼 가시성 업데이트 중 오류: {e}")
-            import traceback
-            logger.error(f"상세 오류: {traceback.format_exc()}")
+    def _create_type_specific_container(self, parent):
+        """타입별 전용 UI 컨테이너 생성"""
+        # 타입별 UI가 들어갈 컨테이너
+        container_frame = ttk.Frame(parent)
+        container_frame.grid(row=2, column=0, columnspan=2, sticky=tk.W+tk.E+tk.N+tk.S, pady=5)
+        container_frame.columnconfigure(0, weight=1)
+        container_frame.rowconfigure(0, weight=1)
+        
+        # 세 가지 타입별 UI 생성
+        submenu_widgets = self._create_submenu_ui(container_frame)
+        command_widgets = self._create_command_ui(container_frame)
+        chameleon_widgets = self._create_chameleon_ui(container_frame)
+        
+        # 모든 위젯들을 통합하여 반환
+        widgets = {}
+        widgets.update(submenu_widgets)
+        widgets.update(command_widgets)
+        widgets.update(chameleon_widgets)
+        widgets['type_container'] = container_frame
+        
+        # 초기에는 command UI만 표시
+        self._show_type_ui(widgets, "command")
+        
+        return widgets
     
-    def _load_icon_data(self, tab_widgets, item_data):
+    def _create_submenu_ui(self, parent):
+        """서브메뉴 전용 UI 생성"""
+        submenu_frame = ttk.LabelFrame(parent, text="📁 서브메뉴 설정")
+        submenu_frame.grid(row=0, column=0, sticky=tk.W+tk.E+tk.N+tk.S, padx=5, pady=5)
+        submenu_frame.columnconfigure(1, weight=1)
+        
+        # 툴팁
+        ttk.Label(submenu_frame, text="툴팁:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        submenu_tooltip_var = tk.StringVar()
+        submenu_tooltip_entry = ttk.Entry(submenu_frame, textvariable=submenu_tooltip_var)
+        submenu_tooltip_entry.grid(row=0, column=1, sticky=tk.W+tk.E, padx=5, pady=5)
+        
+        # 설명
+        desc_label = ttk.Label(submenu_frame, 
+                              text="서브메뉴는 하위 엔트리들을 그룹화합니다.\n이름, 툴팁, 아이콘을 설정할 수 있습니다.",
+                              foreground="gray", font=("Arial", 9), justify=tk.LEFT)
+        desc_label.grid(row=1, column=0, columnspan=2, sticky=tk.W, padx=5, pady=10)
+        
+        return {
+            'submenu_frame': submenu_frame,
+            'submenu_tooltip_var': submenu_tooltip_var,
+            'submenu_tooltip_entry': submenu_tooltip_entry
+        }
+    
+    def _create_command_ui(self, parent):
+        """명령어 전용 UI 생성"""
+        command_frame = ttk.LabelFrame(parent, text="⚡ Python 명령어 설정")
+        command_frame.grid(row=0, column=0, sticky=tk.W+tk.E+tk.N+tk.S, padx=5, pady=5)
+        command_frame.columnconfigure(1, weight=1)
+        command_frame.rowconfigure(2, weight=1)
+        
+        # 툴팁
+        ttk.Label(command_frame, text="툴팁:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        command_tooltip_var = tk.StringVar()
+        command_tooltip_entry = ttk.Entry(command_frame, textvariable=command_tooltip_var)
+        command_tooltip_entry.grid(row=0, column=1, sticky=tk.W+tk.E, padx=5, pady=5)
+        
+        # 활성화
+        command_enabled_var = tk.BooleanVar(value=True)
+        command_enabled_check = ttk.Checkbutton(command_frame, text="활성화", variable=command_enabled_var)
+        command_enabled_check.grid(row=1, column=1, sticky=tk.W, padx=5, pady=5)
+        
+        # Python 명령어
+        ttk.Label(command_frame, text="Python 명령어:").grid(row=2, column=0, sticky=tk.NW, padx=5, pady=5)
+        
+        cmd_text_frame = ttk.Frame(command_frame)
+        cmd_text_frame.grid(row=2, column=1, sticky=tk.W+tk.E+tk.N+tk.S, padx=5, pady=5)
+        
+        command_text = tk.Text(cmd_text_frame, height=6, wrap=tk.WORD, font=("Consolas", 9))
+        cmd_scrollbar = ttk.Scrollbar(cmd_text_frame, orient=tk.VERTICAL, command=command_text.yview)
+        command_text.configure(yscrollcommand=cmd_scrollbar.set)
+        
+        command_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        cmd_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # canExecuteAction
+        ttk.Label(command_frame, text="canExecuteAction:").grid(row=3, column=0, sticky=tk.NW, padx=5, pady=5)
+        
+        can_exec_frame = ttk.Frame(command_frame)
+        can_exec_frame.grid(row=3, column=1, sticky=tk.W+tk.E, padx=5, pady=5)
+        
+        can_execute_text = tk.Text(can_exec_frame, height=3, wrap=tk.WORD, font=("Consolas", 9))
+        can_exec_scrollbar = ttk.Scrollbar(can_exec_frame, orient=tk.VERTICAL, command=can_execute_text.yview)
+        can_execute_text.configure(yscrollcommand=can_exec_scrollbar.set)
+        
+        can_execute_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        can_exec_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        return {
+            'command_frame': command_frame,
+            'command_tooltip_var': command_tooltip_var,
+            'command_tooltip_entry': command_tooltip_entry,
+            'command_enabled_var': command_enabled_var,
+            'command_enabled_check': command_enabled_check,
+            'command_text': command_text,
+            'can_execute_text': can_execute_text
+        }
+    
+    def _create_chameleon_ui(self, parent):
+        """Chameleon 전용 UI 생성"""
+        chameleon_frame = ttk.LabelFrame(parent, text="🎨 Chameleon Tools 설정")
+        chameleon_frame.grid(row=0, column=0, sticky=tk.W+tk.E+tk.N+tk.S, padx=5, pady=5)
+        chameleon_frame.columnconfigure(1, weight=1)
+        
+        # 툴팁
+        ttk.Label(chameleon_frame, text="툴팁:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        chameleon_tooltip_var = tk.StringVar()
+        chameleon_tooltip_entry = ttk.Entry(chameleon_frame, textvariable=chameleon_tooltip_var)
+        chameleon_tooltip_entry.grid(row=0, column=1, sticky=tk.W+tk.E, padx=5, pady=5)
+        
+        # 활성화
+        chameleon_enabled_var = tk.BooleanVar(value=True)
+        chameleon_enabled_check = ttk.Checkbutton(chameleon_frame, text="활성화", variable=chameleon_enabled_var)
+        chameleon_enabled_check.grid(row=1, column=1, sticky=tk.W, padx=5, pady=5)
+        
+        # ChameleonTools 경로
+        ttk.Label(chameleon_frame, text="JSON 파일 경로:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=5)
+        
+        path_frame = ttk.Frame(chameleon_frame)
+        path_frame.grid(row=2, column=1, sticky=tk.W+tk.E, padx=5, pady=5)
+        
+        chameleon_var = tk.StringVar()
+        chameleon_entry = ttk.Entry(path_frame, textvariable=chameleon_var, font=("Consolas", 9))
+        chameleon_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+        
+        def select_chameleon_file():
+            file_path = filedialog.askopenfilename(
+                title="Chameleon Tools JSON 파일 선택",
+                filetypes=[("JSON 파일", "*.json"), ("모든 파일", "*.*")],
+                initialdir=self._get_chameleon_tools_directory()
+            )
+            if file_path:
+                relative_path = self._convert_to_relative_path(file_path)
+                chameleon_var.set(relative_path)
+        
+        chameleon_button = ttk.Button(path_frame, text="📁 파일 선택", command=select_chameleon_file)
+        chameleon_button.pack(side=tk.RIGHT)
+        
+        # 예시
+        example_label = ttk.Label(chameleon_frame, text="예시: ../Python/Example/MinimalExample.json",
+                                 foreground="gray", font=("Arial", 8))
+        example_label.grid(row=3, column=0, columnspan=2, sticky=tk.W, padx=5, pady=(0, 10))
+        
+        return {
+            'chameleon_frame': chameleon_frame,
+            'chameleon_tooltip_var': chameleon_tooltip_var,
+            'chameleon_tooltip_entry': chameleon_tooltip_entry,
+            'chameleon_enabled_var': chameleon_enabled_var,
+            'chameleon_enabled_check': chameleon_enabled_check,
+            'chameleon_var': chameleon_var,
+            'chameleon_entry': chameleon_entry,
+            'chameleon_button': chameleon_button
+        }
+    
+    def _determine_entry_type(self, item_data):
+        """엔트리 데이터에서 타입을 결정합니다."""
+        if "items" in item_data:
+            return "submenu"
+        elif "ChameleonTools" in item_data:
+            return "chameleonTools"
+        elif "command" in item_data or "canExecuteAction" in item_data:
+            return "command"
+        else:
+            # 기본값은 command로 설정
+            return "command"
+
+    def _show_type_ui(self, widgets, entry_type):
+        """선택된 타입의 UI만 표시"""
+        # 모든 타입 UI 숨기기
+        for frame_key in ['submenu_frame', 'command_frame', 'chameleon_frame']:
+            if frame_key in widgets:
+                widgets[frame_key].grid_remove()
+        
+        # 선택된 타입 UI 표시
+        type_frame_map = {
+            'submenu': 'submenu_frame',
+            'command': 'command_frame', 
+            'chameleonTools': 'chameleon_frame'
+        }
+        
+        frame_key = type_frame_map.get(entry_type)
+        if frame_key and frame_key in widgets:
+            widgets[frame_key].grid(row=0, column=0, sticky=tk.W+tk.E+tk.N+tk.S, padx=5, pady=5)
+    
+    def _load_icon_data(self, tab_widgets, item_data, entry_type=None):
         """아이콘 데이터를 위젯에 로드"""
         try:
             icon_data = item_data.get("icon", {})
@@ -2079,26 +2137,6 @@ class TAPythonTool:
             tab_widgets['icon_type_var'].set("없음")
             tab_widgets['icon_name_var'].set("")
     
-    def show_add_context_menu(self):
-        """추가 버튼의 컨텍스트 메뉴 표시"""
-        try:
-            # 컨텍스트 메뉴 생성
-            context_menu = tk.Menu(self.root, tearoff=0)
-            context_menu.add_command(label="📄 엔트리 추가", command=lambda: self.add_entry(self.current_tool_menu_id))
-            context_menu.add_command(label="📁 서브메뉴 추가", command=lambda: self.add_submenu(self.current_tool_menu_id))
-            
-            # 버튼 위치에 메뉴 표시
-            try:
-                # 버튼의 절대 위치 계산
-                x = self.add_btn.winfo_rootx()
-                y = self.add_btn.winfo_rooty() + self.add_btn.winfo_height()
-                context_menu.tk_popup(x, y)
-            finally:
-                context_menu.grab_release()
-                
-        except Exception as e:
-            logger.error(f"컨텍스트 메뉴 표시 중 오류: {e}")
-    
     def _create_name_field(self, parent):
         """이름 입력 필드 생성"""
         ttk.Label(parent, text="이름:").grid(row=0, column=0, sticky=tk.W, padx=(0, 5), pady=2)
@@ -2115,47 +2153,113 @@ class TAPythonTool:
         tooltip_entry.grid(row=1, column=1, sticky=tk.W+tk.E, pady=2)
         return {'tooltip_var': tooltip_var, 'tooltip_entry': tooltip_entry}
     
-    def _create_enabled_field(self, parent):
-        """활성화 체크박스 생성"""
-        enabled_var = tk.BooleanVar()
-        enabled_var.set(True)  # 기본값을 명시적으로 설정
-        enabled_check = ttk.Checkbutton(parent, text="활성화", variable=enabled_var)
-        enabled_check.grid(row=2, column=1, sticky=tk.W, pady=2)
-        return {'enabled_var': enabled_var, 'enabled_check': enabled_check}
+    def _create_execution_type_tabs(self, parent):
+        """실행 타입 선택 탭 생성 (Command vs Chameleon)"""
+        # 탭 컨테이너
+        tab_frame = ttk.LabelFrame(parent, text="실행 타입")
+        tab_frame.grid(row=3, column=0, columnspan=2, sticky=tk.W+tk.E+tk.N+tk.S, pady=5)
+        tab_frame.columnconfigure(0, weight=1)
+        tab_frame.rowconfigure(1, weight=1)
+        
+        # 탭 노트북
+        notebook = ttk.Notebook(tab_frame)
+        notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Command 탭
+        command_frame = ttk.Frame(notebook)
+        notebook.add(command_frame, text="Python 명령어")
+        
+        # Chameleon 탭
+        chameleon_frame = ttk.Frame(notebook)
+        notebook.add(chameleon_frame, text="Chameleon Tools")
+        
+        # Command 탭 내용
+        command_widgets = self._create_command_tab_content(command_frame)
+        
+        # Chameleon 탭 내용
+        chameleon_widgets = self._create_chameleon_tab_content(chameleon_frame)
+        
+        # 탭 변경 이벤트 처리
+        def on_tab_changed(event):
+            selected_tab = notebook.index(notebook.select())
+            # 탭이 변경될 때 다른 탭의 내용을 비움
+            if selected_tab == 0:  # Command 탭 선택
+                if 'chameleon_var' in chameleon_widgets:
+                    chameleon_widgets['chameleon_var'].set("")
+            elif selected_tab == 1:  # Chameleon 탭 선택
+                if 'command_text' in command_widgets:
+                    command_widgets['command_text'].delete("1.0", tk.END)
+        
+        notebook.bind("<<NotebookTabChanged>>", on_tab_changed)
+        
+        # 위젯들 통합
+        widgets = {}
+        widgets.update(command_widgets)
+        widgets.update(chameleon_widgets)
+        widgets['execution_notebook'] = notebook
+        
+        return widgets
     
-    def _create_command_field(self, parent):
-        """명령어 입력 필드 생성"""
-        ttk.Label(parent, text="명령어:").grid(row=3, column=0, sticky=tk.NW+tk.W, padx=(0, 5), pady=2)
-        
+    def _create_command_tab_content(self, parent):
+        """Command 탭 내용 생성"""
+        # 명령어 텍스트 영역
         cmd_frame = ttk.Frame(parent)
-        cmd_frame.grid(row=3, column=1, sticky=tk.W+tk.E+tk.N+tk.S, pady=2)
+        cmd_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        command_text = tk.Text(cmd_frame, height=6, width=40, wrap=tk.WORD, font=("Consolas", 9))
-        cmd_scrollbar = ttk.Scrollbar(cmd_frame, orient=tk.VERTICAL, command=command_text.yview)
+        ttk.Label(cmd_frame, text="Python 명령어:").pack(anchor=tk.W, pady=(0, 5))
+        
+        # 텍스트 위젯과 스크롤바
+        text_frame = ttk.Frame(cmd_frame)
+        text_frame.pack(fill=tk.BOTH, expand=True)
+        
+        command_text = tk.Text(text_frame, height=8, wrap=tk.WORD, font=("Consolas", 9))
+        cmd_scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=command_text.yview)
         command_text.configure(yscrollcommand=cmd_scrollbar.set)
         
         command_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         cmd_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        return {'command_text': command_text}
+        # canExecuteAction 필드
+        separator = ttk.Separator(cmd_frame, orient='horizontal')
+        separator.pack(fill=tk.X, pady=10)
+        
+        ttk.Label(cmd_frame, text="canExecuteAction (선택사항):").pack(anchor=tk.W, pady=(0, 5))
+        
+        can_exec_frame = ttk.Frame(cmd_frame)
+        can_exec_frame.pack(fill=tk.X)
+        
+        can_execute_text = tk.Text(can_exec_frame, height=3, wrap=tk.WORD, font=("Consolas", 9))
+        can_exec_scrollbar = ttk.Scrollbar(can_exec_frame, orient=tk.VERTICAL, command=can_execute_text.yview)
+        can_execute_text.configure(yscrollcommand=can_exec_scrollbar.set)
+        
+        can_execute_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        can_exec_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # 툴팁 추가
+        self.create_tooltip(can_execute_text, 
+                           "메뉴 항목 클릭 가능 여부를 결정하는 Python 코드\n"
+                           "True를 반환하면 클릭 가능, False면 비활성화")
+        
+        return {
+            'command_text': command_text,
+            'can_execute_text': can_execute_text
+        }
     
-    def _create_chameleon_field(self, parent):
-        """Chameleon Tools 설정 필드 생성"""
-        chameleon_frame = ttk.LabelFrame(parent, text="Chameleon Tools 설정")
-        chameleon_frame.grid(row=6, column=0, columnspan=2, sticky=tk.W+tk.E, pady=5)
-        chameleon_frame.columnconfigure(1, weight=1)
+    def _create_chameleon_tab_content(self, parent):
+        """Chameleon 탭 내용 생성"""
+        # Chameleon Tools 설정
+        chameleon_frame = ttk.Frame(parent)
+        chameleon_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        # Chameleon Tools 경로
-        ttk.Label(chameleon_frame, text="JSON 파일 경로:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+        ttk.Label(chameleon_frame, text="Chameleon Tools JSON 파일 경로:").pack(anchor=tk.W, pady=(0, 5))
         
-        # 경로 입력과 파일 선택 버튼을 같은 줄에 배치
+        # 경로 입력과 파일 선택 버튼
         path_frame = ttk.Frame(chameleon_frame)
-        path_frame.grid(row=0, column=1, sticky=tk.W+tk.E, padx=5, pady=2)
-        path_frame.columnconfigure(0, weight=1)
+        path_frame.pack(fill=tk.X, pady=(0, 10))
         
         chameleon_var = tk.StringVar()
-        chameleon_entry = ttk.Entry(path_frame, textvariable=chameleon_var)
-        chameleon_entry.grid(row=0, column=0, sticky=tk.W+tk.E, padx=(0, 5))
+        chameleon_entry = ttk.Entry(path_frame, textvariable=chameleon_var, font=("Consolas", 9))
+        chameleon_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
         
         # 파일 선택 버튼
         def select_chameleon_file():
@@ -2172,41 +2276,40 @@ class TAPythonTool:
                 relative_path = self._convert_to_relative_path(file_path)
                 chameleon_var.set(relative_path)
         
-        chameleon_button = ttk.Button(path_frame, text="📁", command=select_chameleon_file, width=3)
-        chameleon_button.grid(row=0, column=1)
+        chameleon_button = ttk.Button(path_frame, text="📁 파일 선택", command=select_chameleon_file)
+        chameleon_button.pack(side=tk.RIGHT)
         
-        # 간단한 예시 하나만
+        # 예시 텍스트
         example_text = "예시: ../Python/Example/MinimalExample.json"
         ttk.Label(chameleon_frame, text=example_text, font=("Arial", 8), 
-                 foreground="gray").grid(row=1, column=0, columnspan=2, sticky=tk.W, padx=5, pady=1)
+                 foreground="gray").pack(anchor=tk.W, pady=(0, 10))
         
-        return {'chameleon_var': chameleon_var, 'chameleon_entry': chameleon_entry, 'chameleon_button': chameleon_button}
+        # 설명 텍스트
+        desc_text = """Chameleon Tools는 Unreal Engine의 UI 도구를 생성합니다.
+JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다."""
+        
+        desc_label = ttk.Label(chameleon_frame, text=desc_text, font=("Arial", 8), 
+                              foreground="gray", wraplength=300, justify=tk.LEFT)
+        desc_label.pack(anchor=tk.W, pady=10)
+        
+        return {
+            'chameleon_var': chameleon_var,
+            'chameleon_entry': chameleon_entry,
+            'chameleon_button': chameleon_button
+        }
     
-    def _create_can_execute_action_field(self, parent):
-        """canExecuteAction 입력 필드 생성"""
-        ttk.Label(parent, text="canExecuteAction:").grid(row=5, column=0, sticky=tk.NW+tk.W, padx=(0, 5), pady=2)
-        
-        can_exec_frame = ttk.Frame(parent)
-        can_exec_frame.grid(row=5, column=1, sticky=tk.W+tk.E+tk.N+tk.S, pady=2)
-        
-        can_execute_text = tk.Text(can_exec_frame, height=3, width=40, wrap=tk.WORD, font=("Consolas", 9))
-        can_exec_scrollbar = ttk.Scrollbar(can_exec_frame, orient=tk.VERTICAL, command=can_execute_text.yview)
-        can_execute_text.configure(yscrollcommand=can_exec_scrollbar.set)
-        
-        can_execute_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        can_exec_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # 툴팁 추가
-        self.create_tooltip(can_execute_text, 
-                           "메뉴 항목 클릭 가능 여부를 결정하는 Python 코드\n"
-                           "True를 반환하면 클릭 가능, False면 비활성화")
-        
-        return {'can_execute_text': can_execute_text}
+    def _create_enabled_field(self, parent):
+        """활성화 체크박스 생성"""
+        enabled_var = tk.BooleanVar()
+        enabled_var.set(True)  # 기본값을 명시적으로 설정
+        enabled_check = ttk.Checkbutton(parent, text="활성화", variable=enabled_var)
+        enabled_check.grid(row=2, column=1, sticky=tk.W, pady=2)
+        return {'enabled_var': enabled_var, 'enabled_check': enabled_check}
     
     def _create_icon_field(self, parent):
         """아이콘 설정 필드 생성"""
         icon_frame = ttk.LabelFrame(parent, text="아이콘 설정")
-        icon_frame.grid(row=7, column=0, columnspan=2, sticky=tk.W+tk.E, pady=5)
+        icon_frame.grid(row=4, column=0, columnspan=2, sticky=tk.W+tk.E, pady=5)
         icon_frame.columnconfigure(1, weight=1)
         
         # 아이콘 타입 선택과 URL 링크 버튼을 같은 줄에 배치
@@ -2320,7 +2423,7 @@ class TAPythonTool:
         """업데이트 버튼 생성"""
         update_btn = ttk.Button(parent, text="💾 변경사항 저장", 
                                command=lambda: self.update_entry(tool_menu_id))
-        update_btn.grid(row=9, column=1, sticky=tk.W, pady=(10, 0))
+        update_btn.grid(row=5, column=1, sticky=tk.W, pady=(10, 0))
         return {'update_btn': update_btn}
     
     def load_default_config(self):
@@ -2698,20 +2801,51 @@ class TAPythonTool:
         self.update_panel_titles(category_name=category_name, item_name=None)
         
         tab_widgets = self.current_widgets
+        
+        # 공통 필드 초기화
         tab_widgets['name_var'].set("")
-        tab_widgets['tooltip_var'].set("")
-        tab_widgets['enabled_var'].set(True)
-        tab_widgets['command_text'].delete(1.0, tk.END)
-        tab_widgets['can_execute_text'].delete(1.0, tk.END)
-        tab_widgets['chameleon_var'].set("")
+        
+        # 모든 타입별 UI 숨기기
+        for frame_key in ['submenu_frame', 'command_frame', 'chameleon_frame']:
+            if frame_key in tab_widgets:
+                tab_widgets[frame_key].grid_remove()
+        
+        # 타입별 필드들 초기화
+        self._clear_all_type_fields(tab_widgets)
+        
+        # 아이콘 초기화
         tab_widgets['icon_type_var'].set("없음")
         tab_widgets['icon_name_var'].set("")
         
         # 편집 불가능 상태로 설정
         self.set_edit_state(tool_menu_id, False)
     
+    def _clear_all_type_fields(self, tab_widgets):
+        """모든 타입별 필드들 초기화"""
+        # 서브메뉴 필드들
+        if 'submenu_tooltip_var' in tab_widgets:
+            tab_widgets['submenu_tooltip_var'].set("")
+            
+        # 명령어 필드들
+        if 'command_tooltip_var' in tab_widgets:
+            tab_widgets['command_tooltip_var'].set("")
+        if 'command_enabled_var' in tab_widgets:
+            tab_widgets['command_enabled_var'].set(True)
+        if 'command_text' in tab_widgets:
+            tab_widgets['command_text'].delete(1.0, tk.END)
+        if 'can_execute_text' in tab_widgets:
+            tab_widgets['can_execute_text'].delete(1.0, tk.END)
+            
+        # Chameleon 필드들
+        if 'chameleon_tooltip_var' in tab_widgets:
+            tab_widgets['chameleon_tooltip_var'].set("")
+        if 'chameleon_enabled_var' in tab_widgets:
+            tab_widgets['chameleon_enabled_var'].set(True)
+        if 'chameleon_var' in tab_widgets:
+            tab_widgets['chameleon_var'].set("")
+    
     def set_edit_state(self, tool_menu_id, enabled):
-        """편집 폼 활성화/비활성화"""
+        """편집 폼 활성화/비활성화 (타입별 위젯 처리)"""
         # 현재 카테고리인지 확인
         if tool_menu_id != self.current_tool_menu_id or not self.current_widgets:
             return
@@ -2719,22 +2853,59 @@ class TAPythonTool:
         tab_widgets = self.current_widgets
         state = tk.NORMAL if enabled else tk.DISABLED
         
-        widgets = [
-            tab_widgets['name_entry'],
-            tab_widgets['tooltip_entry'],
-            tab_widgets['chameleon_entry'],
-            tab_widgets['chameleon_button'],  # 파일 피커 버튼 추가
-            tab_widgets['enabled_check'],
-            tab_widgets['command_text'],
-            tab_widgets['can_execute_text'],
-            tab_widgets['icon_type_combo'],
-            tab_widgets['icon_name_entry'],
-            tab_widgets['icon_ref_button'],  # URL 링크 버튼 추가
-            tab_widgets['update_btn']
+        # 공통 위젯들
+        common_widgets = [
+            'name_entry',
+            'icon_type_combo',
+            'icon_name_entry',
+            'icon_ref_button',
+            'update_btn'
         ]
         
-        for widget in widgets:
-            widget.configure(state=state)
+        # 타입별 위젯들
+        type_widgets = {
+            'submenu': [
+                'submenu_tooltip_entry'
+            ],
+            'command': [
+                'command_tooltip_entry',
+                'command_enabled_check',
+                'command_text',
+                'can_execute_text'
+            ],
+            'chameleon': [
+                'chameleon_tooltip_entry',
+                'chameleon_enabled_check',
+                'chameleon_entry',
+                'chameleon_button'
+            ]
+        }
+        
+        # 공통 위젯들 상태 변경
+        for widget_key in common_widgets:
+            if widget_key in tab_widgets:
+                try:
+                    tab_widgets[widget_key].configure(state=state)
+                except (tk.TclError, AttributeError):
+                    continue
+        
+        # 현재 표시된 타입별 위젯들만 상태 변경
+        for entry_type, widget_keys in type_widgets.items():
+            frame_key = f'{entry_type}_frame'
+            
+            # 해당 타입 프레임이 표시되어 있는지 확인
+            if frame_key in tab_widgets:
+                try:
+                    # grid_info()가 비어있지 않으면 표시된 상태
+                    if tab_widgets[frame_key].grid_info():
+                        for widget_key in widget_keys:
+                            if widget_key in tab_widgets:
+                                try:
+                                    tab_widgets[widget_key].configure(state=state)
+                                except (tk.TclError, AttributeError):
+                                    continue
+                except (tk.TclError, AttributeError):
+                    continue
     
     def _verify_command_load(self, tab_widgets, expected_command):
         """Text 위젯에 명령어가 제대로 로드되었는지 검증"""
@@ -2774,69 +2945,50 @@ class TAPythonTool:
             item_data = self._get_item_data_from_tree(treeview, selected_item, tool_menu_id)
             
             if item_data:
-                # 서브메뉴인지 확인
-                is_submenu = "items" in item_data
+                # 엔트리 타입 결정
+                entry_type = self._determine_entry_type(item_data)
                 
-                # 편집 폼에 로드 (먼저 데이터 로드)
+                # 적절한 타입 UI 표시
+                self._show_type_ui(tab_widgets, entry_type)
+                
+                # 공통 필드 로드: 이름
                 tab_widgets['name_var'].set(item_data.get("name", ""))
                 
-                if not is_submenu:
-                    # 일반 아이템인 경우에만 추가 필드들 로드
-                    tab_widgets['tooltip_var'].set(item_data.get("tooltip", ""))
+                # 타입별 필드 로드
+                if entry_type == "submenu":
+                    # 서브메뉴: 툴팁만
+                    tab_widgets['submenu_tooltip_var'].set(item_data.get("tooltip", ""))
                     
-                    # enabled 값 처리: 기본값 True, 명시적으로 False인 경우만 False
+                elif entry_type == "command":
+                    # 명령어: 툴팁, 활성화, 명령어, canExecuteAction
+                    tab_widgets['command_tooltip_var'].set(item_data.get("tooltip", ""))
+                    
                     enabled_value = item_data.get("enabled", True)
-                    if "enabled" not in item_data:
-                        item_data["enabled"] = enabled_value  # 데이터에 기본값 저장
-                    
-                    # 디버그: enabled 값 확인
-                    logger.debug(f"아이템 '{item_data.get('name')}' 로드됨 - enabled: {enabled_value} (타입: {type(enabled_value)})")
-                    
-                    tab_widgets['enabled_var'].set(bool(enabled_value))  # 명시적으로 bool 변환
+                    tab_widgets['command_enabled_var'].set(bool(enabled_value))
                     
                     # 명령어
                     tab_widgets['command_text'].delete(1.0, tk.END)
                     command = item_data.get("command", "")
                     if command:
                         tab_widgets['command_text'].insert(1.0, command)
-                        logger.debug(f"명령어 Text 위젯에 로드됨: '{command}'")
-                        
-                        # 위젯 업데이트 강제 실행
-                        tab_widgets['command_text'].update_idletasks()
-                        
-                        # 잠시 후 다시 읽어서 확인
-                        self.root.after(100, lambda: self._verify_command_load(tab_widgets, command))
-                    else:
-                        logger.debug("명령어가 비어있음")
                     
-                    # Text 위젯에서 다시 읽어서 확인
-                    loaded_command = tab_widgets['command_text'].get(1.0, tk.END).rstrip('\n').strip()
-                    logger.debug(f"Text 위젯에서 즉시 읽은 명령어: '{loaded_command}'")
-                    
-                    # Chameleon
-                    tab_widgets['chameleon_var'].set(item_data.get("ChameleonTools", ""))
-                    
-                    # canExecuteAction (새로 추가)
+                    # canExecuteAction
                     tab_widgets['can_execute_text'].delete(1.0, tk.END)
                     can_execute = item_data.get("canExecuteAction", "")
                     if can_execute:
                         tab_widgets['can_execute_text'].insert(1.0, can_execute)
+                        
+                elif entry_type == "chameleonTools":
+                    # Chameleon: 툴팁, 활성화, ChameleonTools
+                    tab_widgets['chameleon_tooltip_var'].set(item_data.get("tooltip", ""))
                     
-                    # 아이콘 설정 로드
-                    self._load_icon_data(tab_widgets, item_data)
-                else:
-                    # 서브메뉴인 경우 다른 필드들 초기화 (아이콘은 유지)
-                    tab_widgets['tooltip_var'].set("")
-                    tab_widgets['enabled_var'].set(True)
-                    tab_widgets['command_text'].delete(1.0, tk.END)
-                    tab_widgets['chameleon_var'].set("")
-                    tab_widgets['can_execute_text'].delete(1.0, tk.END)
+                    enabled_value = item_data.get("enabled", True)
+                    tab_widgets['chameleon_enabled_var'].set(bool(enabled_value))
                     
-                    # 서브메뉴도 아이콘 설정 로드
-                    self._load_icon_data(tab_widgets, item_data)
+                    tab_widgets['chameleon_var'].set(item_data.get("ChameleonTools", ""))
                 
-                # 데이터 로드 후 편집 폼 필드 가시성 업데이트
-                self._update_form_visibility(tab_widgets, is_submenu)
+                # 공통: 아이콘 설정 로드
+                self._load_icon_data(tab_widgets, item_data, entry_type)
                 
                 # 패널 제목 업데이트 (아이템 선택됨)
                 item_name = item_data.get("name", "")
@@ -2926,7 +3078,7 @@ class TAPythonTool:
             return 0
     
     def update_entry(self, tool_menu_id):
-        """엔트리 업데이트"""
+        """엔트리 업데이트 (타입별 처리)"""
         try:
             # 현재 선택된 툴 메뉴가 아니면 리턴
             if tool_menu_id != self.current_tool_menu_id or not self.current_widgets:
@@ -2947,149 +3099,40 @@ class TAPythonTool:
                 self._show_error("오류", "선택된 엔트리의 데이터를 찾을 수 없습니다.")
                 return
             
-            logger.debug(f"업데이트 전 엔트리 데이터: {item_data}")
-            logger.debug(f"업데이트 전 엔트리 메모리 주소: {id(item_data)}")
+            # 엔트리 타입 결정
+            entry_type = self._determine_entry_type(item_data)
             
-            # 서브메뉴인지 확인
-            is_submenu = "items" in item_data
-            
-            # 폼에서 데이터 가져와서 업데이트
+            # 공통 필드: 이름
             name = tab_widgets['name_var'].get().strip()
             if not name:
                 self._show_warning("경고", "이름은 비워둘 수 없습니다.")
                 return
             
-            # 공통 필드 업데이트
             item_data["name"] = name
             
-            if is_submenu:
-                # 서브메뉴인 경우: 불필요한 필드들 제거 (tooltip은 유지)
-                fields_to_remove = ["enabled", "command", "ChameleonTools", "canExecuteAction"]
-                for field in fields_to_remove:
-                    if field in item_data:
-                        del item_data[field]
-                        logger.debug(f"서브메뉴에서 불필요한 필드 제거: {field}")
-                
-                # 서브메뉴 전용 필드들 업데이트
-                item_data["tooltip"] = tab_widgets['tooltip_var'].get().strip()
-                
-                # 서브메뉴도 아이콘은 설정 가능
-                icon_type = tab_widgets['icon_type_var'].get()
-                icon_name = tab_widgets['icon_name_var'].get().strip()
-                
-                if icon_type != "없음" and icon_name:
-                    icon_data = {}
-                    if icon_type == "EditorStyle":
-                        icon_data = {"style": "EditorStyle", "name": icon_name}
-                    elif icon_type == "ChameleonStyle":
-                        icon_data = {"style": "ChameleonStyle", "name": icon_name}
-                    elif icon_type == "ImagePath":
-                        icon_data = {"ImagePathInPlugin": icon_name}
-                    
-                    if icon_data:
-                        item_data["icon"] = icon_data
-                elif "icon" in item_data:
-                    del item_data["icon"]  # 아이콘 설정이 없으면 키 삭제
-                
-                logger.debug(f"서브메뉴 업데이트 완료: {item_data}")
-            else:
-                # 일반 엔트리인 경우: 모든 필드 업데이트
-                # enabled 값을 명시적으로 가져오기
-                enabled_value = tab_widgets['enabled_var'].get()
-                logger.debug(f"폼에서 가져온 enabled 값: {enabled_value} (타입: {type(enabled_value)})")
-                
-                # 데이터 업데이트
-                old_enabled = item_data.get("enabled", "없음")
-                item_data["enabled"] = enabled_value
-                item_data["tooltip"] = tab_widgets['tooltip_var'].get().strip()
-                item_data["ChameleonTools"] = tab_widgets['chameleon_var'].get().strip()
-                
-                # canExecuteAction 처리
-                can_execute_raw = tab_widgets['can_execute_text'].get(1.0, tk.END)
-                can_execute = can_execute_raw.rstrip('\n').strip()
-                if can_execute:
-                    item_data["canExecuteAction"] = can_execute
-                elif "canExecuteAction" in item_data:
-                    del item_data["canExecuteAction"]  # 빈 값이면 키 삭제
-                
-                # 아이콘 설정 처리
-                icon_type = tab_widgets['icon_type_var'].get()
-                icon_name = tab_widgets['icon_name_var'].get().strip()
-                
-                if icon_type != "없음" and icon_name:
-                    icon_data = {}
-                    if icon_type == "EditorStyle":
-                        icon_data = {"style": "EditorStyle", "name": icon_name}
-                    elif icon_type == "ChameleonStyle":
-                        icon_data = {"style": "ChameleonStyle", "name": icon_name}
-                    elif icon_type == "ImagePath":
-                        icon_data = {"ImagePathInPlugin": icon_name}
-                    
-                    if icon_data:
-                        item_data["icon"] = icon_data
-                elif "icon" in item_data:
-                    del item_data["icon"]  # 아이콘 설정이 없으면 키 삭제
-                
-                # 명령어 처리 (Text 위젯의 자동 개행 제거)
-                raw_command = tab_widgets['command_text'].get(1.0, tk.END)
-                command = raw_command.rstrip('\n').strip()
-                logger.debug(f"Text 위젯에서 가져온 원본 명령어: '{raw_command}'")
-                logger.debug(f"처리된 명령어: '{command}'")
-                logger.debug(f"기존 명령어: '{item_data.get('command', '')}'")
-                
-                # 명령어 업데이트 로직 개선
-                existing_command = item_data.get("command", "")
-                if command.strip():  # 새 명령어가 있는 경우
-                    item_data["command"] = command
-                    logger.debug(f"명령어 업데이트됨: '{command}'")
-                elif existing_command:  # Text 위젯이 비어있지만 기존 명령어가 있는 경우
-                    # 기존 명령어 유지 (Text 위젯 문제로 인한 데이터 손실 방지)
-                    logger.debug(f"Text 위젯이 비어있어 기존 명령어 유지: '{existing_command}'")
-                    # item_data["command"]는 그대로 두어 기존 값 유지
-                else:  # 둘 다 비어있는 경우
-                    item_data["command"] = ""
-                    logger.debug("빈 명령어로 설정됨")
-                
-                logger.debug(f"enabled 값 변경: {old_enabled} -> {item_data['enabled']}")
+            # 타입별 데이터 업데이트
+            if entry_type == "submenu":
+                self._update_submenu_data(item_data, tab_widgets)
+            elif entry_type == "command":
+                self._update_command_data(item_data, tab_widgets)
+            elif entry_type == "chameleonTools":
+                self._update_chameleon_data(item_data, tab_widgets)
+            
+            # 아이콘 설정 처리 (모든 타입 공통)
+            self._update_icon_data(item_data, tab_widgets)
             
             logger.debug(f"업데이트 후 엔트리 데이터: {item_data}")
             
-            # 트리뷰 업데이트 (헬퍼 메서드 사용)
+            # 트리뷰 업데이트
             item_type, display_name = self._get_entry_type_display(item_data, name)
             treeview.item(selected_item, text=display_name, values=(item_type,))
             
-            # config_data에서 실제로 변경되었는지 다시 확인
-            verification_data = self._get_item_data_from_tree(treeview, selected_item, tool_menu_id)
-            if verification_data:
-                logger.debug(f"검증 - 실제 저장된 데이터: {verification_data}")
-                logger.debug(f"검증 - 메모리 주소 동일한가: {id(item_data) == id(verification_data)}")
-            
-            # 상태 메시지 (서브메뉴와 일반 엔트리 구분)
-            if is_submenu:
-                self.update_status(f"💾 서브메뉴 '{name}' 저장 완료")
-            else:
-                enabled_value = item_data.get("enabled", True)
-                enabled_status = "✅ 활성화됨" if enabled_value else "❌ 비활성화됨"
-                self.update_status(f"💾 '{name}' 저장 완료 ({enabled_status}) - enabled={enabled_value}")
+            # 상태 메시지
+            self.update_status(f"💾 '{name}' 저장 완료 ({entry_type})")
             
             # 변경사항 추적
             self.mark_as_modified()
             
-        except tk.TclError as e:
-            error_msg = f"UI 위젯 오류: {str(e)}"
-            logger.error(f"Tkinter 오류: {e}")
-            self._show_error("UI 오류", error_msg)
-            self.update_status("❌ UI 오류", auto_clear=False)
-        except KeyError as e:
-            error_msg = f"데이터 구조 오류: 필요한 키를 찾을 수 없습니다"
-            logger.error(f"키 오류: {e}")
-            self._show_error("데이터 오류", error_msg)
-            self.update_status("❌ 데이터 구조 오류", auto_clear=False)
-        except AttributeError as e:
-            error_msg = f"객체 속성 오류: {str(e)}"
-            logger.error(f"속성 오류: {e}")
-            self._show_error("객체 오류", error_msg)
-            self.update_status("❌ 객체 오류", auto_clear=False)
         except Exception as e:
             error_msg = f"엔트리 업데이트 중 오류 발생: {str(e)}"
             logger.error(f"update_entry 오류: {e}")
@@ -3097,23 +3140,85 @@ class TAPythonTool:
             self._show_error("오류", error_msg)
             self.update_status(f"저장 실패: {str(e)}", auto_clear=False)
     
+    def _update_submenu_data(self, item_data, tab_widgets):
+        """서브메뉴 데이터 업데이트"""
+        # 서브메뉴 전용 필드
+        item_data["tooltip"] = tab_widgets['submenu_tooltip_var'].get().strip()
+        
+        # 불필요한 필드들 제거
+        fields_to_remove = ["enabled", "command", "ChameleonTools", "canExecuteAction"]
+        for field in fields_to_remove:
+            if field in item_data:
+                del item_data[field]
+    
+    def _update_command_data(self, item_data, tab_widgets):
+        """명령어 엔트리 데이터 업데이트"""
+        # 명령어 전용 필드들
+        item_data["tooltip"] = tab_widgets['command_tooltip_var'].get().strip()
+        item_data["enabled"] = tab_widgets['command_enabled_var'].get()
+        
+        # command
+        raw_command = tab_widgets['command_text'].get(1.0, tk.END)
+        command = raw_command.rstrip('\n').strip()
+        if command:
+            item_data["command"] = command
+        elif "command" in item_data:
+            del item_data["command"]
+        
+        # canExecuteAction
+        can_execute_raw = tab_widgets['can_execute_text'].get(1.0, tk.END)
+        can_execute = can_execute_raw.rstrip('\n').strip()
+        if can_execute:
+            item_data["canExecuteAction"] = can_execute
+        elif "canExecuteAction" in item_data:
+            del item_data["canExecuteAction"]
+        
+        # ChameleonTools 제거 (배타적 관계)
+        if "ChameleonTools" in item_data:
+            del item_data["ChameleonTools"]
+    
+    def _update_chameleon_data(self, item_data, tab_widgets):
+        """Chameleon 엔트리 데이터 업데이트"""
+        # Chameleon 전용 필드들
+        item_data["tooltip"] = tab_widgets['chameleon_tooltip_var'].get().strip()
+        item_data["enabled"] = tab_widgets['chameleon_enabled_var'].get()
+        
+        # ChameleonTools
+        chameleon_tools = tab_widgets['chameleon_var'].get().strip()
+        if chameleon_tools:
+            item_data["ChameleonTools"] = chameleon_tools
+        elif "ChameleonTools" in item_data:
+            del item_data["ChameleonTools"]
+        
+        # command 관련 필드들 제거 (배타적 관계)
+        fields_to_remove = ["command", "canExecuteAction"]
+        for field in fields_to_remove:
+            if field in item_data:
+                del item_data[field]
+    
+    def _update_icon_data(self, item_data, tab_widgets):
+        """아이콘 데이터 업데이트 (모든 타입 공통)"""
+        icon_type = tab_widgets['icon_type_var'].get()
+        icon_name = tab_widgets['icon_name_var'].get().strip()
+        
+        if icon_type != "없음" and icon_name:
+            icon_data = {}
+            if icon_type == "EditorStyle":
+                icon_data = {"style": "EditorStyle", "name": icon_name}
+            elif icon_type == "ChameleonStyle":
+                icon_data = {"style": "ChameleonStyle", "name": icon_name}
+            elif icon_type == "ImagePath":
+                icon_data = {"ImagePathInPlugin": icon_name}
+            
+            if icon_data:
+                item_data["icon"] = icon_data
+        elif "icon" in item_data:
+            del item_data["icon"]
+    
     def add_entry(self, tool_menu_id):
         """엔트리 추가"""
         # modal 창으로 열어 포커스 유지
         self.add_entry_dialog(tool_menu_id, modal=True)
-    
-    def add_submenu(self, tool_menu_id):
-        """서브메뉴 추가"""
-        # modal 창으로 열어 포커스 유지
-        self.add_submenu_dialog(tool_menu_id, modal=True)
-    
-    def add_submenu_dialog(self, tool_menu_id, modal=True):
-        """서브메뉴 추가 다이얼로그 (새로운 클래스 사용)"""
-        dialog = NewSubmenuDialog(self.root, self, tool_menu_id)
-        if hasattr(dialog, 'dialog'):  # 다이얼로그가 성공적으로 생성된 경우만
-            self.root.wait_window(dialog.dialog)
-            return dialog.result
-        return None
     
     def _populate_parent_list(self, treeview, parent, parent_list, prefix=""):
         """부모 아이템 목록 생성 (메모리 효율적)"""
@@ -3915,6 +4020,31 @@ class NewEntryDialog:
         else:
             self.category_var = tk.StringVar(value=self.tool_menu_id)
         
+        # 엔트리 타입 선택 (새로 추가)
+        ttk.Label(main_frame, text="엔트리 타입:").grid(row=row, column=0, sticky=tk.W, padx=5, pady=5)
+        self.entry_type_var = tk.StringVar(value="command")
+        entry_type_combo = ttk.Combobox(main_frame, textvariable=self.entry_type_var, 
+                                       values=["submenu", "command", "chameleonTools"], state="readonly")
+        entry_type_combo.grid(row=row, column=1, sticky=tk.W+tk.E, padx=5, pady=5)
+        
+        # 엔트리 타입 설명
+        type_descriptions = {
+            "submenu": "📁 서브메뉴 - 하위 엔트리들을 그룹화",
+            "command": "⚡ Python 명령어 - Python 코드 실행", 
+            "chameleonTools": "🎨 Chameleon Tools - UI 도구 실행"
+        }
+        
+        self.type_desc_label = ttk.Label(main_frame, text=type_descriptions["command"], 
+                                        foreground="gray", font=("Arial", 8))
+        self.type_desc_label.grid(row=row+1, column=0, columnspan=2, sticky=tk.W, padx=5, pady=(0, 5))
+        
+        def on_type_change(*args):
+            selected_type = self.entry_type_var.get()
+            self.type_desc_label.config(text=type_descriptions.get(selected_type, ""))
+        
+        self.entry_type_var.trace('w', on_type_change)
+        row += 2
+        
         # 이름
         ttk.Label(main_frame, text="이름:").grid(row=row, column=0, sticky=tk.W, padx=5, pady=5)
         self.name_var = tk.StringVar()
@@ -3967,6 +4097,7 @@ class NewEntryDialog:
         name = self.name_var.get().strip()
         selected_category = self.category_var.get()
         parent_selection = self.parent_var.get()
+        entry_type = self.entry_type_var.get()
         
         if not name:
             self.ta_tool._show_warning("경고", "이름을 입력해주세요.")
@@ -3976,17 +4107,38 @@ class NewEntryDialog:
             self.ta_tool._show_warning("경고", "메뉴 타입을 선택해주세요.")
             return
         
-        # 기본 엔트리 생성 (command와 ChameleonTools는 빈 값으로 설정)
-        new_entry = {
-            "name": name, 
-            "enabled": True,
-            "command": "",
-            "ChameleonTools": ""
-        }
+        if not entry_type:
+            self.ta_tool._show_warning("경고", "엔트리 타입을 선택해주세요.")
+            return
+        
+        # 엔트리 타입에 따라 다른 기본 구조 생성
+        if entry_type == "submenu":
+            # 서브메뉴: 이름, 툴팁, 아이콘, items
+            new_entry = {
+                "name": name,
+                "items": []  # 서브메뉴는 하위 항목 배열 가짐
+            }
+        elif entry_type == "command":
+            # 명령어: 이름, 툴팁, 활성화, 아이콘, command, canExecuteAction
+            new_entry = {
+                "name": name,
+                "enabled": True,
+                "command": ""
+            }
+        elif entry_type == "chameleonTools":
+            # Chameleon: 이름, 툴팁, 활성화, 아이콘, ChameleonTools
+            new_entry = {
+                "name": name,
+                "enabled": True,
+                "ChameleonTools": ""
+            }
+        else:
+            self.ta_tool._show_error("오류", f"알 수 없는 엔트리 타입: {entry_type}")
+            return
         
         try:
             if parent_selection == "(루트)":
-                # 툴 메뉴 데이터 확인/생성 (헬퍼 메서드 사용)
+                # 툴 메뉴 데이터 확인/생성
                 items = self.ta_tool._validate_config_data(selected_category)
                 items.append(new_entry)
             else:
@@ -4004,11 +4156,19 @@ class NewEntryDialog:
             self.ta_tool.refresh_tab(selected_category)
             self.ta_tool.mark_as_modified()  # 변경사항 추적
             
+            # 타입별 메시지
+            type_names = {
+                "submenu": "서브메뉴",
+                "command": "명령어 엔트리", 
+                "chameleonTools": "Chameleon 엔트리"
+            }
+            type_name = type_names.get(entry_type, "엔트리")
+            
             # 점(.)이 포함된 언리얼 엔진 메뉴인 경우 새로고침 안내
             if "." in selected_category:
-                self.ta_tool.update_status(f"➕ 메뉴 엔트리 '{name}' 추가됨 - 'TAPython.RefreshToolMenus' 실행 필요")
+                self.ta_tool.update_status(f"➕ {type_name} '{name}' 추가됨 - 'TAPython.RefreshToolMenus' 실행 필요")
             else:
-                self.ta_tool.update_status(f"➕ 엔트리 '{name}' 추가됨")
+                self.ta_tool.update_status(f"➕ {type_name} '{name}' 추가됨")
             
             self.result = new_entry
             self.dialog.destroy()
@@ -4017,126 +4177,6 @@ class NewEntryDialog:
             error_msg = f"엔트리 추가 중 오류 발생: {str(e)}"
             self.ta_tool._show_error("오류", error_msg)
             self.ta_tool.update_status(f"엔트리 추가 실패: {str(e)}", auto_clear=False)
-    
-    def cancel(self):
-        """취소"""
-        self.result = None
-        self.dialog.destroy()
-
-
-class NewSubmenuDialog:
-    """새 서브메뉴 추가 다이얼로그"""
-    
-    def __init__(self, parent, ta_tool, tool_menu_id):
-        self.result = None
-        self.ta_tool = ta_tool
-        self.tool_menu_id = tool_menu_id
-        
-        # 현재 카테고리가 없으면 리턴
-        if not self.ta_tool.current_tool_menu_id or not self.ta_tool.current_widgets:
-            self.ta_tool._show_warning("경고", "카테고리를 먼저 선택해주세요.")
-            return
-        
-        # 다이얼로그 창 생성
-        self.dialog = tk.Toplevel(parent)
-        self.dialog.title("새 서브메뉴 추가")
-        self.dialog.geometry("400x200")
-        self.dialog.resizable(False, False)
-        self.dialog.transient(parent)
-        self.dialog.grab_set()
-        
-        # 중앙 정렬
-        self.dialog.geometry("+%d+%d" % (parent.winfo_rootx() + 50, parent.winfo_rooty() + 50))
-        
-        self.setup_dialog()
-    
-    def setup_dialog(self):
-        """다이얼로그 UI 설정"""
-        main_frame = ttk.Frame(self.dialog)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-        
-        # 이름
-        ttk.Label(main_frame, text="이름:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
-        self.name_var = tk.StringVar()
-        self.name_entry = ttk.Entry(main_frame, textvariable=self.name_var)
-        self.name_entry.grid(row=0, column=1, sticky=tk.W+tk.E, padx=5, pady=5)
-        
-        # 위치 (부모 아이템 선택)
-        ttk.Label(main_frame, text="위치:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
-        self.parent_var = tk.StringVar()
-        self.parent_combo = ttk.Combobox(main_frame, textvariable=self.parent_var, state="readonly")
-        self.parent_combo.grid(row=1, column=1, sticky=tk.W+tk.E, padx=5, pady=5)
-        
-        # 부모 아이템 목록 구성 (루트 포함)
-        tab_widgets = self.ta_tool.current_widgets
-        treeview = tab_widgets['treeview']
-        parent_items = ["(루트)"]
-        self.ta_tool._populate_parent_list(treeview, "", parent_items)
-        self.parent_combo['values'] = parent_items
-        self.parent_combo.current(0)
-        
-        # 버튼들
-        button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=2, column=0, columnspan=2, pady=10)
-        
-        ttk.Button(button_frame, text="✅ 추가", command=self.add_submenu).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="❌ 취소", command=self.cancel).pack(side=tk.LEFT, padx=5)
-        
-        # 그리드 설정
-        main_frame.columnconfigure(1, weight=1)
-        
-        # 포커스 설정
-        self.name_entry.focus_set()
-        
-        # Enter/Escape 키 바인딩
-        self.dialog.bind('<Return>', lambda e: self.add_submenu())
-        self.dialog.bind('<Escape>', lambda e: self.cancel())
-    
-    def add_submenu(self):
-        """서브메뉴 추가"""
-        name = self.name_var.get().strip()
-        parent_selection = self.parent_var.get()
-        
-        if not name:
-            self.ta_tool._show_warning("경고", "이름을 입력해주세요.")
-            return
-        
-        # 서브메뉴는 필수 필드만 포함 (실제 MenuConfig.json 분석 결과)
-        # name과 items만 필수, enabled/tooltip/ChameleonTools는 선택적
-        new_submenu = {
-            "name": name, 
-            "items": []
-        }
-        
-        try:
-            if parent_selection == "(루트)":
-                # 루트에 추가 (헬퍼 메서드 사용)
-                items = self.ta_tool._validate_config_data(self.tool_menu_id)
-                items.append(new_submenu)
-                self.ta_tool.update_status(f"📁 서브메뉴 '{name}' 추가됨")
-            else:
-                # 선택된 부모에 추가
-                parent_item_data = self.ta_tool._find_parent_by_name(self.tool_menu_id, parent_selection)
-                if parent_item_data:
-                    if "items" not in parent_item_data:
-                        parent_item_data["items"] = []
-                    parent_item_data["items"].append(new_submenu)
-                    self.ta_tool.update_status(f"📁 서브메뉴 '{name}'이 '{parent_selection}'에 추가됨")
-                else:
-                    self.ta_tool._show_error("오류", f"부모 아이템 '{parent_selection}'를 찾을 수 없습니다.")
-                    return
-            
-            # 해당 탭 새로고침
-            self.ta_tool.refresh_tab(self.tool_menu_id)
-            self.ta_tool.mark_as_modified()  # 변경사항 추적
-            
-            self.result = new_submenu
-            self.dialog.destroy()
-            
-        except Exception as e:
-            error_msg = f"서브메뉴 추가 중 오류 발생: {str(e)}"
-            self.ta_tool._show_error("오류", error_msg)
-            self.ta_tool.update_status(f"서브메뉴 추가 실패: {str(e)}", auto_clear=False)
     
     def cancel(self):
         """취소"""
