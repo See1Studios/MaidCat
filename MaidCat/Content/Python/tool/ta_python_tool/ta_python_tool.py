@@ -2872,8 +2872,26 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
             items = self.config_data[tool_menu_id]["items"]
             self._populate_tree_items(treeview, "", items)
         
-        # 편집 폼 초기화
-        self.clear_edit_form(tool_menu_id)
+        # 편집 폼 초기화 (안전하게 처리)
+        try:
+            # 편집 폼을 숨기고 안내 메시지 표시
+            for widget in self.edit_form_frame.winfo_children():
+                widget.destroy()
+            self._create_no_selection_message()
+            
+            # current_widgets를 기본 상태로 재설정
+            self.current_widgets = {'treeview': self.current_menu_treeview}
+            self.tabs[tool_menu_id] = self.current_widgets
+            
+            # 패널 제목 업데이트
+            category_name = None
+            for cat_id, cat_name in self.category_data.values():
+                if cat_id == self.current_tool_menu_id:
+                    category_name = cat_name
+                    break
+            self.update_panel_titles(category_name=category_name, item_name=None)
+        except Exception as e:
+            logger.error(f"편집 폼 초기화 중 오류: {e}")
     
     def _populate_tree_items(self, treeview, parent, items):
         """트리뷰에 아이템들을 추가 (재귀적으로 서브메뉴 처리)"""
@@ -3050,13 +3068,15 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
                 return
             
             # 아이템이 선택되었을 때 편집 폼 생성 (아직 없다면)
-            if not hasattr(self.current_widgets, 'get') or 'name_var' not in self.current_widgets:
+            if not self.current_widgets or 'name_var' not in self.current_widgets:
                 # 편집 폼이 없으면 생성
                 for widget in self.edit_form_frame.winfo_children():
                     widget.destroy()
                 self.current_widgets = self._create_edit_form(self.edit_form_frame, tool_menu_id)
                 self.current_widgets['treeview'] = self.current_menu_treeview
                 self.tabs[tool_menu_id] = self.current_widgets
+                tab_widgets = self.current_widgets
+            else:
                 tab_widgets = self.current_widgets
             
             selected_item = selection[0]
@@ -4207,14 +4227,22 @@ class NewEntryDialog:
     
     def _populate_parent_list(self):
         """부모 엔트리 목록 구성"""
-        if self.tool_menu_id is not None and self.ta_tool.current_tool_menu_id and self.ta_tool.current_widgets:
-            tab_widgets = self.ta_tool.current_widgets
-            treeview = tab_widgets['treeview']
-            parent_items = ["(루트)"]
-            self.ta_tool._populate_parent_list(treeview, "", parent_items)
-            self.parent_combo['values'] = parent_items
-            self.parent_combo.current(0)
-        else:
+        try:
+            if (self.tool_menu_id is not None and 
+                self.ta_tool.current_tool_menu_id and 
+                hasattr(self.ta_tool, 'current_menu_treeview') and 
+                self.ta_tool.current_menu_treeview):
+                
+                treeview = self.ta_tool.current_menu_treeview
+                parent_items = ["(루트)"]
+                self.ta_tool._populate_parent_list(treeview, "", parent_items)
+                self.parent_combo['values'] = parent_items
+                self.parent_combo.current(0)
+            else:
+                self.parent_combo['values'] = ["(루트)"]
+                self.parent_combo.current(0)
+        except Exception as e:
+            # 오류 발생 시 기본값으로 설정
             self.parent_combo['values'] = ["(루트)"]
             self.parent_combo.current(0)
     
