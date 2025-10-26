@@ -918,9 +918,9 @@ class TAPythonTool:
         """엔트리 타입에 따른 표시 형식 반환"""
         if "items" in item_data:
             return ("📁 서브메뉴", f"📁 {name}")
-        elif item_data.get("ChameleonTools"):
+        elif "ChameleonTools" in item_data:
             return ("🎨 카멜레온", f"🎨 {name}")
-        elif item_data.get("command"):
+        elif "command" in item_data or "canExecuteAction" in item_data:
             return ("⚡ 명령어", f"⚡ {name}")
         else:
             return ("📄 엔트리", f"📄 {name}")
