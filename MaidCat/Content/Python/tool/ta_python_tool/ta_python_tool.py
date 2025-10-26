@@ -526,6 +526,71 @@ class TAPythonTool:
     - 엔트리 관리: add_entry, delete_entry, move_entry_*
     - 헬퍼 메서드: _get_item_data_from_tree, _find_parent_by_name 등
     """
+    
+    # ==================== 경로 유틸리티 ====================
+    
+    def _get_project_root(self):
+        """프로젝트 루트 경로 반환 (캐싱)"""
+        if hasattr(self, '_cached_project_root'):
+            return self._cached_project_root
+        
+        if not self.default_config_path:
+            return None
+        
+        # MenuConfig.json -> TA/TAPython/UI/MenuConfig.json
+        # 프로젝트 루트 = TA 폴더의 상위 디렉토리
+        config_dir = os.path.dirname(self.default_config_path)  # UI
+        tapython_dir = os.path.dirname(config_dir)  # TAPython
+        ta_dir = os.path.dirname(tapython_dir)  # TA
+        project_root = os.path.dirname(ta_dir)  # 프로젝트 루트
+        
+        self._cached_project_root = project_root
+        return project_root
+    
+    def _get_perforce_settings_path(self):
+        """퍼포스 설정 파일 경로 반환"""
+        project_root = self._get_project_root()
+        if not project_root:
+            return None
+        
+        return os.path.join(
+            project_root, 
+            "Saved", 
+            "Config", 
+            "WindowsEditor", 
+            "SourceControlSettings.ini"
+        )
+    
+    def _setup_p4_environment(self, p4_settings):
+        """퍼포스 환경 변수 설정 (재사용 가능)"""
+        p4_env = os.environ.copy()
+        
+        if 'Port' in p4_settings:
+            p4_env['P4PORT'] = p4_settings['Port']
+        if 'UserName' in p4_settings:
+            p4_env['P4USER'] = p4_settings['UserName']
+        if 'Workspace' in p4_settings:
+            p4_env['P4CLIENT'] = p4_settings['Workspace']
+        
+        return p4_env
+    
+    def _run_p4_command(self, cmd, p4_settings, timeout=2):
+        """퍼포스 명령 실행 (공통 로직)"""
+        p4_env = self._setup_p4_environment(p4_settings)
+        
+        result = subprocess.run(
+            cmd,
+            env=p4_env,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+        )
+        
+        return result
+    
+    # ==================== 초기화 ====================
+    
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("🐍 TA Python Tool")
@@ -675,7 +740,7 @@ class TAPythonTool:
         except Exception as e:
             error_msg = f"로그 뷰어 표시 중 오류: {str(e)}"
             logger.error(error_msg)
-            self._show_error(DIALOG_ERROR_TITLE, error_msg)
+            self._show_error(error_msg, DIALOG_ERROR_TITLE)
 
     def _create_log_viewer_ui(self, parent):
         """로그 뷰어 UI 구성 요소 생성"""
@@ -750,7 +815,7 @@ class TAPythonTool:
             self.update_status(MSG_CLIPBOARD_SUCCESS)
         except Exception as e:
             logger.error(f"클립보드 복사 중 오류: {e}")
-            self._show_error(DIALOG_ERROR_TITLE, MSG_CLIPBOARD_ERROR.format(str(e)))
+            self._show_error(MSG_CLIPBOARD_ERROR.format(str(e)), DIALOG_ERROR_TITLE)
 
     def _refresh_log_viewer(self, text_widget, level):
         """로그 뷰어 새로고침"""
@@ -791,35 +856,27 @@ class TAPythonTool:
             text_widget.configure(state=tk.DISABLED)
 
     # === 유틸리티 메서드들 ===
-    def _show_error(self, title, message, log_level="error"):
-        """에러 메시지 표시 및 로깅"""
-        if log_level == "error":
-            logger.error(message)
-        elif log_level == "warning":
-            logger.warning(message)
-        messagebox.showerror(title, message)
+    def _show_message(self, msg_type, title, message):
+        """통합 메시지 표시 및 로깅"""
+        # 로깅
+        log_func = getattr(logger, msg_type, logger.info)
+        log_func(message)
+        
+        # 메시지 박스 표시
+        msg_func = getattr(messagebox, f"show{msg_type}", messagebox.showinfo)
+        msg_func(title, message)
     
-    def _show_warning(self, title, message):
-        """경고 메시지 표시 및 로깅"""
-        logger.warning(message)
-        messagebox.showwarning(title, message)
-
-    def _show_info(self, title, message):
+    def _show_error(self, message, title=None):
+        """에러 메시지 표시"""
+        self._show_message("error", title or DIALOG_ERROR_TITLE, message)
+    
+    def _show_warning(self, message, title=None):
+        """경고 메시지 표시"""
+        self._show_message("warning", title or TITLE_WARNING, message)
+    
+    def _show_info(self, message, title=None):
         """정보 메시지 표시"""
-        logger.info(message)
-        messagebox.showinfo(title, message)
-
-    def _show_standard_error(self, message):
-        """표준 에러 메시지 표시"""
-        self._show_error(DIALOG_ERROR_TITLE, message)
-
-    def _show_standard_warning(self, message):
-        """표준 경고 메시지 표시"""
-        self._show_warning(TITLE_WARNING, message)
-
-    def _show_standard_info(self, message):
-        """표준 정보 메시지 표시"""
-        self._show_info(TITLE_INFO, message)
+        self._show_message("info", title or TITLE_INFO, message)
     
     def _validate_config_data(self, tool_menu_id):
         """설정 데이터 검증 및 초기화"""
@@ -937,11 +994,11 @@ class TAPythonTool:
     def open_file_location(self):
         """현재 파일의 위치를 탐색기/파인더에서 열기"""
         if not self.config_file_path:
-            self._show_standard_warning(MSG_NO_CURRENT_FILE)
+            self._show_warning(MSG_NO_CURRENT_FILE)
             return
         
         if not os.path.exists(self.config_file_path):
-            self._show_standard_error(MSG_FILE_NOT_FOUND_WITH_PATH.format(self.config_file_path))
+            self._show_error(MSG_FILE_NOT_FOUND_WITH_PATH.format(self.config_file_path))
             return
         
         file_dir = os.path.dirname(self.config_file_path)
@@ -962,17 +1019,17 @@ class TAPythonTool:
                 
         except Exception as e:
             logger.error(f"파일 위치 열기 실패: {e}")
-            self._show_standard_error(MSG_FOLDER_OPEN_ERROR.format(e, file_dir))
+            self._show_error(MSG_FOLDER_OPEN_ERROR.format(e, file_dir))
             self.update_status("❌ 파일 위치 열기 실패", auto_clear=False)
 
     def open_in_external_editor(self):
         """현재 파일을 외부 편집기(VS Code 등)로 열기"""
         if not self.config_file_path:
-            self._show_standard_warning(MSG_NO_CURRENT_FILE)
+            self._show_warning(MSG_NO_CURRENT_FILE)
             return
         
         if not os.path.exists(self.config_file_path):
-            self._show_standard_error(MSG_FILE_NOT_FOUND_WITH_PATH.format(self.config_file_path))
+            self._show_error(MSG_FILE_NOT_FOUND_WITH_PATH.format(self.config_file_path))
             return
         
         try:
@@ -991,17 +1048,245 @@ class TAPythonTool:
                 self.update_status(f"📝 외부 편집기에서 파일을 열었습니다: {os.path.basename(self.config_file_path)}")
                 
         except FileNotFoundError:
-            self._show_standard_error(MSG_NO_EDITOR_FOUND)
+            self._show_error(MSG_NO_EDITOR_FOUND)
         except subprocess.CalledProcessError as e:
-            self._show_standard_error(MSG_EDITOR_LAUNCH_ERROR.format(e))
+            self._show_error(MSG_EDITOR_LAUNCH_ERROR.format(e))
         except Exception as e:
             logger.error(f"외부 편집기로 파일 열기 실패: {e}")
-            self._show_standard_error(MSG_EDITOR_OPEN_ERROR.format(e))
+            self._show_error(MSG_EDITOR_OPEN_ERROR.format(e))
+
+    def show_perforce_info(self):
+        """퍼포스 설정 정보 표시"""
+        try:
+            # 퍼포스 설정 읽기
+            p4_settings = self._read_perforce_settings()
+            
+            # 다이얼로그 생성
+            dialog = tk.Toplevel(self.root)
+            self._setup_dialog(dialog, "🔍 퍼포스 설정 정보", 600, 500, modal=False)
+            
+            # 메인 프레임
+            main_frame = ttk.Frame(dialog)
+            main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+            
+            # 제목
+            title_label = ttk.Label(main_frame, text="퍼포스 설정 정보", 
+                                   font=("맑은 고딕", 12, "bold"))
+            title_label.pack(pady=(0, 20))
+            
+            if not p4_settings:
+                # 설정 없음
+                ttk.Label(main_frame, text="⚠️ 퍼포스 설정을 찾을 수 없습니다.", 
+                         font=("맑은 고딕", 10), foreground="red").pack(pady=20)
+                
+                # 설정 파일 경로 표시
+                settings_path = self._get_perforce_settings_path()
+                if settings_path:
+                    ttk.Label(main_frame, text=f"확인한 경로:\n{settings_path}", 
+                             font=("맑은 고딕", 9), foreground="gray").pack(pady=10)
+            else:
+                # 설정 정보 표시
+                info_frame = ttk.LabelFrame(main_frame, text="설정 정보", padding=15)
+                info_frame.pack(fill=tk.BOTH, expand=True)
+                
+                # 정보 텍스트 위젯
+                text_widget = tk.Text(info_frame, height=15, wrap=tk.WORD, 
+                                     font=("Consolas", 9), bg="#f0f0f0")
+                text_widget.pack(fill=tk.BOTH, expand=True)
+                
+                # 설정 정보 추가
+                info_lines = []
+                info_lines.append("═" * 60)
+                info_lines.append("  퍼포스 서버 설정")
+                info_lines.append("═" * 60)
+                info_lines.append("")
+                
+                if 'Provider' in p4_settings:
+                    status = "✅ 활성화" if p4_settings['Provider'] == 'Perforce' else "❌ 비활성화"
+                    info_lines.append(f"소스 컨트롤: {p4_settings['Provider']} {status}")
+                    info_lines.append("")
+                
+                if 'Port' in p4_settings:
+                    info_lines.append(f"서버 주소 (Port): {p4_settings['Port']}")
+                
+                if 'UserName' in p4_settings:
+                    info_lines.append(f"사용자 이름: {p4_settings['UserName']}")
+                
+                if 'Workspace' in p4_settings:
+                    info_lines.append(f"워크스페이스: {p4_settings['Workspace']}")
+                
+                if 'UseP4Config' in p4_settings:
+                    use_p4config = p4_settings['UseP4Config'] == 'True'
+                    status = "사용" if use_p4config else "사용 안 함"
+                    info_lines.append(f"P4CONFIG 사용: {status}")
+                
+                info_lines.append("")
+                info_lines.append("─" * 60)
+                info_lines.append("  환경 변수")
+                info_lines.append("─" * 60)
+                info_lines.append("")
+                
+                if 'Port' in p4_settings:
+                    info_lines.append(f"P4PORT={p4_settings['Port']}")
+                if 'UserName' in p4_settings:
+                    info_lines.append(f"P4USER={p4_settings['UserName']}")
+                if 'Workspace' in p4_settings:
+                    info_lines.append(f"P4CLIENT={p4_settings['Workspace']}")
+                
+                # 텍스트 삽입
+                text_widget.insert("1.0", "\n".join(info_lines))
+                text_widget.configure(state=tk.DISABLED)
+            
+            # 버튼 프레임
+            button_frame = ttk.Frame(main_frame)
+            button_frame.pack(fill=tk.X, pady=(20, 0))
+            
+            ttk.Button(button_frame, text="📋 클립보드에 복사", 
+                      command=lambda: self._copy_perforce_info(p4_settings)).pack(side=tk.LEFT, padx=(0, 10))
+            ttk.Button(button_frame, text="✅ 닫기", 
+                      command=dialog.destroy).pack(side=tk.LEFT)
+            
+        except Exception as e:
+            error_msg = f"퍼포스 정보 표시 중 오류: {str(e)}"
+            logger.error(error_msg)
+            self._show_error(error_msg, "오류")
+    
+    def _copy_perforce_info(self, p4_settings):
+        """퍼포스 정보를 클립보드에 복사"""
+        if not p4_settings:
+            self._copy_to_clipboard("퍼포스 설정 없음")
+            return
+        
+        info_text = "퍼포스 설정 정보\n"
+        info_text += "=" * 40 + "\n"
+        
+        for key, value in p4_settings.items():
+            info_text += f"{key}: {value}\n"
+        
+        self._copy_to_clipboard(info_text)
+    
+    def check_perforce_status(self):
+        """현재 파일의 퍼포스 상태 확인"""
+        if not self.config_file_path:
+            self._show_warning("현재 열린 파일이 없습니다.", "경고")
+            return
+        
+        try:
+            # 다이얼로그 생성
+            dialog = tk.Toplevel(self.root)
+            self._setup_dialog(dialog, "🔄 퍼포스 상태 확인", 600, 400, modal=False)
+            
+            # 메인 프레임
+            main_frame = ttk.Frame(dialog)
+            main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+            
+            # 제목
+            ttk.Label(main_frame, text="퍼포스 파일 상태", 
+                     font=("맑은 고딕", 12, "bold")).pack(pady=(0, 10))
+            
+            # 파일 경로
+            file_frame = ttk.LabelFrame(main_frame, text="확인 중인 파일", padding=10)
+            file_frame.pack(fill=tk.X, pady=(0, 20))
+            
+            ttk.Label(file_frame, text=self.config_file_path, 
+                     font=("Consolas", 9), wraplength=540).pack(anchor=tk.W)
+            
+            # 상태 정보 프레임
+            status_frame = ttk.LabelFrame(main_frame, text="상태 정보", padding=15)
+            status_frame.pack(fill=tk.BOTH, expand=True)
+            
+            # 진행 표시
+            progress_label = ttk.Label(status_frame, text="🔄 퍼포스 상태 확인 중...", 
+                                      font=("맑은 고딕", 10))
+            progress_label.pack(pady=20)
+            
+            # 결과 텍스트 (숨김 상태로 시작)
+            result_text = tk.Text(status_frame, height=10, wrap=tk.WORD, 
+                                 font=("Consolas", 9), bg="#f0f0f0")
+            
+            # 비동기로 퍼포스 체크 실행
+            def check_status():
+                try:
+                    is_in_perforce, p4_status = self._check_perforce_file(self.config_file_path)
+                    
+                    # UI 업데이트 (메인 스레드에서)
+                    dialog.after(0, lambda: update_status_ui(is_in_perforce, p4_status))
+                    
+                except Exception as e:
+                    dialog.after(0, lambda: update_status_ui(False, f"오류: {str(e)}"))
+            
+            def update_status_ui(is_in_perforce, p4_status):
+                progress_label.pack_forget()
+                result_text.pack(fill=tk.BOTH, expand=True)
+                
+                result_lines = []
+                result_lines.append("═" * 60)
+                result_lines.append("  퍼포스 파일 상태")
+                result_lines.append("═" * 60)
+                result_lines.append("")
+                
+                if is_in_perforce:
+                    result_lines.append("✅ 퍼포스 관리 중인 파일입니다.")
+                    result_lines.append("")
+                    result_lines.append(f"상태: {p4_status}")
+                    result_lines.append("")
+                    
+                    # 파일 권한 체크
+                    if is_file_writable(self.config_file_path):
+                        result_lines.append("📝 파일 상태: 쓰기 가능 (체크아웃됨)")
+                    else:
+                        result_lines.append("🔒 파일 상태: 읽기 전용 (체크아웃 필요)")
+                else:
+                    result_lines.append("❌ 퍼포스 관리 파일이 아닙니다.")
+                    result_lines.append("")
+                    result_lines.append(f"사유: {p4_status}")
+                
+                result_lines.append("")
+                result_lines.append("─" * 60)
+                
+                # 퍼포스 명령어 실행 (p4 fstat 상세 정보)
+                if is_in_perforce:
+                    result_lines.append("  상세 정보")
+                    result_lines.append("─" * 60)
+                    result_lines.append("")
+                    
+                    try:
+                        p4_settings = self._read_perforce_settings()
+                        if p4_settings:
+                            cmd = ['p4', 'fstat', self.config_file_path]
+                            result = self._run_p4_command(cmd, p4_settings, timeout=3)
+                            
+                            if result.returncode == 0:
+                                result_lines.append(result.stdout)
+                            else:
+                                result_lines.append("상세 정보를 가져올 수 없습니다.")
+                    except Exception as e:
+                        result_lines.append(f"상세 정보 조회 실패: {str(e)}")
+                
+                result_text.insert("1.0", "\n".join(result_lines))
+                result_text.configure(state=tk.DISABLED)
+            
+            # 백그라운드에서 체크 시작
+            import threading
+            thread = threading.Thread(target=check_status, daemon=True)
+            thread.start()
+            
+            # 버튼 프레임
+            button_frame = ttk.Frame(main_frame)
+            button_frame.pack(fill=tk.X, pady=(20, 0))
+            
+            ttk.Button(button_frame, text="✅ 닫기", 
+                      command=dialog.destroy).pack(side=tk.LEFT)
+            
+        except Exception as e:
+            error_msg = f"퍼포스 상태 확인 중 오류: {str(e)}"
+            logger.error(error_msg)
+            self._show_error(error_msg, "오류")
 
     def test_file_write_permission(self):
         """현재 파일의 쓰기 권한을 테스트"""
         if not self.config_file_path:
-            self._show_standard_warning(MSG_NO_CURRENT_FILE)
+            self._show_warning(MSG_NO_CURRENT_FILE)
             return
         
         try:
@@ -1042,7 +1327,7 @@ class TAPythonTool:
         except Exception as e:
             error_msg = f"테스트 중 오류: {str(e)}"
             logger.error(error_msg)
-            self._show_standard_error(error_msg)
+            self._show_error(error_msg)
     
     def on_closing(self):
         """창 닫기 시 리소스 정리 및 저장하지 않은 변경사항 확인"""
@@ -1085,13 +1370,13 @@ class TAPythonTool:
                 self.has_unsaved_changes = False
                 return True
         except PermissionError:
-            self._show_error("권한 오류", f"파일에 쓸 권한이 없습니다: {self.config_file_path}")
+            self._show_error(f"파일에 쓸 권한이 없습니다: {self.config_file_path}", "권한 오류")
             return False
         except OSError as e:
-            self._show_error("시스템 오류", f"파일 저장 중 시스템 오류가 발생했습니다: {str(e)}")
+            self._show_error(f"파일 저장 중 시스템 오류가 발생했습니다: {str(e)}", "시스템 오류")
             return False
         except Exception as e:
-            self._show_error("저장 오류", f"저장 중 오류가 발생했습니다: {str(e)}")
+            self._show_error(f"저장 중 오류가 발생했습니다: {str(e)}", "저장 오류")
             return False
     
     def mark_as_modified(self):
@@ -1408,7 +1693,7 @@ class TAPythonTool:
         """선택된 툴 메뉴의 HasSection 속성 토글"""
         selection = self.category_listbox.curselection()
         if not selection:
-            self._show_warning("경고", "HasSection을 변경할 툴 메뉴를 선택하세요.")
+            self._show_warning("HasSection을 변경할 툴 메뉴를 선택하세요.", "경고")
             return
         
         index = selection[0]
@@ -1464,12 +1749,12 @@ class TAPythonTool:
                 tool_menu_id, category_name = result[0], result[1]
                 has_section = True  # 기본값
             else:
-                self._show_error("오류", "유효하지 않은 결과 형식입니다.")
+                self._show_error("유효하지 않은 결과 형식입니다.", "오류")
                 return
             
             # 중복 확인
             if tool_menu_id in self.config_data:
-                self._show_warning("경고", f"카테고리 '{tool_menu_id}'가 이미 존재합니다.")
+                self._show_warning(f"카테고리 '{tool_menu_id}'가 이미 존재합니다.", "경고")
                 return
             
             # 새 카테고리 추가
@@ -1489,7 +1774,7 @@ class TAPythonTool:
         """선택된 툴 메뉴 삭제"""
         selection = self.category_listbox.curselection()
         if not selection:
-            self._show_warning("경고", "삭제할 툴 메뉴를 선택하세요.")
+            self._show_warning("삭제할 툴 메뉴를 선택하세요.", "경고")
             return
         
         index = selection[0]
@@ -1657,6 +1942,9 @@ class TAPythonTool:
         menubar.add_cascade(label="🔧 도구", menu=tools_menu)
         tools_menu.add_command(label="📝 외부 편집기로 열기", command=self.open_in_external_editor)
         tools_menu.add_command(label="📂 파일 위치 열기", command=self.open_file_location)
+        tools_menu.add_separator()
+        tools_menu.add_command(label="🔍 퍼포스 정보 보기", command=self.show_perforce_info)
+        tools_menu.add_command(label="🔄 퍼포스 상태 확인", command=self.check_perforce_status)
         tools_menu.add_separator()
         tools_menu.add_command(label="🧪 파일 쓰기 권한 테스트", command=self.test_file_write_permission)
         tools_menu.add_command(label="📋 로그 보기", command=self.show_log_viewer)
@@ -1921,7 +2209,7 @@ class TAPythonTool:
         except Exception as e:
             error_msg = f"HasSection 설정 중 오류: {str(e)}"
             logger.error(error_msg)
-            self._show_error("오류", error_msg)
+            self._show_error(error_msg, "오류")
     
     def _create_treeview(self, parent, tool_menu_id):
         """트리뷰 위젯 생성"""
@@ -2717,27 +3005,27 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
         except FileNotFoundError:
             error_msg = f"파일을 찾을 수 없습니다: {file_path}"
             logger.error(error_msg)
-            self._show_error("파일 오류", error_msg)
+            self._show_error(error_msg, "파일 오류")
             self.update_status("❌ 파일을 찾을 수 없음", auto_clear=False)
         except PermissionError:
             error_msg = f"파일에 접근할 권한이 없습니다: {file_path}"
             logger.error(error_msg)
-            self._show_error("권한 오류", error_msg)
+            self._show_error(error_msg, "권한 오류")
             self.update_status("❌ 파일 접근 권한 없음", auto_clear=False)
         except json.JSONDecodeError as e:
             error_msg = f"JSON 파일 형식이 올바르지 않습니다: {str(e)}"
             logger.error(f"JSON 파싱 오류: {e}")
-            self._show_error("JSON 오류", error_msg)
+            self._show_error(error_msg, "JSON 오류")
             self.update_status("❌ JSON 형식 오류", auto_clear=False)
         except UnicodeDecodeError:
             error_msg = f"파일 인코딩이 올바르지 않습니다. UTF-8 인코딩을 사용해주세요."
             logger.error(f"인코딩 오류: {file_path}")
-            self._show_error("인코딩 오류", error_msg)
+            self._show_error(error_msg, "인코딩 오류")
             self.update_status("❌ 인코딩 오류", auto_clear=False)
         except Exception as e:
             error_msg = f"파일 로드 실패: {str(e)}"
             logger.error(f"파일 로드 오류: {e}")
-            self._show_error("오류", error_msg)
+            self._show_error(error_msg, "오류")
             self.update_status(f"❌ 로드 실패: {str(e)}", auto_clear=False)
     
     def save_config(self):
@@ -2788,23 +3076,23 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
         except PermissionError:
             error_msg = f"파일에 쓸 권한이 없습니다: {self.config_file_path}"
             logger.error(error_msg)
-            self._show_error("권한 오류", error_msg)
+            self._show_error(error_msg, "권한 오류")
             self.update_status("❌ 파일 쓰기 권한 없음", auto_clear=False)
         except OSError as e:
             error_msg = f"파일 저장 중 시스템 오류가 발생했습니다: {str(e)}"
             logger.error(f"파일 시스템 오류: {e}")
-            self._show_error("시스템 오류", error_msg)
+            self._show_error(error_msg, "시스템 오류")
             self.update_status("❌ 파일 시스템 오류", auto_clear=False)
         except json.JSONDecodeError as e:
             error_msg = f"JSON 데이터 처리 오류: {str(e)}"
             logger.error(f"JSON 처리 오류: {e}")
-            self._show_error("데이터 오류", error_msg)
+            self._show_error(error_msg, "데이터 오류")
             self.update_status("❌ 데이터 처리 오류", auto_clear=False)
         except Exception as e:
             error_msg = f"저장 실패: {str(e)}"
             logger.error(f"저장 오류: {e}")
             traceback.print_exc()
-            self._show_error("오류", error_msg)
+            self._show_error(error_msg, "오류")
             self.update_status(f"❌ 저장 실패: {str(e)}", auto_clear=False)
     
     def save_as_config(self):
@@ -2830,15 +3118,15 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
                 self.update_status("💾 설정이 저장되었습니다!")
             except PermissionError:
                 error_msg = f"파일에 쓸 권한이 없습니다: {file_path}"
-                self._show_error("권한 오류", error_msg)
+                self._show_error(error_msg, "권한 오류")
                 self.update_status("❌ 파일 쓰기 권한 없음", auto_clear=False)
             except OSError as e:
                 error_msg = f"파일 저장 중 시스템 오류가 발생했습니다: {str(e)}"
-                self._show_error("시스템 오류", error_msg)
+                self._show_error(error_msg, "시스템 오류")
                 self.update_status("❌ 파일 시스템 오류", auto_clear=False)
             except Exception as e:
                 error_msg = f"저장 실패: {str(e)}"
-                self._show_error("오류", error_msg)
+                self._show_error(error_msg, "오류")
                 self.update_status(f"❌ 저장 실패: {str(e)}", auto_clear=False)
     
     def refresh_all_tabs(self):
@@ -3236,7 +3524,7 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
             item_data = self._get_item_data_from_tree(treeview, selected_item, tool_menu_id)
             
             if not item_data:
-                self._show_error("오류", "선택된 엔트리의 데이터를 찾을 수 없습니다.")
+                self._show_error("선택된 엔트리의 데이터를 찾을 수 없습니다.", "오류")
                 return
             
             # 엔트리 타입 결정
@@ -3245,7 +3533,7 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
             # 공통 필드: 이름
             name = tab_widgets['name_var'].get().strip()
             if not name:
-                self._show_warning("경고", "이름은 비워둘 수 없습니다.")
+                self._show_warning("이름은 비워둘 수 없습니다.", "경고")
                 return
             
             item_data["name"] = name
@@ -3277,7 +3565,7 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
             error_msg = f"엔트리 업데이트 중 오류 발생: {str(e)}"
             logger.error(f"update_entry 오류: {e}")
             traceback.print_exc()
-            self._show_error("오류", error_msg)
+            self._show_error(error_msg, "오류")
             self.update_status(f"저장 실패: {str(e)}", auto_clear=False)
     
     def _update_submenu_data(self, item_data, tab_widgets):
@@ -3415,7 +3703,7 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
         """엔트리 삭제"""
         # 현재 카테고리가 없으면 리턴
         if not self.current_tool_menu_id or not self.current_widgets:
-            self._show_warning("경고", "툴 메뉴를 먼저 선택해주세요.")
+            self._show_warning("툴 메뉴를 먼저 선택해주세요.", "경고")
             return
         
         tab_widgets = self.current_widgets
@@ -3423,7 +3711,7 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
         
         selection = treeview.selection()
         if not selection:
-            self._show_warning("경고", "삭제할 엔트리를 선택해주세요.")
+            self._show_warning("삭제할 엔트리를 선택해주세요.", "경고")
             return
         
         if messagebox.askyesno("확인", "정말 이 엔트리를 삭제하시겠습니까?"):
@@ -3620,236 +3908,152 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
         
         return False
     
-    def add_new_category_dialog(self):
-        """새 카테고리 추가 다이얼로그"""
-        dialog = tk.Toplevel(self.root)
-        self._setup_dialog(dialog, "새 카테고리 추가", 600, 400, modal=True)
-        
-        # 메인 프레임
-        main_frame = ttk.Frame(dialog)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        # 설명
-        desc_text = """메뉴 카테고리를 추가하면 Unreal Engine의 다양한 위치에 메뉴를 추가할 수 있습니다.
-아래에서 카테고리 이름을 입력하거나 미리 정의된 목록에서 선택하세요."""
-        ttk.Label(main_frame, text=desc_text, wraplength=550, 
-                 font=("Arial", 9), foreground="gray").pack(anchor=tk.W, pady=(0, 10))
-        
-        # 카테고리 입력
-        ttk.Label(main_frame, text="카테고리 이름:").pack(anchor=tk.W, pady=(0, 5))
-        category_var = tk.StringVar()
-        category_entry = ttk.Entry(main_frame, textvariable=category_var, width=60)
-        category_entry.pack(fill=tk.X, pady=(0, 10))
-        
-        # 미리 정의된 카테고리 목록
-        ttk.Label(main_frame, text="미리 정의된 메뉴 카테고리:").pack(anchor=tk.W, pady=(10, 5))
-        
-        # 리스트박스와 스크롤바
-        list_frame = ttk.Frame(main_frame)
-        list_frame.pack(fill=tk.BOTH, expand=True)
-        
-        listbox = tk.Listbox(list_frame, height=10)
-        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=listbox.yview)
-        listbox.configure(yscrollcommand=scrollbar.set)
-        
-        # 미리 정의된 툴 메뉴들 추가 (Tool Menu Anchor 부분만)
-        predefined_categories = [tool_menu_id for tool_menu_id, _ in ALL_TOOL_MENUS 
-                               if not tool_menu_id.startswith('On')]
-        
-        for category in predefined_categories:
-            listbox.insert(tk.END, category)
-        
-        listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # 리스트박스 선택 시 입력 필드에 복사
-        def on_listbox_select(event):
-            selection = listbox.curselection()
-            if selection:
-                category_var.set(listbox.get(selection[0]))
-        
-        listbox.bind("<<ListboxSelect>>", on_listbox_select)
-        
-        # 버튼들
-        button_frame = ttk.Frame(main_frame)
-        button_frame.pack(fill=tk.X, pady=(10, 0))
-        
-        # HasSection 설정 (Tool Menu Anchor 스타일 카테고리용)
-        has_section_frame = ttk.Frame(main_frame)
-        has_section_frame.pack(fill=tk.X, pady=(10, 0))
-        
-        has_section_var = tk.BooleanVar(value=True)  # 기본값 True
-        has_section_check = ttk.Checkbutton(
-            has_section_frame, 
-            text="HasSection (구분선 표시) - 새 카테고리의 기본 설정", 
-            variable=has_section_var
-        )
-        has_section_check.pack(anchor=tk.W)
-        
-        # 툴팁 추가
-        tooltip_text = """새로 추가될 카테고리의 HasSection 기본값을 설정합니다.
-
-• 체크: 구분선이 표시됩니다 (기본값)
-• 체크 해제: 구분선이 숨겨집니다 (툴바에서 권장)"""
-        self.create_tooltip(has_section_check, tooltip_text)
-        
-        def add_category():
-            category_name = category_var.get().strip()
-            has_section_value = has_section_var.get()
+    def _read_perforce_settings(self):
+        """퍼포스 설정 파일 읽기"""
+        try:
+            settings_path = self._get_perforce_settings_path()
             
-            if not category_name:
-                self._show_warning("경고", "카테고리 이름을 입력해주세요.")
-                return
+            if not settings_path:
+                return None
             
-            # 새로운 카테고리로 추가
-            if category_name not in self.config_data:
-                self.config_data[category_name] = {
-                    "HasSection": has_section_value,
-                    "items": []
-                }
-                self.mark_as_modified()
-                
-                # 새로운 카테고리 추가 후 카테고리 리스트 새로고침
-                self.mark_as_modified()
-                self.refresh_category_list()
-                
-                status_msg = f"HasSection={has_section_value}" 
-                self.update_status(f"🔧 카테고리 '{category_name}' 추가됨 ({status_msg})")
-                dialog.destroy()
-            else:
-                self._show_warning("중복", f"'{category_name}'는 이미 존재합니다.")
-        
-        ttk.Button(button_frame, text="✅ 추가", command=add_category).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(button_frame, text="❌ 취소", command=dialog.destroy).pack(side=tk.LEFT)
-        
-        category_entry.focus_set()
+            logger.info(f"퍼포스 설정 파일 경로: {settings_path}")
+            
+            if not os.path.exists(settings_path):
+                logger.warning(f"퍼포스 설정 파일을 찾을 수 없습니다: {settings_path}")
+                return None
+            
+            # INI 파일 파싱
+            p4_settings = {}
+            current_section = None
+            
+            with open(settings_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    
+                    # 섹션 헤더
+                    if line.startswith('[') and line.endswith(']'):
+                        current_section = line[1:-1]
+                        continue
+                    
+                    # 키=값 형식
+                    if '=' in line:
+                        key, value = line.split('=', 1)
+                        key = key.strip()
+                        value = value.strip()
+                        
+                        # PerforceSourceControl 설정
+                        if current_section == 'PerforceSourceControl.PerforceSourceControlSettings':
+                            p4_settings[key] = value
+                        
+                        # SourceControl 설정 (Provider)
+                        elif current_section == 'SourceControl.SourceControlSettings' and key == 'Provider':
+                            p4_settings['Provider'] = value
+            
+            logger.info(f"퍼포스 설정 로드 완료: {p4_settings}")
+            return p4_settings if p4_settings else None
+            
+        except Exception as e:
+            logger.error(f"퍼포스 설정 읽기 오류: {e}")
+            return None
     
-    def remove_category_dialog(self):
-        """카테고리 삭제 다이얼로그 - 모든 카테고리를 동등하게 취급"""
-        # 삭제 가능한 카테고리 목록 생성 (모든 카테고리 삭제 가능)
-        removable_categories = list(self.config_data.keys())
-        
-        if not removable_categories:
-            messagebox.showinfo("정보", "삭제할 수 있는 카테고리가 없습니다.")
-            return
-        
-        dialog = tk.Toplevel(self.root)
-        self._setup_dialog(dialog, "카테고리 삭제", 500, 350, modal=True)
-        
-        # 메인 프레임
-        main_frame = ttk.Frame(dialog)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        # 설명
-        desc_text = """삭제할 툴 메뉴를 선택하세요.
-삭제하면 해당 툴 메뉴의 모든 메뉴 엔트리가 함께 제거됩니다."""
-        ttk.Label(main_frame, text=desc_text, wraplength=450, 
-                 font=("Arial", 9), foreground="red").pack(anchor=tk.W, pady=(0, 10))
-        
-        # 삭제할 툴 메뉴 선택
-        ttk.Label(main_frame, text="삭제할 툴 메뉴:").pack(anchor=tk.W, pady=(0, 5))
-        
-        # 리스트박스와 스크롤바
-        list_frame = ttk.Frame(main_frame)
-        list_frame.pack(fill=tk.BOTH, expand=True)
-        
-        listbox = tk.Listbox(list_frame, height=10)
-        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=listbox.yview)
-        listbox.configure(yscrollcommand=scrollbar.set)
-        
-        # 삭제 가능한 툴 메뉴들 추가
-        for category in sorted(removable_categories):
-            # 엔트리 개수도 함께 표시
-            item_count = len(self.config_data.get(category, {}).get("items", []))
-            display_text = f"{category} ({item_count}개 엔트리)"
-            listbox.insert(tk.END, display_text)
-        
-        listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # 선택된 항목 정보 표시
-        info_frame = ttk.Frame(main_frame)
-        info_frame.pack(fill=tk.X, pady=(10, 0))
-        
-        info_label = ttk.Label(info_frame, text="삭제할 항목을 선택하세요.", 
-                              font=("Arial", 9), foreground="gray")
-        info_label.pack(anchor=tk.W)
-        
-        def on_listbox_select(event):
-            selection = listbox.curselection()
-            if selection:
-                selected_text = listbox.get(selection[0])
-                anchor_name = selected_text.split(" (")[0]  # " (n개 엔트리)" 부분 제거
-                item_count = len(self.config_data.get(anchor_name, {}).get("items", []))
-                info_label.configure(
-                    text=f"선택: {anchor_name}\n엔트리 수: {item_count}개\n⚠️ 이 툴 메뉴의 모든 데이터가 삭제됩니다!",
-                    foreground="red"
-                )
-        
-        listbox.bind("<<ListboxSelect>>", on_listbox_select)
-        
-        # 버튼들
-        button_frame = ttk.Frame(main_frame)
-        button_frame.pack(fill=tk.X, pady=(10, 0))
-        
-        def remove_category():
-            selection = listbox.curselection()
-            if not selection:
-                self._show_warning("경고", "삭제할 툴 메뉴를 선택해주세요.")
-                return
+    def _check_perforce_file(self, file_path):
+        """파일이 퍼포스 관리 중인지 체크 (빠른 체크)"""
+        try:
+            # 퍼포스 설정 읽기
+            p4_settings = self._read_perforce_settings()
             
-            selected_text = listbox.get(selection[0])
-            category_name = selected_text.split(" (")[0]  # " (n개 엔트리)" 부분 제거
-            item_count = len(self.config_data.get(category_name, {}).get("items", []))
+            if not p4_settings:
+                return False, "퍼포스 설정 없음"
             
-            # 최종 확인
-            confirm_msg = f"정말로 '{category_name}'를 삭제하시겠습니까?\n\n"
-            confirm_msg += f"• {item_count}개의 메뉴 엔트리가 함께 삭제됩니다.\n"
-            confirm_msg += "• 이 작업은 되돌릴 수 없습니다.\n"
-            confirm_msg += "• 현재 설정을 저장하지 않았다면 먼저 저장하는 것을 권장합니다."
+            # Provider가 Perforce인지 확인
+            if p4_settings.get('Provider') != 'Perforce':
+                return False, f"프로바이더: {p4_settings.get('Provider')}"
             
-            if messagebox.askyesno("삭제 확인", confirm_msg, icon="warning"):
-                try:
-                    # config_data에서 제거
-                    if category_name in self.config_data:
-                        del self.config_data[category_name]
-                    
-                    # 현재 선택된 툴 메뉴가 삭제된 툴 메뉴인 경우 초기화
-                    if self.current_tool_menu_id == category_name:
-                        self.clear_content_area()
-                    
-                    self.mark_as_modified()
-                    self.refresh_category_list()
-                    self.update_status(f"🗑️ 툴 메뉴 '{category_name}' 삭제됨!")
-                    dialog.destroy()
-                    
-                except Exception as e:
-                    error_msg = f"툴 메뉴 삭제 중 오류: {str(e)}"
-                    logger.error(error_msg)
-                    self._show_error("오류", error_msg)
-        
-        ttk.Button(button_frame, text="🗑️ 삭제", command=remove_category).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(button_frame, text="❌ 취소", command=dialog.destroy).pack(side=tk.LEFT)
-        
-        # 첫 번째 항목 자동 선택
-        if removable_categories:
-            listbox.selection_set(0)
-            on_listbox_select(None)
+            # p4 fstat으로 파일 상태 확인
+            cmd = ['p4', 'fstat', file_path]
+            result = self._run_p4_command(cmd, p4_settings, timeout=2)
+            
+            # returncode 0이면 파일이 퍼포스에 있음
+            if result.returncode == 0:
+                is_readonly = 'headRev' in result.stdout
+                return True, f"퍼포스 관리 중 (ReadOnly: {is_readonly})"
+            else:
+                return False, "퍼포스 관리 안됨"
+                
+        except subprocess.TimeoutExpired:
+            logger.warning("p4 명령 타임아웃")
+            return False, "퍼포스 체크 타임아웃"
+        except FileNotFoundError:
+            return False, "p4 명령어 없음"
+        except Exception as e:
+            logger.error(f"퍼포스 파일 체크 오류: {e}")
+            return False, f"체크 오류: {str(e)}"
+    
+    def _perforce_checkout(self, file_path):
+        """퍼포스에서 파일 체크아웃 (빠른 실행)"""
+        try:
+            # 퍼포스 설정 읽기
+            p4_settings = self._read_perforce_settings()
+            
+            if not p4_settings:
+                return False, "퍼포스 설정 없음"
+            
+            # p4 edit으로 체크아웃
+            cmd = ['p4', 'edit', file_path]
+            result = self._run_p4_command(cmd, p4_settings, timeout=3)
+            
+            if result.returncode == 0:
+                return True, "체크아웃 성공"
+            else:
+                return False, f"체크아웃 실패: {result.stderr}"
+                
+        except subprocess.TimeoutExpired:
+            return False, "체크아웃 타임아웃"
+        except FileNotFoundError:
+            return False, "p4 명령어 없음"
+        except Exception as e:
+            logger.error(f"퍼포스 체크아웃 오류: {e}")
+            return False, f"체크아웃 오류: {str(e)}"
     
     def _ensure_file_writable(self, file_path):
-        """파일이 쓰기 가능한지 확인하고 필요시 처리"""
+        """파일이 쓰기 가능한지 확인하고 필요시 처리 (퍼포스 연동 - 최적화)"""
         try:
-            logger.info(f"파일 쓰기 권한 확인 시작: {file_path}")
+            # 1. 빠른 권한 체크 먼저 (퍼포스 체크 전)
+            if is_file_writable(file_path):
+                logger.debug("파일이 이미 쓰기 가능 - 퍼포스 체크 생략")
+                return True
             
-            # 함수를 통해 파일을 쓰기 가능하게 만들기
+            logger.info(f"파일이 ReadOnly - 퍼포스 체크 시작: {file_path}")
+            
+            # 2. 퍼포스 관리 중인지 체크 (ReadOnly인 경우에만)
+            is_in_perforce, p4_status = self._check_perforce_file(file_path)
+            
+            if is_in_perforce:
+                logger.info(f"퍼포스 파일 감지 - 체크아웃 시도")
+                
+                # 자동으로 체크아웃 (다이얼로그 없이)
+                checkout_success, checkout_msg = self._perforce_checkout(file_path)
+                
+                if checkout_success:
+                    logger.info(f"퍼포스 체크아웃 성공")
+                    self.update_status(f"✅ 퍼포스 체크아웃 완료")
+                    return True
+                else:
+                    logger.warning(f"퍼포스 체크아웃 실패: {checkout_msg}")
+                    # 체크아웃 실패 시 사용자에게 알림
+                    self._show_warning(f"퍼포스 체크아웃에 실패했습니다:\n{checkout_msg}\n\n수동으로 체크아웃 해주세요.", "체크아웃 실패")
+                    return False
+            
+            # 3. 퍼포스가 아닌 경우 기존 로직 사용
+            logger.info("퍼포스 관리 파일 아님 - 일반 권한 확인")
             success, message = ensure_file_writable(file_path)
             
             if success:
-                logger.info(f"파일 쓰기 가능: {file_path} - {message}")
+                logger.info(f"파일 쓰기 가능: {message}")
                 self.update_status(f"✅ {message}")
                 return True
             else:
-                logger.warning(f"파일 쓰기 불가: {file_path} - {message}")
+                logger.warning(f"파일 쓰기 불가: {message}")
                 
                 # 사용자에게 수동 처리 옵션 제공
                 result = messagebox.askyesnocancel(
@@ -3862,14 +4066,13 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
                 )
                 
                 if result is True:
-                    # 다시 확인
                     return is_file_writable(file_path)
                 else:
                     return False
             
         except Exception as e:
             logger.error(f"파일 쓰기 권한 확인 중 오류: {e}")
-            self._show_error("오류", f"파일 쓰기 권한을 확인할 수 없습니다:\n{str(e)}")
+            self._show_error(f"파일 쓰기 권한을 확인할 수 없습니다:\n{str(e)}", "오류")
             return False
     
     def cleanup_resources(self):
@@ -4254,15 +4457,15 @@ class NewEntryDialog:
         entry_type = self.entry_type_var.get()
         
         if not name:
-            self.ta_tool._show_warning("경고", "이름을 입력해주세요.")
+            self.ta_tool._show_warning("이름을 입력해주세요.", "경고")
             return
         
         if not selected_category:
-            self.ta_tool._show_warning("경고", "메뉴 타입을 선택해주세요.")
+            self.ta_tool._show_warning("메뉴 타입을 선택해주세요.", "경고")
             return
         
         if not entry_type:
-            self.ta_tool._show_warning("경고", "엔트리 타입을 선택해주세요.")
+            self.ta_tool._show_warning("엔트리 타입을 선택해주세요.", "경고")
             return
         
         # 엔트리 타입에 따라 다른 기본 구조 생성
@@ -4287,7 +4490,7 @@ class NewEntryDialog:
                 "ChameleonTools": ""
             }
         else:
-            self.ta_tool._show_error("오류", f"알 수 없는 엔트리 타입: {entry_type}")
+            self.ta_tool._show_error(f"알 수 없는 엔트리 타입: {entry_type}", "오류")
             return
         
         try:
@@ -4303,7 +4506,7 @@ class NewEntryDialog:
                         parent_item_data["items"] = []
                     parent_item_data["items"].append(new_entry)
                 else:
-                    self.ta_tool._show_error("오류", f"부모 엔트리 '{parent_selection}'를 찾을 수 없습니다.")
+                    self.ta_tool._show_error(f"부모 엔트리 '{parent_selection}'를 찾을 수 없습니다.", "오류")
                     return
             
             # 해당 탭 새로고침
@@ -4329,7 +4532,7 @@ class NewEntryDialog:
             
         except Exception as e:
             error_msg = f"엔트리 추가 중 오류 발생: {str(e)}"
-            self.ta_tool._show_error("오류", error_msg)
+            self.ta_tool._show_error(error_msg, "오류")
             self.ta_tool.update_status(f"엔트리 추가 실패: {str(e)}", auto_clear=False)
     
     def cancel(self):
