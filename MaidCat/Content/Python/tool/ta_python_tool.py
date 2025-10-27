@@ -15,6 +15,11 @@ import tkinter as tk
 import traceback
 from tkinter import ttk, messagebox, filedialog
 from typing import Dict, List, Any
+import subprocess
+import os
+import warnings
+import json
+import winreg
 
 # ==================== 상수 정의 ====================
 
@@ -603,6 +608,12 @@ class TAPythonTool:
         self.config_file_path = ""
         self.has_unsaved_changes = False  # 저장하지 않은 변경사항 추적
         
+        # 클립보드 관련 변수들
+        self.clipboard_data = None  # 복사/잘라낸 엔트리 데이터
+        self.clipboard_action = None  # 'copy' 또는 'cut'
+        self.clipboard_source_tool_menu = None  # 원본 툴 메뉴 ID
+        self.clipboard_source_path = None  # 원본 엔트리 경로
+        
         # 인터페이스 상태 초기화
         self.guide_interface = None
         self.edit_interface = None
@@ -916,11 +927,14 @@ class TAPythonTool:
     
     def _get_entry_type_display(self, item_data, name):
         """엔트리 타입에 따른 표시 형식 반환"""
+        # 서브메뉴 체크 (items 속성이 있으면 서브메뉴)
         if "items" in item_data:
             return ("📁 서브메뉴", f"📁 {name}")
+        # 카멜레온툴 체크 (ChameleonTools 속성이 있으면 카멜레온툴)
         elif "ChameleonTools" in item_data:
             return ("🎨 카멜레온", f"🎨 {name}")
-        elif "command" in item_data or "canExecuteAction" in item_data:
+        # 명령어 체크 (command 또는 canExecuteAction이 있고, ChameleonTools가 없으면 명령어)
+        elif ("command" in item_data or "canExecuteAction" in item_data) and "ChameleonTools" not in item_data:
             return ("⚡ 명령어", f"⚡ {name}")
         else:
             return ("📄 엔트리", f"📄 {name}")
@@ -1857,7 +1871,278 @@ class TAPythonTool:
         # 트리뷰 선택 이벤트
         treeview.bind("<<TreeviewSelect>>", lambda e: self.on_item_select(tool_menu_id))
         
+        # 우클릭 컨텍스트 메뉴 이벤트
+        treeview.bind("<Button-3>", lambda e: self.on_entry_right_click(e, tool_menu_id))
+        
         return treeview
+    
+    def _create_entry_context_menu(self):
+        """엔트리 우클릭 컨텍스트 메뉴 생성"""
+        self.entry_context_menu = tk.Menu(self.root, tearoff=0)
+        self.entry_context_menu.add_command(label="📋 복사", command=self.copy_entry)
+        self.entry_context_menu.add_command(label="✂️ 잘라내기", command=self.cut_entry)
+        self.entry_context_menu.add_command(label="📋 붙여넣기", command=self.paste_entry)
+        self.entry_context_menu.add_separator()
+        self.entry_context_menu.add_command(label="🗑️ 삭제", command=lambda: self.delete_entry(self.current_tool_menu_id))
+        self.entry_context_menu.add_separator()
+        self.entry_context_menu.add_command(label="⬆️ 위로 이동", command=lambda: self.move_entry_up(self.current_tool_menu_id))
+        self.entry_context_menu.add_command(label="⬇️ 아래로 이동", command=lambda: self.move_entry_down(self.current_tool_menu_id))
+    
+    def on_entry_right_click(self, event, tool_menu_id):
+        """엔트리 우클릭 이벤트 처리"""
+        try:
+            if not self.current_menu_treeview:
+                return
+            
+            treeview = self.current_menu_treeview
+            
+            # 클릭한 위치의 아이템 확인
+            item = treeview.identify('item', event.x, event.y)
+            
+            if item:
+                # 클릭한 아이템 선택
+                treeview.selection_set(item)
+                self.on_item_select(tool_menu_id)
+                
+                # 메뉴 항목들의 상태 업데이트
+                has_selection = bool(treeview.selection())
+                has_clipboard = self.clipboard_data is not None
+                
+                # 복사/잘라내기는 선택된 아이템이 있을 때만 활성화
+                self.entry_context_menu.entryconfig(0, state=tk.NORMAL if has_selection else tk.DISABLED)  # 복사
+                self.entry_context_menu.entryconfig(1, state=tk.NORMAL if has_selection else tk.DISABLED)  # 잘라내기
+                
+                # 붙여넣기는 클립보드에 데이터가 있을 때만 활성화
+                self.entry_context_menu.entryconfig(2, state=tk.NORMAL if has_clipboard else tk.DISABLED)  # 붙여넣기
+                
+                # 삭제, 이동은 선택된 아이템이 있을 때만 활성화
+                self.entry_context_menu.entryconfig(4, state=tk.NORMAL if has_selection else tk.DISABLED)  # 삭제
+                self.entry_context_menu.entryconfig(6, state=tk.NORMAL if has_selection else tk.DISABLED)  # 위로 이동
+                self.entry_context_menu.entryconfig(7, state=tk.NORMAL if has_selection else tk.DISABLED)  # 아래로 이동
+                
+                # 컨텍스트 메뉴 표시
+                self.entry_context_menu.post(event.x_root, event.y_root)
+            else:
+                # 빈 공간 클릭 시 붙여넣기만 가능
+                has_clipboard = self.clipboard_data is not None
+                
+                self.entry_context_menu.entryconfig(0, state=tk.DISABLED)  # 복사
+                self.entry_context_menu.entryconfig(1, state=tk.DISABLED)  # 잘라내기
+                self.entry_context_menu.entryconfig(2, state=tk.NORMAL if has_clipboard else tk.DISABLED)  # 붙여넣기
+                self.entry_context_menu.entryconfig(4, state=tk.DISABLED)  # 삭제
+                self.entry_context_menu.entryconfig(6, state=tk.DISABLED)  # 위로 이동
+                self.entry_context_menu.entryconfig(7, state=tk.DISABLED)  # 아래로 이동
+                
+                # 컨텍스트 메뉴 표시
+                self.entry_context_menu.post(event.x_root, event.y_root)
+                
+        except Exception as e:
+            logger.error(f"엔트리 우클릭 처리 중 오류: {e}")
+    
+    def copy_entry(self):
+        """선택된 엔트리 복사"""
+        try:
+            if not self.current_menu_treeview or not self.current_tool_menu_id:
+                return
+            
+            treeview = self.current_menu_treeview
+            selection = treeview.selection()
+            
+            if not selection:
+                self._show_warning("복사할 엔트리를 선택해주세요.", "경고")
+                return
+            
+            selected_item = selection[0]
+            item_data = self._get_item_data_from_tree(treeview, selected_item, self.current_tool_menu_id)
+            
+            if item_data:
+                # 깊은 복사로 데이터 저장
+                import copy
+                self.clipboard_data = copy.deepcopy(item_data)
+                self.clipboard_action = 'copy'
+                self.clipboard_source_tool_menu = self.current_tool_menu_id
+                self.clipboard_source_path = self._get_entry_path_from_tree(treeview, selected_item)
+                
+                entry_name = item_data.get('name', '알 수 없음')
+                self.update_status(f"📋 '{entry_name}' 복사됨")
+            else:
+                self._show_error("선택된 엔트리의 데이터를 찾을 수 없습니다.", "오류")
+                
+        except Exception as e:
+            logger.error(f"엔트리 복사 중 오류: {e}")
+            self._show_error(f"복사 중 오류가 발생했습니다: {str(e)}", "오류")
+    
+    def cut_entry(self):
+        """선택된 엔트리 잘라내기"""
+        try:
+            if not self.current_menu_treeview or not self.current_tool_menu_id:
+                return
+            
+            treeview = self.current_menu_treeview
+            selection = treeview.selection()
+            
+            if not selection:
+                self._show_warning("잘라낼 엔트리를 선택해주세요.", "경고")
+                return
+            
+            selected_item = selection[0]
+            item_data = self._get_item_data_from_tree(treeview, selected_item, self.current_tool_menu_id)
+            
+            if item_data:
+                # 깊은 복사로 데이터 저장
+                import copy
+                self.clipboard_data = copy.deepcopy(item_data)
+                self.clipboard_action = 'cut'
+                self.clipboard_source_tool_menu = self.current_tool_menu_id
+                self.clipboard_source_path = self._get_entry_path_from_tree(treeview, selected_item)
+                
+                # 원본에서 삭제
+                if self._delete_entry_from_data(treeview, selected_item, self.current_tool_menu_id):
+                    self.refresh_tab(self.current_tool_menu_id)
+                    self.mark_as_modified()
+                    
+                    entry_name = item_data.get('name', '알 수 없음')
+                    self.update_status(f"✂️ '{entry_name}' 잘라냄")
+                else:
+                    self._show_error("엔트리를 삭제할 수 없습니다.", "오류")
+            else:
+                self._show_error("선택된 엔트리의 데이터를 찾을 수 없습니다.", "오류")
+                
+        except Exception as e:
+            logger.error(f"엔트리 잘라내기 중 오류: {e}")
+            self._show_error(f"잘라내기 중 오류가 발생했습니다: {str(e)}", "오류")
+    
+    def paste_entry(self):
+        """클립보드의 엔트리 붙여넣기"""
+        try:
+            if not self.clipboard_data:
+                self._show_warning("붙여넣을 데이터가 없습니다.", "경고")
+                return
+            
+            if not self.current_tool_menu_id:
+                self._show_warning("붙여넣을 위치를 선택해주세요.", "경고")
+                return
+            
+            # 클립보드 데이터의 새 복사본 생성 (깊은 복사)
+            import copy
+            new_entry = copy.deepcopy(self.clipboard_data)
+            
+            # 현재 선택된 위치 확인
+            target_items = None
+            insert_index = -1  # 기본값: 맨 끝에 추가
+            
+            if self.current_menu_treeview:
+                treeview = self.current_menu_treeview
+                selection = treeview.selection()
+                
+                if selection:
+                    # 선택된 아이템이 있는 경우
+                    selected_item = selection[0]
+                    parent_item = treeview.parent(selected_item)
+                    
+                    if parent_item:
+                        # 서브메뉴 내부에 붙여넣기
+                        parent_data = self._get_item_data_from_tree(treeview, parent_item, self.current_tool_menu_id)
+                        if parent_data and "items" in parent_data:
+                            target_items = parent_data["items"]
+                            # 선택된 아이템 다음 위치에 삽입
+                            siblings = treeview.get_children(parent_item)
+                            try:
+                                insert_index = siblings.index(selected_item) + 1
+                            except ValueError:
+                                insert_index = len(target_items)
+                    else:
+                        # 루트 레벨에 붙여넣기
+                        target_items = self._validate_config_data(self.current_tool_menu_id)
+                        # 선택된 아이템 다음 위치에 삽입
+                        siblings = treeview.get_children("")
+                        try:
+                            insert_index = siblings.index(selected_item) + 1
+                        except ValueError:
+                            insert_index = len(target_items)
+                else:
+                    # 선택된 아이템이 없는 경우 루트 레벨 맨 끝에 추가
+                    target_items = self._validate_config_data(self.current_tool_menu_id)
+                    insert_index = len(target_items)
+            else:
+                # 트리뷰가 없는 경우 루트 레벨에 추가
+                target_items = self._validate_config_data(self.current_tool_menu_id)
+                insert_index = len(target_items)
+            
+            # 데이터 삽입
+            if target_items is not None:
+                if insert_index == -1 or insert_index >= len(target_items):
+                    target_items.append(new_entry)
+                else:
+                    target_items.insert(insert_index, new_entry)
+                
+                # 복사인 경우 이름 중복 방지
+                if self.clipboard_action == 'copy':
+                    original_name = new_entry.get('name', '')
+                    new_name = self._get_unique_name(target_items, original_name)
+                    new_entry['name'] = new_name
+                
+                # UI 새로고침
+                self.refresh_tab(self.current_tool_menu_id)
+                self.mark_as_modified()
+                
+                entry_name = new_entry.get('name', '알 수 없음')
+                action_text = "붙여넣기" if self.clipboard_action == 'copy' else "이동"
+                self.update_status(f"📋 '{entry_name}' {action_text} 완료")
+                
+                # 잘라내기였다면 클립보드 비우기
+                if self.clipboard_action == 'cut':
+                    self.clipboard_data = None
+                    self.clipboard_action = None
+                    self.clipboard_source_tool_menu = None
+                    self.clipboard_source_path = None
+            else:
+                self._show_error("붙여넣을 위치를 찾을 수 없습니다.", "오류")
+                
+        except Exception as e:
+            logger.error(f"엔트리 붙여넣기 중 오류: {e}")
+            self._show_error(f"붙여넣기 중 오류가 발생했습니다: {str(e)}", "오류")
+    
+    def _get_entry_path_from_tree(self, treeview, tree_item):
+        """트리 아이템의 경로를 문자열 리스트로 반환"""
+        try:
+            path = []
+            current = tree_item
+            
+            while current:
+                item_data = self._get_item_data_from_tree(treeview, current, self.current_tool_menu_id)
+                if item_data and 'name' in item_data:
+                    path.insert(0, item_data['name'])
+                current = treeview.parent(current)
+            
+            return path
+        except Exception as e:
+            logger.error(f"엔트리 경로 가져오기 중 오류: {e}")
+            return []
+    
+    def _get_unique_name(self, items_list, original_name):
+        """중복되지 않는 고유한 이름 생성"""
+        if not any(item.get('name') == original_name for item in items_list):
+            return original_name
+        
+        # 이름 뒤에 숫자 추가
+        base_name = original_name
+        counter = 1
+        
+        # 이미 숫자가 붙어있는 경우 처리
+        if original_name.endswith(')') and ' (' in original_name:
+            try:
+                base_name, counter_part = original_name.rsplit(' (', 1)
+                counter = int(counter_part.rstrip(')')) + 1
+            except ValueError:
+                # 숫자가 아닌 경우 그대로 사용
+                pass
+        
+        while True:
+            new_name = f"{base_name} ({counter})"
+            if not any(item.get('name') == new_name for item in items_list):
+                return new_name
+            counter += 1
     
     def _enable_menu_buttons(self):
         """메뉴 버튼들 활성화"""
@@ -1936,6 +2221,18 @@ class TAPythonTool:
         file_menu.add_command(label="🔄 새로고침\t\tF5", command=self.reload_config)
         file_menu.add_separator()
         file_menu.add_command(label="📉 최소화\t\tCtrl+M", command=lambda: self.root.iconify())
+        
+        # 편집 메뉴
+        edit_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="✏️ 편집", menu=edit_menu)
+        edit_menu.add_command(label="📋 복사\t\tCtrl+C", command=self.copy_entry)
+        edit_menu.add_command(label="✂️ 잘라내기\t\tCtrl+X", command=self.cut_entry)
+        edit_menu.add_command(label="📋 붙여넣기\t\tCtrl+V", command=self.paste_entry)
+        edit_menu.add_separator()
+        edit_menu.add_command(label="🗑️ 삭제\t\tDelete", command=lambda: self.delete_entry(self.current_tool_menu_id))
+        edit_menu.add_separator()
+        edit_menu.add_command(label="⬆️ 위로 이동", command=lambda: self.move_entry_up(self.current_tool_menu_id))
+        edit_menu.add_command(label="⬇️ 아래로 이동", command=lambda: self.move_entry_down(self.current_tool_menu_id))
         
         # 도구 메뉴
         tools_menu = tk.Menu(menubar, tearoff=0)
@@ -2076,6 +2373,12 @@ class TAPythonTool:
         # 언리얼 엔진 작업을 위한 빠른 최소화
         self.root.bind('<Control-m>', lambda e: self.root.iconify())
         self.root.bind('<Escape>', lambda e: self.root.iconify())
+        
+        # 엔트리 편집을 위한 클립보드 단축키
+        self.root.bind('<Control-c>', lambda e: self.copy_entry() if self.current_menu_treeview and self.current_menu_treeview.selection() else None)
+        self.root.bind('<Control-x>', lambda e: self.cut_entry() if self.current_menu_treeview and self.current_menu_treeview.selection() else None)
+        self.root.bind('<Control-v>', lambda e: self.paste_entry() if self.clipboard_data else None)
+        self.root.bind('<Delete>', lambda e: self.delete_entry(self.current_tool_menu_id) if self.current_menu_treeview and self.current_menu_treeview.selection() else None)
     
     def update_status(self, message, auto_clear=True, clear_delay=3000):
         """상태바 메시지 업데이트"""
@@ -2891,6 +3194,9 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
         self._setup_menu_panel(self.menu_panel)
         self._setup_edit_panel(self.edit_panel)
         
+        # 엔트리 컨텍스트 메뉴 생성
+        self._create_entry_context_menu()
+        
         # 초기 분할 위치 설정
         self.root.after(100, lambda: self._set_panel_proportions(main_paned))
         
@@ -3295,7 +3601,9 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
         for widget_key in common_widgets:
             if widget_key in tab_widgets:
                 try:
-                    tab_widgets[widget_key].configure(state=state)
+                    widget = tab_widgets[widget_key]
+                    if hasattr(widget, 'config'):
+                        widget.config(state=str(state))
                 except (tk.TclError, AttributeError):
                     continue
         
@@ -3311,7 +3619,9 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
                         for widget_key in widget_keys:
                             if widget_key in tab_widgets:
                                 try:
-                                    tab_widgets[widget_key].configure(state=state)
+                                    widget = tab_widgets[widget_key]
+                                    if hasattr(widget, 'config'):
+                                        widget.config(state=str(state))
                                 except (tk.TclError, AttributeError):
                                     continue
                 except (tk.TclError, AttributeError):
@@ -3395,16 +3705,16 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
                     tab_widgets['command_enabled_var'].set(bool(enabled_value))
                     
                     # 명령어
-                    tab_widgets['command_text'].delete(1.0, tk.END)
+                    tab_widgets['command_text'].delete("1.0", tk.END)
                     command = item_data.get("command", "")
                     if command:
-                        tab_widgets['command_text'].insert(1.0, command)
+                        tab_widgets['command_text'].insert("1.0", command)
                     
                     # canExecuteAction
-                    tab_widgets['can_execute_text'].delete(1.0, tk.END)
+                    tab_widgets['can_execute_text'].delete("1.0", tk.END)
                     can_execute = item_data.get("canExecuteAction", "")
                     if can_execute:
-                        tab_widgets['can_execute_text'].insert(1.0, can_execute)
+                        tab_widgets['can_execute_text'].insert("1.0", can_execute)
                         
                 elif entry_type == "chameleonTools":
                     # Chameleon: 툴팁, 활성화, ChameleonTools
@@ -4095,24 +4405,6 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
         self.root.mainloop()
 
 
-def main():
-    """메인 함수"""
-    app = None
-    try:
-        app = TAPythonTool()
-        app.run()
-    except Exception as e:
-        logger.error(f"애플리케이션 실행 중 오류: {e}")
-        traceback.print_exc()
-    finally:
-        # 최종 리소스 정리 (앱이 정상적으로 정리되지 않은 경우에만)
-        if app and not getattr(app, '_resources_cleaned', False):
-            try:
-                app.cleanup_resources()
-            except:
-                pass
-
-
 class NewToolMenuAnchorDialog:
     """새 툴 메뉴 추가 다이얼로그"""
     
@@ -4541,5 +4833,282 @@ class NewEntryDialog:
         self.dialog.destroy()
 
 
+def find_unreal_python():
+    """
+    .uproject 파일에서 EngineAssociation을 찾아 
+    윈도우 레지스트리에서 언리얼 엔진의 파이썬 경로를 반환
+    """
+    try:
+        # 현재 스크립트에서 프로젝트 루트 찾기
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = current_dir
+        uproject_path = None
+        
+        # 상위 디렉토리로 올라가면서 .uproject 파일 찾기
+        for _ in range(10):  # 최대 10단계까지 상위로 검색
+            uproject_files = [f for f in os.listdir(project_root) if f.endswith('.uproject')]
+            if uproject_files:
+                uproject_path = os.path.join(project_root, uproject_files[0])
+                break
+            parent = os.path.dirname(project_root)
+            if parent == project_root:  # 루트에 도달
+                break
+            project_root = parent
+        
+        if not uproject_path:
+            print("오류: .uproject 파일을 찾을 수 없습니다.")
+            return None
+        
+        # .uproject 파일에서 EngineAssociation 읽기
+        with open(uproject_path, 'r', encoding='utf-8') as f:
+            project_data = json.load(f)
+        
+        engine_version = project_data.get('EngineAssociation')
+        if not engine_version:
+            print("오류: .uproject 파일에서 EngineAssociation을 찾을 수 없습니다.")
+            return None
+        
+        print(f"언리얼 엔진 버전: {engine_version}")
+        
+        # 윈도우 레지스트리에서 언리얼 엔진 경로 찾기
+        if os.name == 'nt':  # Windows
+            try:
+                registry_key = f"SOFTWARE\\EpicGames\\Unreal Engine\\{engine_version}"
+                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, registry_key) as key:
+                    install_dir = winreg.QueryValueEx(key, "InstalledDirectory")[0]
+                
+                # 언리얼 엔진의 파이썬 경로 구성
+                python_path = os.path.join(
+                    install_dir, 
+                    "Engine", "Binaries", "ThirdParty", "Python3", "Win64", "python.exe"
+                )
+                
+                if os.path.exists(python_path):
+                    print(f"언리얼 엔진 파이썬 경로: {python_path}")
+                    return python_path
+                else:
+                    print(f"오류: 언리얼 엔진 파이썬을 찾을 수 없습니다: {python_path}")
+                    return None
+                    
+            except (WindowsError, FileNotFoundError) as e:
+                print(f"오류: 레지스트리에서 언리얼 엔진 정보를 찾을 수 없습니다: {e}")
+                return None
+        else:
+            print("오류: 현재 Windows에서만 지원됩니다.")
+            return None
+            
+    except Exception as e:
+        print(f"언리얼 엔진 파이썬 경로 찾기 중 오류: {e}")
+        return None
+
+
+def main():
+    """메인 GUI 애플리케이션 실행 (직접 실행)"""
+    print("=== TA Python Tool 직접 실행 모드 ===")
+    try:
+        app = TAPythonTool()
+        app.root.mainloop()
+    except Exception as e:
+        print(f"애플리케이션 실행 중 오류: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        # 리소스 정리
+        try:
+            if 'app' in locals() and hasattr(app, 'cleanup_resources'):
+                app.cleanup_resources()
+        except:
+            pass
+
+
+def start_new_process():
+    """새 프로세스로 GUI 실행 (런처 모드)"""
+    print("=== TA Python Tool 런처 모드 ===")
+    
+    # ResourceWarning 억제 - detached 프로세스는 의도적으로 실행 상태 유지
+    warnings.filterwarnings("ignore", category=ResourceWarning, message=".*subprocess.*is still running")
+    
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        editor_path = os.path.join(script_dir, "ta_python_tool.py")
+        
+        if not os.path.exists(editor_path):
+            print(f"오류: {editor_path} 파일을 찾을 수 없습니다.")
+            return False
+        
+        # 언리얼 엔진의 파이썬 경로 찾기
+        unreal_python = find_unreal_python()
+        
+        if os.name == 'nt':  # Windows
+            DETACHED_PROCESS = 0x00000008
+            
+            # 언리얼 엔진 파이썬 우선 사용
+            if unreal_python:
+                try:
+                    print(f"언리얼 엔진 파이썬으로 실행: {unreal_python}")
+                    subprocess.Popen(
+                        [unreal_python, editor_path, "--direct"],  # GUI 모드로 실행
+                        cwd=script_dir,
+                        creationflags=DETACHED_PROCESS,
+                        close_fds=False,  # 디버깅을 위해 False로 변경
+                        stdin=subprocess.DEVNULL
+                        # stdout, stderr는 제거하여 오류 확인 가능
+                    )
+                    print("새 프로세스가 성공적으로 시작되었습니다.")
+                    return True
+                except Exception as e:
+                    print(f"언리얼 엔진 파이썬 실행 실패, 시스템 파이썬 시도: {e}")
+            
+            # 시스템 파이썬 대체 실행
+            try:
+                subprocess.Popen(
+                    ['pythonw', editor_path, "--direct"],  # GUI 모드로 실행
+                    cwd=script_dir,
+                    creationflags=DETACHED_PROCESS,
+                    close_fds=False,  # 디버깅을 위해 False로 변경
+                    stdin=subprocess.DEVNULL
+                    # stdout, stderr는 제거하여 오류 확인 가능
+                )
+                print("새 프로세스가 성공적으로 시작되었습니다.")
+                return True
+            except FileNotFoundError:
+                subprocess.Popen(
+                    ['python', editor_path, "--direct"],  # GUI 모드로 실행
+                    cwd=script_dir,
+                    creationflags=DETACHED_PROCESS,
+                    close_fds=False,  # 디버깅을 위해 False로 변경
+                    stdin=subprocess.DEVNULL
+                    # stdout, stderr는 제거하여 오류 확인 가능
+                )
+                print("새 프로세스가 성공적으로 시작되었습니다.")
+                return True
+        else:  # Unix/Linux
+            # 언리얼 엔진 파이썬 우선 사용 (Linux/Mac 지원 시)
+            if unreal_python:
+                try:
+                    print(f"언리얼 엔진 파이썬으로 실행: {unreal_python}")
+                    subprocess.Popen(
+                        [unreal_python, editor_path, "--direct"],  # GUI 모드로 실행
+                        cwd=script_dir,
+                        start_new_session=True,
+                        close_fds=False,  # 디버깅을 위해 False로 변경
+                        stdin=subprocess.DEVNULL
+                        # stdout, stderr는 제거하여 오류 확인 가능
+                    )
+                    print("새 프로세스가 성공적으로 시작되었습니다.")
+                    return True
+                except Exception as e:
+                    print(f"언리얼 엔진 파이썬 실행 실패, 시스템 파이썬 시도: {e}")
+            
+            # 시스템 파이썬 대체 실행
+            try:
+                subprocess.Popen(
+                    ['python3', editor_path, "--direct"],  # GUI 모드로 실행
+                    cwd=script_dir,
+                    start_new_session=True,
+                    close_fds=False,  # 디버깅을 위해 False로 변경
+                    stdin=subprocess.DEVNULL
+                    # stdout, stderr는 제거하여 오류 확인 가능
+                )
+                print("새 프로세스가 성공적으로 시작되었습니다.")
+                return True
+            except FileNotFoundError:
+                subprocess.Popen(
+                    ['python', editor_path, "--direct"],  # --direct 플래그 추가
+                    cwd=script_dir,
+                    start_new_session=True,
+                    close_fds=True,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+                print("새 프로세스가 성공적으로 시작되었습니다.")
+                return True
+        
+    except Exception as e:
+        print(f"새 프로세스 시작 중 오류: {e}")
+        return False
+
+
+def start():
+    """기존 start() 함수는 start_new_process()의 별칭으로 유지 (하위 호환성)"""
+    return start_new_process()
+
+
+def print_help():
+    """도움말 출력"""
+    help_text = """
+🐍 TA Python Tool - TAPython MenuConfig.json 편집기
+
+사용법:
+    python ta_python_tool.py [옵션]
+
+옵션:
+    --direct, -d     직접 실행 모드 (현재 프로세스에서 GUI 실행)
+    --launch, -l     런처 모드 (새 프로세스로 GUI 실행) [기본값]
+    --help, -h       이 도움말 표시
+
+예시:
+    python ta_python_tool.py              # 런처 모드 (새 프로세스)
+    python ta_python_tool.py --direct     # 직접 실행 모드
+    python ta_python_tool.py --launch     # 런처 모드 (명시적)
+    python ta_python_tool.py --help       # 도움말 표시
+
+설명:
+    --direct:  현재 Python 프로세스에서 직접 GUI를 실행합니다.
+               스크립트나 IDE에서 디버깅할 때 유용합니다.
+    
+    --launch:  새로운 독립 프로세스를 생성하여 GUI를 실행합니다.
+               TAPython에서 호출하거나 일반 사용자가 실행할 때 권장됩니다.
+"""
+    print(help_text)
+
+
 if __name__ == "__main__":
-    main()
+    import argparse
+    
+    # 명령행 인자 파싱
+    parser = argparse.ArgumentParser(
+        description="TA Python Tool - TAPython MenuConfig.json 편집기",
+        add_help=False  # 사용자 정의 도움말 사용
+    )
+    
+    # 실행 모드 그룹 (상호 배타적)
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument('--direct', '-d', action='store_true',
+                           help='직접 실행 모드 (현재 프로세스에서 GUI 실행)')
+    mode_group.add_argument('--launch', '-l', action='store_true',
+                           help='런처 모드 (새 프로세스로 GUI 실행)')
+    
+    # 도움말
+    parser.add_argument('--help', '-h', action='store_true',
+                       help='도움말 표시')
+    
+    try:
+        args = parser.parse_args()
+        
+        # 도움말 요청
+        if args.help:
+            print_help()
+            sys.exit(0)
+        
+        # 실행 모드 결정
+        if args.direct:
+            print("직접 실행 모드로 시작합니다...")
+            main()
+        else:
+            # 기본값은 런처 모드 (--launch 또는 아무 옵션 없음)
+            print("런처 모드로 시작합니다...")
+            success = start_new_process()
+            if not success:
+                print("런처 모드 실행 실패, 직접 실행 모드로 대체합니다...")
+                main()
+    
+    except KeyboardInterrupt:
+        print("\n사용자에 의해 중단되었습니다.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"실행 중 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
