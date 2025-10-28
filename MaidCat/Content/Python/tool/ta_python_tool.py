@@ -24,31 +24,50 @@ import winreg
 # ==================== 상수 정의 ====================
 
 # 애플리케이션 설정
-APP_TITLE = "🐍 TA Python Tool"
-APP_GEOMETRY = "1000x700"
 LOG_FILE_NAME = 'ta_python_tool.log'
-
-# UI 크기 및 레이아웃
-DIALOG_PADDING = 20
-STATUS_BAR_HEIGHT = 28
 
 # 파일 경로 관련
 TAPYTHON_PATH = ["TA", "TAPython", "UI", "MenuConfig.json"]
 FILE_TYPES = [("JSON files", "*.json"), ("All files", "*.*")]
 
-# 상태 메시지 지연 시간
-STATUS_CLEAR_DELAY = 3000
+# UI 폰트 - 간소화된 폰트 체계
+FONT_MAIN = ("맑은 고딕", 9)           # 일반 텍스트
+FONT_MEDIUM = ("맑은 고딕", 10)         # 중간 텍스트  
+FONT_TITLE = ("맑은 고딕", 12, "bold")  # 제목 텍스트
+FONT_LARGE = ("맑은 고딕", 16)          # 큰 텍스트
+FONT_SMALL = ("맑은 고딕", 8)           # 작은 텍스트 (툴팁 포함)
+FONT_TINY = ("맑은 고딕", 7)            # 매우 작은 텍스트
+FONT_ICON = ("맑은 고딕", 24)           # 아이콘 텍스트
+FONT_CODE = ("Consolas", 9)             # 코드 전용
 
-# UI 폰트
-FONT_MAIN = ("맑은 고딕", 9)
-FONT_TITLE = ("Arial", 12, "bold")
-FONT_SMALL = ("Arial", 8)
-FONT_CODE = ("Consolas", 9)
+# UI 스타일 및 컬러
+STYLE_COLORS = {
+    'primary': '#0078d4',      # Microsoft Blue
+    'secondary': '#6c757d',    # Gray
+    'success': '#28a745',      # Green
+    'danger': '#dc3545',       # Red
+    'dark': '#343a40',         # Dark Gray
+    'background': '#ffffff',    # White
+    'surface': '#f5f5f5',      # Light Surface
+    'text_primary': '#212529', # Dark Text
+    'text_secondary': '#6c757d', # Gray Text
+    'text_muted': '#868e96',   # Muted Text
+}
+
+# TTK 스타일 이름들
+STYLE_NAMES = {
+    'primary_button': 'Primary.TButton',
+    'secondary_button': 'Secondary.TButton',
+    'danger_button': 'Danger.TButton',
+    'success_button': 'Success.TButton',
+    'title_label': 'Title.TLabel',
+    'subtitle_label': 'Subtitle.TLabel',
+    'muted_label': 'Muted.TLabel',
+}
 
 # URL 링크
 TAPYTHON_WEBSITE = "https://www.tacolor.xyz/"
 TAPYTHON_GITHUB = "https://github.com/cgerchenhp/UE_TAPython_Plugin_Release/releases"
-UNREAL_ICONS_URL = "https://github.com/EpicKiwi/unreal-engine-editor-icons"
 
 # 중복 초기화 방지
 _logger_initialized = False
@@ -275,6 +294,75 @@ def setup_logging():
 logger, file_handler = setup_logging()
 
 
+def setup_ui_styles():
+    """UI 스타일 설정"""
+    try:
+        style = ttk.Style()
+        
+        # 기본 테마 설정 (플랫폼에 따라 자동 선택)
+        available_themes = style.theme_names()
+        
+        # 권장 테마 순서 (깔끔한 것부터)
+        preferred_themes = ['vista', 'clam', 'xpnative', 'winnative', 'alt', 'default']
+        
+        for theme in preferred_themes:
+            if theme in available_themes:
+                style.theme_use(theme)
+                break
+        
+        # 커스텀 버튼 스타일들
+        style.configure(STYLE_NAMES['primary_button'],
+                       foreground='white',
+                       background=STYLE_COLORS['primary'],
+                       borderwidth=1,
+                       focuscolor='none')
+        
+        style.map(STYLE_NAMES['primary_button'],
+                 background=[('active', '#106ebe'),  # 호버 시 더 어두운 파란색
+                            ('pressed', '#005a9e')])  # 클릭 시 더욱 어두운 파란색
+        
+        style.configure(STYLE_NAMES['secondary_button'],
+                       foreground=STYLE_COLORS['text_primary'],
+                       background=STYLE_COLORS['secondary'],
+                       borderwidth=1,
+                       focuscolor='none')
+        
+        style.configure(STYLE_NAMES['danger_button'],
+                       foreground='white',
+                       background=STYLE_COLORS['danger'],
+                       borderwidth=1,
+                       focuscolor='none')
+        
+        style.configure(STYLE_NAMES['success_button'],
+                       foreground='white',
+                       background=STYLE_COLORS['success'],
+                       borderwidth=1,
+                       focuscolor='none')
+        
+        # 커스텀 라벨 스타일들
+        style.configure(STYLE_NAMES['title_label'],
+                       foreground=STYLE_COLORS['text_primary'],
+                       font=FONT_TITLE,
+                       background=STYLE_COLORS['background'])
+        
+        style.configure(STYLE_NAMES['subtitle_label'],
+                       foreground=STYLE_COLORS['text_primary'],
+                       font=FONT_TITLE,
+                       background=STYLE_COLORS['background'])
+        
+        style.configure(STYLE_NAMES['muted_label'],
+                       foreground=STYLE_COLORS['text_muted'],
+                       font=FONT_SMALL,
+                       background=STYLE_COLORS['background'])
+        
+        logger.info(f"UI 스타일 설정 완료 - 사용 중인 테마: {style.theme_use()}")
+        return style
+        
+    except Exception as e:
+        logger.error(f"UI 스타일 설정 중 오류: {e}")
+        return None
+
+
 def is_file_writable(file_path):
     """파일이 쓰기 가능한지 확인"""
     try:
@@ -353,16 +441,16 @@ class TAPythonGuide:
             title_frame = ttk.Frame(content_frame)
             title_frame.pack(pady=CONTENT_PADY)
             
-            ttk.Label(title_frame, text=UI_PLUGIN_NEEDED_TITLE, font=("Arial", TITLE_ICON_FONT_SIZE)).pack()
+            ttk.Label(title_frame, text=UI_PLUGIN_NEEDED_TITLE, font=FONT_ICON).pack()
             ttk.Label(title_frame, text=UI_PLUGIN_NEEDED_MSG, 
-                     font=("Arial", TITLE_TEXT_FONT_SIZE, "bold"), foreground="red").pack(pady=BUTTON_PADY)
+                     font=FONT_LARGE, foreground="red").pack(pady=BUTTON_PADY)
             
             # 설명
             desc_frame = ttk.Frame(content_frame)
             desc_frame.pack(pady=CONTENT_PADY, fill=tk.X)
             
             ttk.Label(desc_frame, text=UI_SELECT_OPTION_DESC, justify=tk.CENTER, 
-                     font=("Arial", DESC_FONT_SIZE), wraplength=TEXT_WRAP_LENGTH).pack()
+                     font=FONT_MEDIUM, wraplength=TEXT_WRAP_LENGTH).pack()
             
             # 버튼들
             self._create_guide_buttons(content_frame)
@@ -420,7 +508,7 @@ class TAPythonGuide:
             details_frame.pack(fill=tk.X, pady=INFO_FRAME_PADY)
             
             ttk.Label(details_frame, text=GUIDE_INFO_TEXT, justify=tk.LEFT, 
-                     font=("Arial", DETAIL_FONT_SIZE), wraplength=TEXT_WRAP_LENGTH).pack(anchor=tk.W)
+                     font=FONT_MEDIUM, wraplength=TEXT_WRAP_LENGTH).pack(anchor=tk.W)
             
         except Exception as e:
             logger.error(f"가이드 상세 정보 생성 중 오류: {e}")
@@ -504,7 +592,7 @@ class ToolTip:
         
         label = tk.Label(self.tooltip_window, text=self.text, 
                         background="lightyellow", relief="solid", borderwidth=1,
-                        font=("Arial", 8))
+                        font=FONT_SMALL)
         label.pack()
     
     def on_leave(self, event=None):
@@ -600,6 +688,9 @@ class TAPythonTool:
         self.root = tk.Tk()
         self.root.title("🐍 TA Python Tool")
         self.root.geometry("1000x700")
+        
+        # UI 스타일 설정 (가장 먼저 설정)
+        self.style = setup_ui_styles()
         
         # 리소스 정리 상태 추적
         self._resources_cleaned = False
@@ -1085,19 +1176,19 @@ class TAPythonTool:
             
             # 제목
             title_label = ttk.Label(main_frame, text="퍼포스 설정 정보", 
-                                   font=("맑은 고딕", 12, "bold"))
+                                   font=FONT_TITLE)
             title_label.pack(pady=(0, 20))
             
             if not p4_settings:
                 # 설정 없음
                 ttk.Label(main_frame, text="⚠️ 퍼포스 설정을 찾을 수 없습니다.", 
-                         font=("맑은 고딕", 10), foreground="red").pack(pady=20)
+                         font=FONT_MEDIUM, foreground="red").pack(pady=20)
                 
                 # 설정 파일 경로 표시
                 settings_path = self._get_perforce_settings_path()
                 if settings_path:
                     ttk.Label(main_frame, text=f"확인한 경로:\n{settings_path}", 
-                             font=("맑은 고딕", 9), foreground="gray").pack(pady=10)
+                             font=FONT_MAIN, foreground="gray").pack(pady=10)
             else:
                 # 설정 정보 표시
                 info_frame = ttk.LabelFrame(main_frame, text="설정 정보", padding=15)
@@ -1105,7 +1196,7 @@ class TAPythonTool:
                 
                 # 정보 텍스트 위젯
                 text_widget = tk.Text(info_frame, height=15, wrap=tk.WORD, 
-                                     font=("Consolas", 9), bg="#f0f0f0")
+                                     font=FONT_CODE, bg="#f0f0f0")
                 text_widget.pack(fill=tk.BOTH, expand=True)
                 
                 # 설정 정보 추가
@@ -1196,14 +1287,14 @@ class TAPythonTool:
             
             # 제목
             ttk.Label(main_frame, text="퍼포스 파일 상태", 
-                     font=("맑은 고딕", 12, "bold")).pack(pady=(0, 10))
+                     font=FONT_TITLE).pack(pady=(0, 10))
             
             # 파일 경로
             file_frame = ttk.LabelFrame(main_frame, text="확인 중인 파일", padding=10)
             file_frame.pack(fill=tk.X, pady=(0, 20))
             
             ttk.Label(file_frame, text=self.config_file_path, 
-                     font=("Consolas", 9), wraplength=540).pack(anchor=tk.W)
+                     font=FONT_CODE, wraplength=540).pack(anchor=tk.W)
             
             # 상태 정보 프레임
             status_frame = ttk.LabelFrame(main_frame, text="상태 정보", padding=15)
@@ -1211,12 +1302,12 @@ class TAPythonTool:
             
             # 진행 표시
             progress_label = ttk.Label(status_frame, text="🔄 퍼포스 상태 확인 중...", 
-                                      font=("맑은 고딕", 10))
+                                      font=FONT_MEDIUM)
             progress_label.pack(pady=20)
             
             # 결과 텍스트 (숨김 상태로 시작)
             result_text = tk.Text(status_frame, height=10, wrap=tk.WORD, 
-                                 font=("Consolas", 9), bg="#f0f0f0")
+                                 font=FONT_CODE, bg="#f0f0f0")
             
             # 비동기로 퍼포스 체크 실행
             def check_status():
@@ -1524,7 +1615,7 @@ class TAPythonTool:
         self.category_listbox = tk.Listbox(
             list_frame,
             yscrollcommand=scrollbar.set,
-            font=("맑은 고딕", 9),
+            font=FONT_MAIN,
             selectmode=tk.SINGLE
         )
         self.category_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -2214,22 +2305,22 @@ class TAPythonTool:
         # 파일 메뉴
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="📁 파일", menu=file_menu)
-        file_menu.add_command(label="📂 열기\t\tCtrl+O", command=self.open_config)
-        file_menu.add_command(label="💾 저장\t\tCtrl+S", command=self.save_config)
-        file_menu.add_command(label="📄 다른 이름으로 저장\tCtrl+Shift+S", command=self.save_as_config)
+        file_menu.add_command(label="📂 열기", command=self.open_config)
+        file_menu.add_command(label="💾 저장", command=self.save_config)
+        file_menu.add_command(label="📄 다른 이름으로 저장", command=self.save_as_config)
         file_menu.add_separator()
-        file_menu.add_command(label="🔄 새로고침\t\tF5", command=self.reload_config)
+        file_menu.add_command(label="🔄 새로고침", command=self.reload_config)
         file_menu.add_separator()
-        file_menu.add_command(label="📉 최소화\t\tCtrl+M", command=lambda: self.root.iconify())
+        file_menu.add_command(label="📉 최소화", command=lambda: self.root.iconify())
         
         # 편집 메뉴
         edit_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="✏️ 편집", menu=edit_menu)
-        edit_menu.add_command(label="📋 복사\t\tCtrl+C", command=self.copy_entry)
-        edit_menu.add_command(label="✂️ 잘라내기\t\tCtrl+X", command=self.cut_entry)
-        edit_menu.add_command(label="📋 붙여넣기\t\tCtrl+V", command=self.paste_entry)
+        edit_menu.add_command(label="📋 복사", command=self.copy_entry)
+        edit_menu.add_command(label="✂️ 잘라내기", command=self.cut_entry)
+        edit_menu.add_command(label="📋 붙여넣기", command=self.paste_entry)
         edit_menu.add_separator()
-        edit_menu.add_command(label="🗑️ 삭제\t\tDelete", command=lambda: self.delete_entry(self.current_tool_menu_id))
+        edit_menu.add_command(label="🗑️ 삭제", command=lambda: self.delete_entry(self.current_tool_menu_id))
         edit_menu.add_separator()
         edit_menu.add_command(label="⬆️ 위로 이동", command=lambda: self.move_entry_up(self.current_tool_menu_id))
         edit_menu.add_command(label="⬇️ 아래로 이동", command=lambda: self.move_entry_down(self.current_tool_menu_id))
@@ -2264,7 +2355,7 @@ class TAPythonTool:
         menubar.add_cascade(label="❓ 도움말", menu=help_menu)
         help_menu.add_command(label="📋 로그 보기", command=self.show_log_viewer)
         help_menu.add_separator()
-        help_menu.add_command(label="� 최소화\t\tCtrl+M", command=lambda: self.root.iconify())
+        help_menu.add_command(label="📉 최소화", command=lambda: self.root.iconify())
     
     def _setup_guide_info_frame(self):
         """가이드 모드용 정보 프레임 설정"""
@@ -2280,16 +2371,16 @@ class TAPythonTool:
         title_frame = ttk.Frame(guide_info)
         title_frame.pack(side=tk.LEFT, fill=tk.Y)
         
-        ttk.Label(title_frame, text="🔌", font=("Arial", 16)).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Label(title_frame, text="🔌", font=FONT_LARGE).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Label(title_frame, text="TAPython Menu Configuration Tool", 
-                 font=("Arial", 12, "bold"), foreground="blue").pack(side=tk.LEFT)
+                 font=FONT_TITLE, foreground="blue").pack(side=tk.LEFT)
         
         # 상태 정보
         status_frame = ttk.Frame(guide_info)
         status_frame.pack(side=tk.RIGHT, fill=tk.Y)
         
         ttk.Label(status_frame, text="플러그인 설치가 필요합니다", 
-                 font=("Arial", 10), foreground="red").pack(side=tk.RIGHT)
+                 font=FONT_MEDIUM, foreground="red").pack(side=tk.RIGHT)
     
     def _setup_edit_info_frame(self):
         """편집 모드용 정보 프레임 설정"""
@@ -2319,26 +2410,26 @@ class TAPythonTool:
         
         # 제목 라벨
         ttk.Label(info_frame, text="TAPython Menu Configuration Editor", 
-                 font=("Arial", 10, "bold")).pack(side=tk.RIGHT)
+                 font=FONT_TITLE).pack(side=tk.RIGHT)
     
     def _setup_save_buttons(self, parent):
         """저장 버튼들 설정"""
         button_frame = ttk.Frame(parent)
         button_frame.pack(side=tk.LEFT)
         
-        # 저장 버튼
+        # 저장 버튼 (Primary 스타일)
         self.save_button = ttk.Button(button_frame, text="💾 저장", command=self.save_config, 
-                                     state=tk.DISABLED)
+                                     state=tk.DISABLED, style=STYLE_NAMES['primary_button'])
         self.save_button.pack(side=tk.LEFT, padx=(0, 5))
         
-        # 다른 이름으로 저장 버튼
+        # 다른 이름으로 저장 버튼 (Secondary 스타일)
         self.save_as_button = ttk.Button(button_frame, text="📄 다른 이름으로 저장", 
-                                        command=self.save_as_config)
+                                        command=self.save_as_config, style=STYLE_NAMES['secondary_button'])
         self.save_as_button.pack(side=tk.LEFT)
         
         # 툴팁 추가
-        self.create_tooltip(self.save_button, "변경사항을 현재 파일에 저장합니다 (Ctrl+S)")
-        self.create_tooltip(self.save_as_button, "설정을 새 파일로 저장합니다 (Ctrl+Shift+S)")
+        self.create_tooltip(self.save_button, "변경사항을 현재 파일에 저장합니다")
+        self.create_tooltip(self.save_as_button, "설정을 새 파일로 저장합니다")
     
     def _setup_file_path_display(self, parent):
         """파일 경로 표시 설정"""
@@ -2358,27 +2449,15 @@ class TAPythonTool:
         self.status_frame.configure(height=28)
         
         self.status_label = ttk.Label(self.status_frame, text="준비", anchor=tk.W, 
-                                     font=("Arial", 9), padding=(8, 4))
+                                     font=FONT_MAIN, padding=(8, 4))
         self.status_label.pack(fill=tk.BOTH, expand=True)
         
         # 상태 메시지를 자동으로 지우기 위한 after 참조
         self.status_after_id = None
     
     def _setup_keyboard_shortcuts(self):
-        """키보드 단축키 설정"""
-        self.root.bind('<Control-s>', lambda e: self.save_config() if self.has_unsaved_changes else None)
-        self.root.bind('<Control-S>', lambda e: self.save_as_config())
-        self.root.bind('<Control-o>', lambda e: self.open_config())
-        self.root.bind('<F5>', lambda e: self.reload_config())
-        # 언리얼 엔진 작업을 위한 빠른 최소화
-        self.root.bind('<Control-m>', lambda e: self.root.iconify())
-        self.root.bind('<Escape>', lambda e: self.root.iconify())
-        
-        # 엔트리 편집을 위한 클립보드 단축키
-        self.root.bind('<Control-c>', lambda e: self.copy_entry() if self.current_menu_treeview and self.current_menu_treeview.selection() else None)
-        self.root.bind('<Control-x>', lambda e: self.cut_entry() if self.current_menu_treeview and self.current_menu_treeview.selection() else None)
-        self.root.bind('<Control-v>', lambda e: self.paste_entry() if self.clipboard_data else None)
-        self.root.bind('<Delete>', lambda e: self.delete_entry(self.current_tool_menu_id) if self.current_menu_treeview and self.current_menu_treeview.selection() else None)
+        """키보드 단축키 설정 - 모든 단축키 제거됨"""
+        pass
     
     def update_status(self, message, auto_clear=True, clear_delay=3000):
         """상태바 메시지 업데이트"""
@@ -2441,7 +2520,7 @@ class TAPythonTool:
         # 카테고리 정보 및 설정
         self._create_category_info_section(left_frame, tool_menu_id)
         
-        ttk.Label(left_frame, text="메뉴 엔트리", font=("Arial", 9, "bold")).pack(anchor=tk.W, padx=5, pady=2)
+        ttk.Label(left_frame, text="메뉴 엔트리", style=STYLE_NAMES['subtitle_label']).pack(anchor=tk.W, padx=5, pady=2)
         
         # 트리뷰 생성
         treeview = self._create_treeview(left_frame, tool_menu_id)
@@ -2459,7 +2538,7 @@ class TAPythonTool:
         # 카테고리 이름 표시
         display_name = tool_menu_id.replace(".", " > ") if "." in tool_menu_id else tool_menu_id
         ttk.Label(info_frame, text=f"카테고리: {display_name}", 
-                 font=("Arial", 8, "bold")).pack(anchor=tk.W, padx=5, pady=2)
+                 font=FONT_SMALL).pack(anchor=tk.W, padx=5, pady=2)
         
         # HasSection 설정 (모든 카테고리에 적용 가능)
         self.current_has_section_var = tk.BooleanVar()
@@ -2485,7 +2564,7 @@ class TAPythonTool:
         # 툴바인 경우 권장사항 표시
         if "ToolBar" in tool_menu_id or "Toolbar" in tool_menu_id:
             ttk.Label(info_frame, text="💡 툴바에서는 HasSection=false 권장", 
-                     font=("Arial", 7), foreground="blue").pack(anchor=tk.W, padx=5, pady=1)
+                     font=FONT_TINY, foreground="blue").pack(anchor=tk.W, padx=5, pady=1)
     
     def _update_category_has_section(self, tool_menu_id, has_section_value):
         """카테고리의 HasSection 값 업데이트"""
@@ -2566,11 +2645,11 @@ class TAPythonTool:
         right_frame = ttk.Frame(parent)
         right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
-        ttk.Label(right_frame, text="엔트리 편집", font=("Arial", 9, "bold")).pack(anchor=tk.W, padx=5, pady=2)
+        ttk.Label(right_frame, text="엔트리 편집", style=STYLE_NAMES['subtitle_label']).pack(anchor=tk.W, padx=5, pady=2)
         
         # 설명 라벨
         help_text = "아래에서 엔트리 정보를 수정한 후 '변경사항 저장' 버튼을 클릭하세요."
-        ttk.Label(right_frame, text=help_text, font=("Arial", 8), foreground="gray").pack(anchor=tk.W, padx=5, pady=(2, 5))
+        ttk.Label(right_frame, text=help_text, style=STYLE_NAMES['muted_label']).pack(anchor=tk.W, padx=5, pady=(2, 5))
         
         # 편집 폼
         return self._create_edit_form(right_frame, tool_menu_id)
@@ -2611,11 +2690,11 @@ class TAPythonTool:
         center_frame.pack(expand=True)
         
         # 안내 메시지
-        ttk.Label(center_frame, text="📝", font=("Arial", 24)).pack(pady=(0, 10))
+        ttk.Label(center_frame, text="📝", font=FONT_ICON).pack(pady=(0, 10))
         ttk.Label(center_frame, text="엔트리를 선택하세요", 
-                 font=("맑은 고딕", 12, "bold")).pack(pady=(0, 5))
+                 font=FONT_TITLE).pack(pady=(0, 5))
         ttk.Label(center_frame, text="왼쪽 목록에서 편집할 엔트리를 선택하면\n여기에 편집 폼이 표시됩니다.", 
-                 font=("맑은 고딕", 9), justify=tk.CENTER, foreground="gray").pack()
+                 font=FONT_MAIN, justify=tk.CENTER, foreground="gray").pack()
     
     def _create_type_specific_container(self, parent):
         """타입별 전용 UI 컨테이너 생성"""
@@ -2657,7 +2736,7 @@ class TAPythonTool:
         # 설명
         desc_label = ttk.Label(submenu_frame, 
                               text="서브메뉴는 하위 엔트리들을 그룹화합니다.\n이름, 툴팁, 아이콘을 설정할 수 있습니다.",
-                              foreground="gray", font=("Arial", 9), justify=tk.LEFT)
+                              foreground="gray", font=FONT_MAIN, justify=tk.LEFT)
         desc_label.grid(row=1, column=0, columnspan=2, sticky=tk.W, padx=5, pady=10)
         
         return {
@@ -2690,7 +2769,7 @@ class TAPythonTool:
         cmd_text_frame = ttk.Frame(command_frame)
         cmd_text_frame.grid(row=2, column=1, sticky=tk.W+tk.E+tk.N+tk.S, padx=5, pady=5)
         
-        command_text = tk.Text(cmd_text_frame, height=6, wrap=tk.WORD, font=("Consolas", 9))
+        command_text = tk.Text(cmd_text_frame, height=6, wrap=tk.WORD, font=FONT_CODE)
         cmd_scrollbar = ttk.Scrollbar(cmd_text_frame, orient=tk.VERTICAL, command=command_text.yview)
         command_text.configure(yscrollcommand=cmd_scrollbar.set)
         
@@ -2703,7 +2782,7 @@ class TAPythonTool:
         can_exec_frame = ttk.Frame(command_frame)
         can_exec_frame.grid(row=3, column=1, sticky=tk.W+tk.E, padx=5, pady=5)
         
-        can_execute_text = tk.Text(can_exec_frame, height=3, wrap=tk.WORD, font=("Consolas", 9))
+        can_execute_text = tk.Text(can_exec_frame, height=3, wrap=tk.WORD, font=FONT_CODE)
         can_exec_scrollbar = ttk.Scrollbar(can_exec_frame, orient=tk.VERTICAL, command=can_execute_text.yview)
         can_execute_text.configure(yscrollcommand=can_exec_scrollbar.set)
         
@@ -2744,7 +2823,7 @@ class TAPythonTool:
         path_frame.grid(row=2, column=1, sticky=tk.W+tk.E, padx=5, pady=5)
         
         chameleon_var = tk.StringVar()
-        chameleon_entry = ttk.Entry(path_frame, textvariable=chameleon_var, font=("Consolas", 9))
+        chameleon_entry = ttk.Entry(path_frame, textvariable=chameleon_var, font=FONT_CODE)
         chameleon_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
         
         def select_chameleon_file():
@@ -2762,7 +2841,7 @@ class TAPythonTool:
         
         # 예시
         example_label = ttk.Label(chameleon_frame, text="예시: ../Python/Example/MinimalExample.json",
-                                 foreground="gray", font=("Arial", 8))
+                                 foreground="gray", font=FONT_SMALL)
         example_label.grid(row=3, column=0, columnspan=2, sticky=tk.W, padx=5, pady=(0, 10))
         
         return {
@@ -2907,7 +2986,7 @@ class TAPythonTool:
         text_frame = ttk.Frame(cmd_frame)
         text_frame.pack(fill=tk.BOTH, expand=True)
         
-        command_text = tk.Text(text_frame, height=8, wrap=tk.WORD, font=("Consolas", 9))
+        command_text = tk.Text(text_frame, height=8, wrap=tk.WORD, font=FONT_CODE)
         cmd_scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=command_text.yview)
         command_text.configure(yscrollcommand=cmd_scrollbar.set)
         
@@ -2923,7 +3002,7 @@ class TAPythonTool:
         can_exec_frame = ttk.Frame(cmd_frame)
         can_exec_frame.pack(fill=tk.X)
         
-        can_execute_text = tk.Text(can_exec_frame, height=3, wrap=tk.WORD, font=("Consolas", 9))
+        can_execute_text = tk.Text(can_exec_frame, height=3, wrap=tk.WORD, font=FONT_CODE)
         can_exec_scrollbar = ttk.Scrollbar(can_exec_frame, orient=tk.VERTICAL, command=can_execute_text.yview)
         can_execute_text.configure(yscrollcommand=can_exec_scrollbar.set)
         
@@ -2953,7 +3032,7 @@ class TAPythonTool:
         path_frame.pack(fill=tk.X, pady=(0, 10))
         
         chameleon_var = tk.StringVar()
-        chameleon_entry = ttk.Entry(path_frame, textvariable=chameleon_var, font=("Consolas", 9))
+        chameleon_entry = ttk.Entry(path_frame, textvariable=chameleon_var, font=FONT_CODE)
         chameleon_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
         
         # 파일 선택 버튼
@@ -2976,14 +3055,14 @@ class TAPythonTool:
         
         # 예시 텍스트
         example_text = "예시: ../Python/Example/MinimalExample.json"
-        ttk.Label(chameleon_frame, text=example_text, font=("Arial", 8), 
+        ttk.Label(chameleon_frame, text=example_text, font=FONT_SMALL, 
                  foreground="gray").pack(anchor=tk.W, pady=(0, 10))
         
         # 설명 텍스트
         desc_text = """Chameleon Tools는 Unreal Engine의 UI 도구를 생성합니다.
 JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다."""
         
-        desc_label = ttk.Label(chameleon_frame, text=desc_text, font=("Arial", 8), 
+        desc_label = ttk.Label(chameleon_frame, text=desc_text, font=FONT_SMALL, 
                               foreground="gray", wraplength=300, justify=tk.LEFT)
         desc_label.pack(anchor=tk.W, pady=10)
         
@@ -3048,7 +3127,7 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
         
         # 예시 텍스트
         example_text = "예: LevelEditor.Tabs.Details (EditorStyle) / Resources/flash_32x.png (ImagePath)"
-        ttk.Label(icon_frame, text=example_text, font=("Arial", 8), 
+        ttk.Label(icon_frame, text=example_text, font=FONT_SMALL, 
                  foreground="gray").grid(row=2, column=0, columnspan=2, sticky=tk.W, padx=5, pady=2)
         
         return {
@@ -4431,7 +4510,7 @@ class NewToolMenuAnchorDialog:
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         
         # 제목
-        title_label = ttk.Label(main_frame, text="새 툴 메뉴 항목 추가", font=("맑은 고딕", 12, "bold"))
+        title_label = ttk.Label(main_frame, text="새 툴 메뉴 항목 추가", font=FONT_TITLE)
         title_label.pack(pady=(0, 20))
         
         # 툴 메뉴 ID 입력
@@ -4676,7 +4755,7 @@ class NewEntryDialog:
         }
         
         self.type_desc_label = ttk.Label(main_frame, text=type_descriptions["command"], 
-                                        foreground="gray", font=("Arial", 8))
+                                        foreground="gray", font=FONT_SMALL)
         self.type_desc_label.grid(row=row+1, column=0, columnspan=2, sticky=tk.W, padx=5, pady=(0, 5))
         
         def on_type_change(*args):
