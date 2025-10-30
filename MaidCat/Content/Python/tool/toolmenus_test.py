@@ -1,108 +1,372 @@
 import unreal
-import functools # 델리게이트에 인자를 전달하기 위해 사용
 
-# 0. 가상의 데이터 소스
-DYNAMIC_DATA = {
-    "Props": ["Chair", "Table", "Lamp"],
-    "Environment": ["Tree", "Rock"],
-    "FX": ["Fire", "Smoke", "Water"],
-    "EmptyCategory": []
-}
-
-# 3단계: 서브메뉴의 내용을 실제로 채우는 함수 (가장 안쪽)
-# 이 함수는 사용자가 "Props" 같은 서브메뉴에 마우스를 올릴 때 호출됩니다.
-def populate_submenu(section, category_name, items):
-    """
-    category_name과 items 목록을 기반으로 
-    'section' (서브메뉴의 섹션)을 채웁니다.
-    """
-    print(f"Dynamically populating submenu for: {category_name}")
-
-    if not items:
-        entry = unreal.ToolMenuEntry(
-            name="empty_item",
-            type=unreal.ToolMenuEntryType.NONE, # 클릭 불가
-            label=unreal.Text("(No items)")
-        )
-        section.add_entry(entry)
-        return
-
-    for item_name in items:
-        entry = unreal.ToolMenuEntry(
-            name=f"item_{category_name}_{item_name}",
-            type=unreal.ToolMenuEntryType.MENU_ENTRY,
-            label=unreal.Text(item_name)
+# Tkinter 텍스트 입력 함수
+def get_text_input(title="Input", prompt="Enter text:", default_value=""):
+    """Tkinter를 사용한 텍스트 입력 다이얼로그"""
+    try:
+        import tkinter as tk
+        from tkinter import simpledialog
+        
+        # 루트 윈도우 생성 (숨김)
+        root = tk.Tk()
+        root.withdraw()  # 메인 창 숨기기
+        root.lift()      # 다이얼로그를 맨 앞으로
+        root.attributes('-topmost', True)  # 항상 위에 표시
+        
+        # 텍스트 입력 다이얼로그 표시
+        result = simpledialog.askstring(
+            title, 
+            prompt, 
+            initialvalue=default_value
         )
         
-        # 클릭 시 실행할 Python 스크립트
-        py_command = f"print('Selected Item: {item_name} (Category: {category_name})')"
-        entry.set_string_command(
-            unreal.ToolMenuStringCommandType.PYTHON, 
-            string=py_command
-        )
-        section.add_entry(entry)
-
-# 2단계: 최상위 동적 섹션을 채우는 함수
-# 이 함수는 사용자가 우클릭 메뉴를 열 때 호출됩니다.
-def populate_top_level_section(section):
-    """
-    'section' (최상위 섹션)에 카테고리별 서브메뉴를 추가합니다.
-    """
-    print("Dynamically populating top-level section (Categories)...")
-
-    for category_name, items in DYNAMIC_DATA.items():
+        root.destroy()  # 루트 윈도우 정리
+        return result
         
-        # 1. '서브메뉴' 엔트리를 추가합니다. (예: "Props", "Environment")
-        submenu_entry = section.add_sub_menu(
-            owner=section.section_name,
-            name=f"submenu_{category_name}",
-            label=unreal.Text(category_name),
-            tool_tip=unreal.Text(f"Items in {category_name}")
-        )
+    except ImportError:
+        print("❌ Tkinter를 사용할 수 없습니다. 기본 이름을 사용합니다.")
+        return default_value
+    except Exception as e:
+        print(f"❌ 텍스트 입력 다이얼로그 오류: {e}")
+        return default_value
 
-        # 2. [핵심] 이 서브메뉴의 내용을 채울 '동적 섹션 객체'를 또 만듭니다.
-        submenu_dyn_section = unreal.ToolMenuDynamicSectionScript(
-            name=f"dynamic_section_for_{category_name}"
-        )
+# === 메뉴 액션 함수들 ===
 
-        # 3. 델리게이트에 3단계 함수(populate_submenu)를 바인딩합니다.
-        #    on_generate_section 델리게이트는 'section'만 인자로 받으므로,
-        #    'category_name'과 'items'를 함께 넘기기 위해 functools.partial을 사용합니다.
-        submenu_populator = functools.partial(
-            populate_submenu, 
-            category_name=category_name, 
-            items=items
-        )
-        submenu_dyn_section.on_generate_section.set_function(submenu_populator)
+def action_save_root_preset():
+    """Root 프리셋 저장 액션"""
+    try:
+        from tool.mi_context import MaterialInstanceContextMenu
+        from tool.mi_preset import MaterialInstancePresetManager
+        
+        material = MaterialInstanceContextMenu._get_selected_material_instance()
+        if material:
+            preset_name = get_text_input(
+                title="Save Root Preset",
+                prompt="Root 프리셋 이름을 입력하세요:",
+                default_value="NewRootPreset"
+            )
+            
+            if preset_name and preset_name.strip():
+                preset_manager = MaterialInstancePresetManager()
+                success = preset_manager.save_root_preset(material, preset_name.strip())
+                if success:
+                    print(f'✅ Root 프리셋 저장됨: {preset_name}')
+                    print(f'📁 경로: {material.get_name()} → Root Presets → {preset_name}')
+                else:
+                    print(f'❌ Root 프리셋 저장 실패: {preset_name}')
+            else:
+                print('❌ 저장 취소됨 (빈 이름)')
+        else:
+            print('❌ Material Instance를 먼저 선택해주세요.')
+    except Exception as e:
+        print(f'❌ Error saving root preset: {e}')
+        import traceback
+        traceback.print_exc()
 
-        # 4. 생성된 서브메뉴 엔트리(submenu_entry)에 이 동적 섹션 객체를 추가합니다.
-        submenu_entry.add_section_object(submenu_dyn_section)
+def action_save_parent_preset():
+    """Parent 프리셋 저장 액션"""
+    try:
+        from tool.mi_context import MaterialInstanceContextMenu
+        from tool.mi_preset import MaterialInstancePresetManager
+        
+        material = MaterialInstanceContextMenu._get_selected_material_instance()
+        if material:
+            preset_name = get_text_input(
+                title="Save Parent Preset",
+                prompt="Parent 프리셋 이름을 입력하세요:",
+                default_value="NewParentPreset"
+            )
+            
+            if preset_name and preset_name.strip():
+                preset_manager = MaterialInstancePresetManager()
+                success = preset_manager.save_parent_preset(material, preset_name.strip())
+                if success:
+                    print(f'✅ Parent 프리셋 저장됨: {preset_name}')
+                    print(f'📁 경로: {material.get_name()} → Parent Presets → {preset_name}')
+                else:
+                    print(f'❌ Parent 프리셋 저장 실패: {preset_name}')
+            else:
+                print('❌ 저장 취소됨 (빈 이름)')
+        else:
+            print('❌ Material Instance를 먼저 선택해주세요.')
+    except Exception as e:
+        print(f'❌ Error saving parent preset: {e}')
+        import traceback
+        traceback.print_exc()
 
-# 1단계: 메뉴 등록을 시작하는 메인 함수
-def register_dynamic_nested_menu():
+def action_load_root_preset():
+    """Root 프리셋 로드 액션"""
+    try:
+        from tool.mi_context import MaterialInstanceContextMenu
+        from tool.mi_preset import MaterialInstancePresetManager
+        
+        material = MaterialInstanceContextMenu._get_selected_material_instance()
+        if material:
+            preset_manager = MaterialInstancePresetManager()
+            presets = preset_manager.list_root_presets(material)
+            
+            if presets:
+                print(f'\n=== 사용 가능한 Root Presets ===')
+                for i, preset in enumerate(presets, 1):
+                    print(f'{i}. {preset}')
+                
+                selected_preset = get_text_input(
+                    title="Load Root Preset",
+                    prompt="로드할 Root 프리셋 이름을 입력하세요:",
+                    default_value=presets[0] if presets else ""
+                )
+                
+                if selected_preset and selected_preset in presets:
+                    print(f'🎯 Root 프리셋 "{selected_preset}" 로딩 중...')
+                    success = preset_manager.load_root_preset(material, selected_preset)
+                    if success:
+                        print(f'✅ 프리셋 "{selected_preset}" 로드 완료!')
+                        unreal.EditorAssetLibrary.save_asset(material.get_path_name())
+                    else:
+                        print(f'❌ 프리셋 "{selected_preset}" 로드 실패')
+                elif selected_preset:
+                    print(f'❌ 프리셋 "{selected_preset}"을 찾을 수 없습니다.')
+                    print(f'사용 가능한 프리셋: {", ".join(presets)}')
+            else:
+                print('⚠️  저장된 Root 프리셋이 없습니다.')
+                print('💡 먼저 "💾 Save Root Preset" 메뉴를 사용해서 프리셋을 저장해주세요.')
+        else:
+            print('❌ Material Instance를 먼저 선택해주세요.')
+    except Exception as e:
+        print(f'❌ Error loading root presets: {e}')
+        import traceback
+        traceback.print_exc()
+
+def action_load_parent_preset():
+    """Parent 프리셋 로드 액션"""
+    try:
+        from tool.mi_context import MaterialInstanceContextMenu
+        from tool.mi_preset import MaterialInstancePresetManager
+        
+        material = MaterialInstanceContextMenu._get_selected_material_instance()
+        if material:
+            preset_manager = MaterialInstancePresetManager()
+            presets = preset_manager.list_parent_presets(material)
+            
+            if presets:
+                print(f'\n=== 사용 가능한 Parent Presets ===')
+                for i, preset in enumerate(presets, 1):
+                    print(f'{i}. {preset}')
+                
+                selected_preset = get_text_input(
+                    title="Load Parent Preset",
+                    prompt="로드할 Parent 프리셋 이름을 입력하세요:",
+                    default_value=presets[0] if presets else ""
+                )
+                
+                if selected_preset and selected_preset in presets:
+                    print(f'🎯 Parent 프리셋 "{selected_preset}" 로딩 중...')
+                    success = preset_manager.load_parent_preset(material, selected_preset)
+                    if success:
+                        print(f'✅ 프리셋 "{selected_preset}" 로드 완료!')
+                        unreal.EditorAssetLibrary.save_asset(material.get_path_name())
+                    else:
+                        print(f'❌ 프리셋 "{selected_preset}" 로드 실패')
+                elif selected_preset:
+                    print(f'❌ 프리셋 "{selected_preset}"을 찾을 수 없습니다.')
+                    print(f'사용 가능한 프리셋: {", ".join(presets)}')
+            else:
+                print('⚠️  저장된 Parent 프리셋이 없습니다.')
+                print('💡 먼저 "💾 Save Parent Preset" 메뉴를 사용해서 프리셋을 저장해주세요.')
+        else:
+            print('❌ Material Instance를 먼저 선택해주세요.')
+    except Exception as e:
+        print(f'❌ Error loading parent presets: {e}')
+        import traceback
+        traceback.print_exc()
+
+def action_list_all_presets():
+    """모든 프리셋 목록 보기 액션"""
+    try:
+        from tool.mi_context import MaterialInstanceContextMenu
+        from tool.mi_preset import MaterialInstancePresetManager
+        
+        material = MaterialInstanceContextMenu._get_selected_material_instance()
+        if material:
+            preset_manager = MaterialInstancePresetManager()
+            
+            print(f'\n=== {material.get_name()}의 모든 프리셋 ===')
+            
+            root_presets = preset_manager.list_root_presets(material)
+            parent_presets = preset_manager.list_parent_presets(material)
+            
+            print(f'📁 Root Presets ({len(root_presets)}개):')
+            for i, preset in enumerate(root_presets, 1):
+                print(f'   {i}. {preset}')
+            
+            print(f'👨‍👩‍👧‍👦 Parent Presets ({len(parent_presets)}개):')
+            for i, preset in enumerate(parent_presets, 1):
+                print(f'   {i}. {preset}')
+            
+            if not root_presets and not parent_presets:
+                print('⚠️  저장된 프리셋이 없습니다.')
+                print('💡 "💾 Save Root Preset" 또는 "💾 Save Parent Preset"을 사용해서 프리셋을 저장해보세요.')
+        else:
+            print('❌ Material Instance를 먼저 선택해주세요.')
+    except Exception as e:
+        print(f'❌ Error listing presets: {e}')
+        import traceback
+        traceback.print_exc()
+
+# === 메뉴 등록 함수 ===
+
+def register_material_preset_menu():
+    """Material Instance 프리셋 메뉴 등록 (서브메뉴 방식)"""
+    print("🚀 Material Preset 메뉴 등록 시작")
+    
     tool_menus = unreal.ToolMenus.get()
     
-    # 콘텐츠 브라우저 애셋 우클릭 메뉴
-    menu_name = "ContentBrowser.AssetContextMenu"
+    # 콘텐츠 브라우저 애셋 우클릭 메뉴 찾기
+    menu_name = unreal.Name("ContentBrowser.AssetContextMenu")
     menu = tool_menus.find_menu(menu_name)
     if not menu:
-        print(f"Failed to find menu: {menu_name}")
+        print(f"❌ Failed to find menu: {menu_name}")
         return
-
-    # 1. '최상위' 동적 섹션 객체를 생성합니다.
-    top_level_dyn_section = unreal.ToolMenuDynamicSectionScript(
-        name="MyPythonTopLevelDynamicSection"
-    )
-
-    # 2. 2단계 함수(populate_top_level_section)를 바인딩합니다.
-    top_level_dyn_section.on_generate_section.set_function(populate_top_level_section)
-
-    # 3. 'ContentBrowser.AssetContextMenu'에 이 객체를 추가합니다.
-    menu.add_section_object(top_level_dyn_section)
     
-    # 4. 메뉴 UI 새로고침
+    print(f"✅ 메뉴 찾음: {menu_name}")
+    
+    # 기존 MaidCat 섹션들 제거 (새로 만들기 위해)
+    try:
+        menu.remove_section(unreal.Name("MaidCat"))
+        menu.remove_section(unreal.Name("MaidCat_Flat"))
+        menu.remove_section(unreal.Name("MaidCat_Submenu"))
+        print("🧹 기존 섹션들 정리됨")
+    except:
+        pass
+    
+    # 새로운 MaidCat 섹션 추가
+    main_section = unreal.Name("MaidCat_MaterialPresets")
+    menu.add_section(main_section, unreal.Text("🐱 MaidCat Material Presets"))
+    print(f"✅ 메인 섹션 '{main_section}' 추가됨")
+    
+    # === 💾 SAVE PRESETS 서브메뉴 ===
+    save_submenu = menu.add_sub_menu(
+        owner=unreal.Name(""),
+        section_name=main_section,
+        name=unreal.Name("maidcat_save"),
+        label=unreal.Text("💾 Save Presets"),
+        tool_tip=unreal.Text("Save Material Instance as preset")
+    )
+    
+    if save_submenu:
+        save_section = unreal.Name("save_options")
+        save_submenu.add_section(save_section, unreal.Text("Save Options"))
+        
+        # Save Root Preset
+        save_root = unreal.ToolMenuEntry(
+            name=unreal.Name("save_root"),
+            type=unreal.MultiBlockType.MENU_ENTRY
+        )
+        save_root.set_label(unreal.Text("📁 Save as Root Preset"))
+        save_root.set_string_command(
+            unreal.ToolMenuStringCommandType.PYTHON,
+            custom_type=unreal.Name(""),
+            string="from tool.toolmenus_clean import action_save_root_preset; action_save_root_preset()"
+        )
+        save_submenu.add_menu_entry(save_section, save_root)
+        
+        # Save Parent Preset
+        save_parent = unreal.ToolMenuEntry(
+            name=unreal.Name("save_parent"),
+            type=unreal.MultiBlockType.MENU_ENTRY
+        )
+        save_parent.set_label(unreal.Text("👨‍👩‍👧‍👦 Save as Parent Preset"))
+        save_parent.set_string_command(
+            unreal.ToolMenuStringCommandType.PYTHON,
+            custom_type=unreal.Name(""),
+            string="from tool.toolmenus_clean import action_save_parent_preset; action_save_parent_preset()"
+        )
+        save_submenu.add_menu_entry(save_section, save_parent)
+        print("✅ Save 서브메뉴 생성됨")
+    
+    # === 📂 LOAD PRESETS 서브메뉴 ===
+    load_submenu = menu.add_sub_menu(
+        owner=unreal.Name(""),
+        section_name=main_section,
+        name=unreal.Name("maidcat_load"),
+        label=unreal.Text("📂 Load Presets"),
+        tool_tip=unreal.Text("Load saved Material Instance presets")
+    )
+    
+    if load_submenu:
+        load_section = unreal.Name("load_options")
+        load_submenu.add_section(load_section, unreal.Text("Load Options"))
+        
+        # Load Root Preset
+        load_root = unreal.ToolMenuEntry(
+            name=unreal.Name("load_root"),
+            type=unreal.MultiBlockType.MENU_ENTRY
+        )
+        load_root.set_label(unreal.Text("📁 Load Root Preset"))
+        load_root.set_string_command(
+            unreal.ToolMenuStringCommandType.PYTHON,
+            custom_type=unreal.Name(""),
+            string="from tool.toolmenus_clean import action_load_root_preset; action_load_root_preset()"
+        )
+        load_submenu.add_menu_entry(load_section, load_root)
+        
+        # Load Parent Preset
+        load_parent = unreal.ToolMenuEntry(
+            name=unreal.Name("load_parent"),
+            type=unreal.MultiBlockType.MENU_ENTRY
+        )
+        load_parent.set_label(unreal.Text("👨‍👩‍👧‍👦 Load Parent Preset"))
+        load_parent.set_string_command(
+            unreal.ToolMenuStringCommandType.PYTHON,
+            custom_type=unreal.Name(""),
+            string="from tool.toolmenus_clean import action_load_parent_preset; action_load_parent_preset()"
+        )
+        load_submenu.add_menu_entry(load_section, load_parent)
+        
+        # 구분자
+        separator = unreal.ToolMenuEntry(
+            name=unreal.Name("load_separator"),
+            type=unreal.MultiBlockType.SEPARATOR
+        )
+        load_submenu.add_menu_entry(load_section, separator)
+        
+        # List All Presets
+        list_all = unreal.ToolMenuEntry(
+            name=unreal.Name("list_all"),
+            type=unreal.MultiBlockType.MENU_ENTRY
+        )
+        list_all.set_label(unreal.Text("📋 List All Presets"))
+        list_all.set_string_command(
+            unreal.ToolMenuStringCommandType.PYTHON,
+            custom_type=unreal.Name(""),
+            string="from tool.toolmenus_clean import action_list_all_presets; action_list_all_presets()"
+        )
+        load_submenu.add_menu_entry(load_section, list_all)
+        print("✅ Load 서브메뉴 생성됨")
+    
+    # 메뉴 새로고침
     tool_menus.refresh_all_widgets()
-    print("Registered dynamic nested menu (Python).")
+    
+    print("🎉 Material Preset 메뉴 등록 완료!")
+    print("📂 콘텐츠 브라우저에서 Material Instance 우클릭 → '🐱 MaidCat Material Presets'")
 
-# --- 스크립트 실행 ---
-register_dynamic_nested_menu()
+# === 테스트 함수 ===
+
+def test_preset_functions():
+    """프리셋 함수들 개별 테스트"""
+    print("🧪 프리셋 함수 테스트 시작")
+    
+    # Tkinter 테스트
+    print("\n1. Tkinter 입력 테스트:")
+    result = get_text_input("테스트", "테스트 텍스트를 입력하세요:", "TestValue")
+    print(f"입력 결과: {result}")
+    
+    # 프리셋 목록 테스트
+    print("\n2. 프리셋 목록 테스트:")
+    action_list_all_presets()
+    
+    print("\n🧪 테스트 완료")
+
+if __name__ == "__main__":
+    # 스크립트가 직접 실행될 때 메뉴 등록
+    register_material_preset_menu()
