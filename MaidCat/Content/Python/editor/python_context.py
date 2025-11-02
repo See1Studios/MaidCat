@@ -50,7 +50,8 @@ def analyze_python_file(file_path):
         tree = ast.parse(content)
         functions = []
         
-        for node in ast.walk(tree):
+        # 최상위 레벨의 함수들만 찾기 (클래스 내부 메서드는 완전히 제외)
+        for node in tree.body:
             if isinstance(node, ast.FunctionDef):
                 func_info = {
                     'name': node.name,
@@ -209,7 +210,7 @@ class PythonFunctionScript(unreal.ToolMenuEntryScript):
                 unreal.log_error("파이썬 파일을 찾을 수 없습니다")
     
     def _execute_python_function(self, func_name, file_path):
-        """실제 파이썬 함수 실행"""
+        """실제 파이썬 함수 실행 (최상위 함수만)"""
         exec_command = f"""
 import sys
 import os
@@ -225,102 +226,16 @@ try:
     else:
         __import__(module_name)
     
-    # 함수 실행 및 리턴 값 캡처
+    # 함수 실행 및 리턴 값 캡처 (최상위 함수만)
     module_obj = sys.modules[module_name]
     func_obj = getattr(module_obj, '{func_name}')
     result = func_obj()
     
-    # 객체 깊이 분석 함수
-    def analyze_object(obj, name="result", depth=0, max_depth=5):
-        indent = "  " * depth
-        analysis = []
-        
-        if depth > max_depth:
-            return [f"{{indent}}{{name}}: [Max depth reached]"]
-        
-        # 기본 정보
-        obj_type = type(obj).__name__
-        obj_module = getattr(type(obj), '__module__', 'unknown')
-        analysis.append(f"{{indent}}{{name}}: {{obj_type}} ({{obj_module}})")
-        
-        # 값 출력
-        try:
-            if hasattr(obj, '__dict__') and obj.__dict__:
-                analysis.append(f"{{indent}}  Value: {{repr(obj)}}")
-            else:
-                analysis.append(f"{{indent}}  Value: {{str(obj)}}")
-        except:
-            analysis.append(f"{{indent}}  Value: [Cannot display]")
-        
-        # 언리얼 객체인 경우 추가 분석
-        if hasattr(obj, '__class__') and 'unreal' in str(type(obj)):
-            # 주요 속성들 확인
-            if hasattr(obj, 'get_all_properties'):
-                try:
-                    properties = obj.get_all_properties()
-                    if properties:
-                        analysis.append(f"{{indent}}  Properties ({{len(properties)}}):")
-                        for i, prop in enumerate(properties):  # 모든 프로퍼티 표시
-                            analysis.append(f"{{indent}}    [{{i}}] {{prop}}")
-                except:
-                    pass
-            
-            # 에디터 속성들 확인
-            common_props = ['name', 'class', 'outer', 'package', 'world']
-            for prop in common_props:
-                if hasattr(obj, prop) or hasattr(obj, f'get_{{prop}}'):
-                    try:
-                        if hasattr(obj, prop):
-                            value = getattr(obj, prop)
-                        else:
-                            value = getattr(obj, f'get_{{prop}}')()
-                        analysis.append(f"{{indent}}  {{prop}}: {{repr(value)}}")
-                    except:
-                        pass
-        
-        # dir() 정보 (메서드와 속성들) - 모든 것 표시
-        try:
-            attrs = [attr for attr in dir(obj) if not attr.startswith('_')]
-            if attrs:
-                analysis.append(f"{{indent}}  Public attributes ({{len(attrs)}}):")
-                
-                # 모든 속성 표시
-                for attr in attrs:
-                    try:
-                        attr_obj = getattr(obj, attr)
-                        attr_type = type(attr_obj).__name__
-                        if callable(attr_obj):
-                            analysis.append(f"{{indent}}    {{attr}}() -> {{attr_type}}")
-                        else:
-                            analysis.append(f"{{indent}}    {{attr}}: {{attr_type}} = {{repr(attr_obj)}}")
-                    except:
-                        analysis.append(f"{{indent}}    {{attr}}: [Cannot access]")
-        except:
-            pass
-        
-        # 딕셔너리나 리스트인 경우 내용 분석 - 모든 내용 표시
-        if isinstance(obj, dict) and depth < max_depth:
-            analysis.append(f"{{indent}}  Dictionary contents ({{len(obj)}} items):")
-            for key, value in obj.items():  # 모든 아이템 표시
-                sub_analysis = analyze_object(value, f"[{{repr(key)}}]", depth + 1, max_depth)
-                analysis.extend(sub_analysis)
-        
-        elif isinstance(obj, (list, tuple)) and depth < max_depth and len(obj) > 0:
-            analysis.append(f"{{indent}}  {{type(obj).__name__}} contents ({{len(obj)}} items):")
-            for i in range(len(obj)):  # 모든 아이템 표시
-                sub_analysis = analyze_object(obj[i], f"[{{i}}]", depth + 1, max_depth)
-                analysis.extend(sub_analysis)
-        
-        return analysis
-    
     # 리턴 값 로그 출력
     if result is not None:
-        analysis_lines = analyze_object(result, "result")
         unreal.log("=" * 60)
         unreal.log(f"✅ 함수 {func_name}() 실행 완료")
-        unreal.log("=" * 60)
-        for line in analysis_lines:
-            unreal.log(line)
+        unreal.log(f"📋 결과: {{type(result).__name__}} = {{repr(result)}}")
         unreal.log("=" * 60)
     else:
         unreal.log(f"✅ 함수 {func_name}() 실행 완료 - 리턴 값: None")
@@ -378,7 +293,7 @@ class PythonFunctionsDynamicSection(unreal.ToolMenuSectionDynamic):
         unreal.log(f"✅ {executable_count}개 실행가능 함수, {info_count}개 정보 함수를 동적 메뉴에 추가했습니다")
     
     def _add_function_entry(self, menu, func, file_path, context):
-        """함수 엔트리 추가"""
+        """함수 엔트리 추가 (최상위 함수만)"""
         args_str = f"({', '.join(func['args'])})" if func['args'] else "()"
         label_text = f"{func['name']}{args_str}"
         
@@ -628,13 +543,16 @@ def register_python_menu_entry():
     """
     try:
         tool_menus = unreal.ToolMenus.get()
-        menu = tool_menus.extend_menu(unreal.Name("ContentBrowser.ItemContextMenu.PythonData"))        
-        section_name = unreal.Name("PythonScript")        
-        # 함수 실행 서브메뉴 추가
+        menu_name = unreal.Name("ContentBrowser.ItemContextMenu.PythonData") # Python 파일 컨텍스트 메뉴
+        # 메뉴 확장
+        menu = tool_menus.extend_menu(menu_name)
+        # 기존에 존재하는 섹션 이름 
+        section_name = unreal.Name("PythonScript")
+        # 서브메뉴 추가
         functions_submenu = menu.add_sub_menu(
-            owner=section_name,
+            owner=menu_name,
             section_name=section_name,
-            name=unreal.Name("ContentBrowser.ItemContextMenu.PythonData.PythonFunctions"),
+            name=unreal.Name("RunPythonFunctions"),
             label=unreal.Text("함수 실행..."),
             tool_tip=unreal.Text("파이썬 파일의 함수들을 바로 실행할 수 있습니다")
         )
@@ -642,12 +560,18 @@ def register_python_menu_entry():
         if functions_submenu:
             # 서브메뉴에 동적 섹션 추가
             dynamic_section = PythonFunctionsDynamicSection()
-            functions_submenu.add_dynamic_section(unreal.Name("PythonFunctions"), dynamic_section)
+            dynamic_section_name = unreal.Name("PythonFunctionsDynamicSection")
+            functions_submenu.add_dynamic_section(dynamic_section_name, dynamic_section)
+            # unreal.log(f"✅ 서브메뉴 이름: {functions_submenu.menu_name}")
+            # unreal.log(f"✅ 서브메뉴 소유자: {functions_submenu.menu_owner}")
+            # unreal.log(f"✅ 서브메뉴 부모: {functions_submenu.menu_parent}")
+            # unreal.log(f"✅ 서브메뉴 타입: {functions_submenu.menu_type}")
+            # unreal.log(f"✅ 서브메뉴 스타일: {functions_submenu.style_name}")
             unreal.log("✅ 파이썬 함수 실행기 등록 완료!")
         else:
             unreal.log("❌ 함수 실행 서브메뉴 생성 실패")
             return False
-        
+
         tool_menus.refresh_all_widgets()
         return True
         

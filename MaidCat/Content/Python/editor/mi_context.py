@@ -1,43 +1,293 @@
+
 """
-Material Instance Context Menu
+Material Instance Context Menu System
+머티리얼 인스턴스 컨텍스트 메뉴 시스템
 
-머티리얼 인스턴스에서 오른클릭 시 나타나는 컨텍스트 메뉴를 통해 
-루트 프리셋과 부모 프리셋을 쉽게 관리할 수 있는 기능을 제공합니다.
+주요 기능:
+1. 머티리얼 프리셋 관리: 루트/부모 머티리얼 기반 프리셋 저장/로드/삭제
+2. 머티리얼 정보 표시: 선택된 머티리얼 인스턴스의 상세 정보 표시
+3. 동적 메뉴 생성: 선택된 머티리얼에 따라 메뉴 항목 자동 구성
 
-컨텍스트 메뉴 기능:
-- 루트 프리셋 저장/로드/삭제
-- 부모 프리셋 저장/로드/삭제
-- 프리셋 목록 보기
-- 머티리얼 정보 표시
+클래스:
+- MaterialPresetScript: 머티리얼 프리셋 메뉴 항목
+- MaterialPresetDynamicSection: 동적 프리셋 메뉴 섹션
+- MaterialInstanceContextMenu: 메인 컨텍스트 메뉴 관리 클래스
 
-Author: MaidCat Team
-Version: 1.0.0
+함수:
+- get_selected_material_instance(): 선택된 머티리얼 인스턴스 가져오기
+- show_input_dialog(): 입력 다이얼로그 표시
+- show_selection_dialog(): 선택 다이얼로그 표시
+- initialize(): 모듈 초기화
 """
 
 import unreal
 from typing import List, Optional
+from tool.mi_preset import MaterialInstancePresetManager
+from tool.mi_serializer import MaterialInstanceSerializer
 
-# 모듈 reload 및 import (개발 중 캐싱 문제 해결)
-import importlib
-try:
-    import tool.mi_preset as mi_preset_module
-    import tool.mi_serializer as mi_serializer_module
-    importlib.reload(mi_preset_module)
-    importlib.reload(mi_serializer_module)
-    from tool.mi_preset import MaterialInstancePresetManager
-    from tool.mi_serializer import MaterialInstanceSerializer
-except ImportError as e:
-    # 상대 경로로 다시 시도
+
+def get_selected_material_instance() -> Optional['unreal.MaterialInstance']:
+    """선택된 머티리얼 인스턴스 가져오기
+    
+    Returns:
+        unreal.MaterialInstance: 선택된 머티리얼 인스턴스, 없으면 None
+    """
     try:
-        import mi_preset as mi_preset_module
-        import mi_serializer as mi_serializer_module
-        importlib.reload(mi_preset_module)
-        importlib.reload(mi_serializer_module)
-        from mi_preset import MaterialInstancePresetManager
-        from mi_serializer import MaterialInstanceSerializer
-    except ImportError:
-        unreal.log_error(f"모듈 import 실패: {e}")
-        raise
+        selected_assets = unreal.EditorUtilityLibrary.get_selected_assets()
+        
+        for asset in selected_assets:
+            if isinstance(asset, unreal.MaterialInstance):
+                return asset
+        
+        unreal.log_warning("선택된 머티리얼 인스턴스가 없습니다.")
+        return None
+        
+    except Exception as e:
+        unreal.log_error(f"선택된 에셋 가져오기 실패: {e}")
+        return None
+
+
+def show_input_dialog(title: str, message: str, default_value: str = "") -> Optional[str]:
+    """입력 다이얼로그 표시
+    
+    Args:
+        title: 다이얼로그 제목
+        message: 표시할 메시지
+        default_value: 기본값
+        
+    Returns:
+        str: 입력된 값, 취소 시 None
+    """
+    try:
+        # EditorDialog를 사용하여 텍스트 입력 받기
+        result = unreal.EditorDialog.show_message(
+            title=unreal.Text(title),
+            message=unreal.Text(f"{message}\n\n입력할 이름:"),
+            message_type=unreal.AppMsgType.OK_CANCEL
+        )
+        
+        if result == unreal.AppReturnType.OK:
+            # 간단한 입력을 위해 기본값 사용 (실제로는 더 복잡한 UI 필요)
+            return default_value if default_value else "default"
+        
+        return None
+        
+    except Exception as e:
+        unreal.log_error(f"입력 다이얼로그 표시 실패: {e}")
+        return None
+
+
+def show_selection_dialog(title: str, message: str, options: List[str]) -> Optional[str]:
+    """선택 다이얼로그 표시
+    
+    Args:
+        title: 다이얼로그 제목
+        message: 표시할 메시지
+        options: 선택 가능한 옵션 목록
+        
+    Returns:
+        str: 선택된 옵션, 취소 시 None
+    """
+    try:
+        if not options:
+            unreal.EditorDialog.show_message(
+                title=unreal.Text(title),
+                message=unreal.Text("사용 가능한 프리셋이 없습니다."),
+                message_type=unreal.AppMsgType.OK
+            )
+            return None
+        
+        # 옵션을 메시지에 포함
+        options_text = "\n".join([f"{i+1}. {option}" for i, option in enumerate(options)])
+        full_message = f"{message}\n\n사용 가능한 프리셋:\n{options_text}\n\n첫 번째 프리셋을 선택합니다."
+        
+        result = unreal.EditorDialog.show_message(
+            title=unreal.Text(title),
+            message=unreal.Text(full_message),
+            message_type=unreal.AppMsgType.OK_CANCEL
+        )
+        
+        if result == unreal.AppReturnType.OK and options:
+            return options[0]  # 첫 번째 옵션 반환 (실제로는 더 복잡한 UI 필요)
+        
+        return None
+        
+    except Exception as e:
+        unreal.log_error(f"선택 다이얼로그 표시 실패: {e}")
+        return None
+
+
+def get_selected_material_instance_from_context(context):
+    """컨텍스트에서 선택된 머티리얼 인스턴스 가져오기
+    
+    Args:
+        context: Unreal Engine ToolMenuContext 객체
+        
+    Returns:
+        unreal.MaterialInstance: 선택된 머티리얼 인스턴스, 없으면 None
+    """
+    try:
+        # Asset Editor Context 확인
+        asset_editor_context = context.find_by_class(unreal.AssetEditorToolkitMenuContext)
+        if asset_editor_context:
+            # Asset Editor에서 편집 중인 에셋 가져오기
+            for asset in asset_editor_context.get_objects():
+                if isinstance(asset, unreal.MaterialInstance):
+                    return asset
+        
+        # Content Browser Context 확인
+        content_browser_context = context.find_by_class(unreal.ContentBrowserAssetContextMenuContext)
+        if content_browser_context:
+            selected_objects = content_browser_context.get_selected_objects()
+            for obj in selected_objects:
+                if isinstance(obj, unreal.MaterialInstance):
+                    return obj
+        
+        # 일반적인 방법으로 선택된 에셋 가져오기
+        return get_selected_material_instance()
+        
+    except Exception as e:
+        unreal.log_error(f"컨텍스트에서 머티리얼 인스턴스 가져오기 실패: {e}")
+        return None
+
+
+@unreal.uclass()
+class MaterialPresetScript(unreal.ToolMenuEntryScript):
+    """머티리얼 프리셋 관리를 위한 메뉴 항목 스크립트
+    
+    기능:
+    - 머티리얼 프리셋 저장/로드/삭제 명령 실행
+    - 머티리얼 정보 표시
+    - 선택된 머티리얼 인스턴스 상태에 따른 활성화 제어
+    
+    메서드:
+    - can_execute(): 실행 가능 여부 판단 (머티리얼 인스턴스 선택 여부)
+    - execute(): 설정된 명령 실행
+    """
+    
+    @unreal.ufunction(override=True)
+    def can_execute(self, context):
+        """머티리얼 인스턴스가 선택된 경우에만 활성화"""
+        material = get_selected_material_instance_from_context(context)
+        return material is not None
+    
+    @unreal.ufunction(override=True)
+    def execute(self, context):
+        """메뉴 항목 실행 - 실제 명령은 string_command에서 처리"""
+        # string_command에서 처리되므로 여기서는 특별히 할 일 없음
+        pass
+
+
+@unreal.uclass()
+class MaterialPresetDynamicSection(unreal.ToolMenuSectionDynamic):
+    """머티리얼 프리셋을 동적으로 표시하는 메뉴 섹션
+    
+    기능:
+    - 선택된 머티리얼 인스턴스의 사용 가능한 프리셋들을 동적으로 표시
+    - 루트 프리셋과 부모 프리셋을 구분하여 메뉴 생성
+    - 프리셋이 없는 경우 안내 메시지 표시
+    
+    메서드:
+    - construct_sections(): 동적 메뉴 구성
+    - _add_preset_load_entry(): 프리셋 로드 메뉴 항목 추가
+    """
+    
+    @unreal.ufunction(override=True)
+    def construct_sections(self, menu, context):
+        """동적으로 머티리얼 프리셋들을 메뉴에 추가"""
+        material = get_selected_material_instance_from_context(context)
+        
+        if not material:
+            return  # 머티리얼 인스턴스가 없으면 메뉴를 비움
+        
+        try:
+            from tool.mi_preset import MaterialInstancePresetManager
+            preset_manager = MaterialInstancePresetManager()
+            
+            # 루트 프리셋 목록
+            root_presets = preset_manager.list_root_presets(material)
+            # 부모 프리셋 목록
+            parent_presets = preset_manager.list_parent_presets(material)
+            
+            # 루트 프리셋 추가
+            if root_presets:
+                for preset_name in root_presets:
+                    self._add_preset_load_entry(menu, preset_name, "root", material)
+            
+            # 부모 프리셋 추가
+            if parent_presets:
+                for preset_name in parent_presets:
+                    self._add_preset_load_entry(menu, preset_name, "parent", material)
+                    
+            # 통계 로그
+            total_presets = len(root_presets) + len(parent_presets)
+            if total_presets > 0:
+                unreal.log(f"✅ {len(root_presets)}개 루트, {len(parent_presets)}개 부모 프리셋을 동적 메뉴에 추가")
+            
+        except Exception as e:
+            unreal.log_error(f"동적 프리셋 메뉴 구성 실패: {e}")
+    
+    def _add_preset_load_entry(self, menu, preset_name: str, preset_type: str, material):
+        """프리셋 로드 엔트리 추가"""
+        try:
+            # 프리셋 타입에 따른 라벨과 명령
+            if preset_type == "root":
+                label_text = f"🔸 {preset_name} (Root)"
+                command_string = f"import editor.mi_context as mic; mic.load_root_preset_by_name('{preset_name}')"
+                tooltip_text = f"루트 프리셋 '{preset_name}'을 로드합니다"
+            else:  # parent
+                label_text = f"🔹 {preset_name} (Parent)"
+                command_string = f"import editor.mi_context as mic; mic.load_parent_preset_by_name('{preset_name}')"
+                tooltip_text = f"부모 프리셋 '{preset_name}'을 로드합니다"
+            
+            # 메뉴 엔트리를 직접 생성하여 string_command 설정
+            entry = unreal.ToolMenuEntry(
+                name=unreal.Name(f'LoadPreset_{preset_type}_{preset_name}'),
+                type=unreal.MultiBlockType.MENU_ENTRY
+            )
+            entry.set_label(unreal.Text(label_text))
+            entry.set_tool_tip(unreal.Text(tooltip_text))
+            entry.set_string_command(unreal.ToolMenuStringCommandType.PYTHON,
+                                   custom_type=unreal.Name(""),
+                                   string=command_string)
+            
+            menu.add_menu_entry(unreal.Name('DynamicPresets'), entry)
+            
+        except Exception as e:
+            unreal.log_error(f"프리셋 엔트리 추가 실패: {e}")
+
+
+def load_root_preset_by_name(preset_name: str):
+    """이름으로 루트 프리셋 로드 (동적 메뉴용)"""
+    try:
+        material = get_selected_material_instance()
+        if material:
+            from tool.mi_preset import MaterialInstancePresetManager
+            preset_manager = MaterialInstancePresetManager()
+            success = preset_manager.load_root_preset(material, preset_name)
+            if success:
+                unreal.log(f"✅ 루트 프리셋 '{preset_name}' 로드 완료!")
+            else:
+                unreal.log_error(f"❌ 루트 프리셋 '{preset_name}' 로드 실패!")
+    except Exception as e:
+        unreal.log_error(f"루트 프리셋 로드 오류: {e}")
+
+
+def load_parent_preset_by_name(preset_name: str):
+    """이름으로 부모 프리셋 로드 (동적 메뉴용)"""
+    try:
+        material = get_selected_material_instance()
+        if material:
+            from tool.mi_preset import MaterialInstancePresetManager
+            preset_manager = MaterialInstancePresetManager()
+            success = preset_manager.load_parent_preset(material, preset_name)
+            if success:
+                unreal.log(f"✅ 부모 프리셋 '{preset_name}' 로드 완료!")
+            else:
+                unreal.log_error(f"❌ 부모 프리셋 '{preset_name}' 로드 실패!")
+    except Exception as e:
+        unreal.log_error(f"부모 프리셋 로드 오류: {e}")
+
 
 class MaterialInstanceContextMenu:
     """머티리얼 인스턴스 컨텍스트 메뉴 관리 클래스"""
@@ -523,48 +773,10 @@ class MaterialInstanceContextMenu:
             unreal.log_error(f"머티리얼 정보 표시 오류: {e}")
 
 
+def initialize():
+    """모듈 초기화 함수"""
+    MaterialInstanceContextMenu.register_context_menu()
+
 # 자동 등록
 if __name__ == "__main__":
-    """
-    컨텍스트 메뉴 자동 등록
-    """
-    print("\n" + "="*80)
-    print("🎛️  Material Instance Context Menu 등록")
-    print("="*80)
-    
-    success = MaterialInstanceContextMenu.register_context_menu()
-    
-    if success:
-        print("✅ 컨텍스트 메뉴 등록 완료!")
-        print("\n💡 사용 방법:")
-        print("   1. Content Browser에서 Material Instance를 선택")
-        print("   2. 우클릭하여 컨텍스트 메뉴 열기")
-        print("   3. 'MaidCat' 섹션에서 프리셋 관리 기능 사용")
-        print("\n🎯 제공 기능:")
-        print("   • Root Presets - 루트 머티리얼 기반 프리셋")
-        print("   • Parent Presets - 부모 머티리얼 기반 프리셋")
-        print("   • Material Info - 머티리얼 정보 표시")
-    else:
-        print("❌ 컨텍스트 메뉴 등록 실패!")
-        print("   다음을 확인해주세요:")
-        print("   • Unreal Editor에서 실행 중인지 확인")
-        print("   • Play 모드가 아닌지 확인")
-        print("   • Material Instance가 Content Browser에 있는지 확인")
-        print("   • Material Instance를 선택한 상태에서 다시 시도")
-        print("\n🔄 대안 방법:")
-        print("   1. Material Instance를 Content Browser에서 선택")
-        print("   2. 다음 명령어 실행:")
-        print("      MaterialInstanceContextMenu.try_register_with_delay()")
-    
-    print("="*80 + "\n")
-
-
-# 전역 편의 함수
-def register_mi_context_menu():
-    """전역 편의 함수 - 다른 스크립트에서 쉽게 사용할 수 있도록"""
-    return MaterialInstanceContextMenu.register_context_menu()
-
-
-def register_mi_context_menu_delayed():
-    """지연된 등록 - Material Instance 선택 후 사용"""
-    return MaterialInstanceContextMenu.try_register_with_delay()
+    initialize()

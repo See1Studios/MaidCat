@@ -64,9 +64,9 @@ class MaidCatInitializer:
                     added_count += 1
         
         if added_count > 0:
-            print(f"   📊 {added_count}개 경로 추가됨")
+            print(f"{added_count}개 경로 추가됨")
         else:
-            print(f"   ℹ️  모든 필요한 경로가 이미 설정됨")
+            print(f"모든 필요한 경로가 이미 설정됨")
     
     @staticmethod
     def check_basic_environment():
@@ -157,7 +157,7 @@ class MaidCatInitializer:
                     module_end_time = time.time()
                     total_duration = (module_end_time - module_start_time) * 1000
                     
-                    print(f"   ℹ️  {file_name}: import됨 ({total_duration:.1f}ms, main 함수 없음)")
+                    print(f"   💡 {file_name}: import됨 ({total_duration:.1f}ms, main 함수 없음)")
                     execution_times.append((file_name, total_duration))
                 
                 executed_count += 1
