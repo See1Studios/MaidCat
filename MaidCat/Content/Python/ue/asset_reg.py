@@ -6,7 +6,7 @@
 전체 모듈 경로 대신 더 짧은 함수 호출을 사용할 수 있습니다:
 
 AssetRegistry 함수들:
-- unreal.AssetRegistry.function_name → ar.function_name
+- unreal.AssetRegistry.function_name → asset_reg.function_name
 
 작성자: MaidCat Plugin
 버전: 1.0

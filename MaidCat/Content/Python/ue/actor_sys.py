@@ -6,7 +6,7 @@
 전체 모듈 경로 대신 더 짧은 함수 호출을 사용할 수 있습니다:
 
 EditorActorSubsystem 함수들:
-- unreal.get_editor_subsystem(unreal.EditorActorSubsystem).function_name → actorsys.function_name
+- unreal.get_editor_subsystem(unreal.EditorActorSubsystem).function_name → actor_sys.function_name
 
 작성자: MaidCat Plugin
 버전: 1.0

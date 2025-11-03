@@ -6,7 +6,7 @@
 전체 모듈 경로 대신 더 짧은 함수 호출을 사용할 수 있습니다:
 
 PythonMaterialLib 함수들:
-- unreal.PythonMaterialLib.function_name → matlib.function_name
+- unreal.PythonMaterialLib.function_name → mat_lib.function_name
 
 작성자: MaidCat Plugin
 버전: 1.0

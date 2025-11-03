@@ -6,10 +6,10 @@
 전체 모듈 경로 대신 더 짧은 함수 호출을 사용할 수 있습니다:
 
 EditorLevelLibrary 함수들:
-- unreal.EditorLevelLibrary.function_name → levellib.function_name
+- unreal.EditorLevelLibrary.function_name → level_lib.function_name
 
 PythonLevelLib 함수들 (외부 라이브러리):
-- unreal.PythonLevelLib.function_name → levellib.function_name
+- unreal.PythonLevelLib.function_name → level_lib.function_name
 
 작성자: MaidCat Plugin
 버전: 1.0

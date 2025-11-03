@@ -6,7 +6,7 @@
 전체 모듈 경로 대신 더 짧은 함수 호출을 사용할 수 있습니다:
 
 PythonPhysicsAssetLib 함수들:
-- unreal.PythonPhysicsAssetLib.function_name → physlib.function_name
+- unreal.PythonPhysicsAssetLib.function_name → phys_lib.function_name
 
 작성자: MaidCat Plugin
 버전: 1.0
