@@ -1,17 +1,6 @@
-"""
-MaidCat Asset Web Link Handler
-
-모든 애셋 타입에 대한 웹링크 기능을 담당하는 모듈
-- JSON 기반 애셋-웹링크 매핑
-- 기존 material_web_links.json 형식 유지
-
-Author: MaidCat Team
-"""
-
 import unreal
 import json
 import os
-
 
 # ================================
 # JSON 파일 관리
@@ -34,7 +23,6 @@ def load_asset_web_links():
                 data = json.load(f)
                 return data.get('material_web_links', {})
         else:
-            print(f"⚠️ JSON 파일을 찾을 수 없습니다: {json_path}")
             _prompt_create_data_file(json_path)
             return {}
     except Exception as e:
@@ -56,8 +44,6 @@ def _prompt_create_data_file(json_path):
         
         if result == unreal.AppReturnType.YES:
             _create_empty_data_file(json_path)
-        else:
-            print("❌ 사용자가 데이터 파일 생성을 취소했습니다.")
             
     except Exception as e:
         print(f"❌ 데이터 파일 생성 다이얼로그 실패: {e}")
@@ -79,9 +65,6 @@ def _create_empty_data_file(json_path):
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(empty_data, f, indent=2, ensure_ascii=False)
         
-        print(f"✅ 빈 데이터 파일이 생성되었습니다: {json_path}")
-        print("💡 이제 add_asset_to_json() 함수를 사용하여 애셋 정보를 추가할 수 있습니다.")
-        
     except Exception as e:
         print(f"❌ 데이터 파일 생성 실패: {e}")
 
@@ -89,12 +72,6 @@ def _create_empty_data_file(json_path):
 # ================================
 # 메인 핸들러 함수
 # ================================
-
-def handle_material_button_click(context):
-    """기존 머티리얼 버튼 클릭 처리 (호환성을 위해 유지)"""
-    handle_asset_button_click(context)
-
-
 def handle_asset_button_click(context):
     """애셋 버튼 클릭 처리"""
     ctx = context.find_by_class(unreal.AssetEditorToolkitMenuContext)
@@ -104,10 +81,6 @@ def handle_asset_button_click(context):
         # MaterialInstanceConstant만 지원 (기존 로직 유지)
         if obj.get_class().get_name() != "MaterialInstanceConstant":
             continue
-        
-        # 애셋의 경로 출력
-        asset_path = unreal.EditorAssetLibrary.get_path_name_for_loaded_asset(obj)
-        print(f"Asset Path: {asset_path}")
         
         # 부모 애셋 정보 가져오기
         parent_asset = obj.get_editor_property('parent')
@@ -123,10 +96,6 @@ def _process_parent_asset(parent_asset):
     parent_path = unreal.EditorAssetLibrary.get_path_name_for_loaded_asset(parent_asset)
     parent_package_path = parent_asset.get_package().get_name()
     parent_name = parent_asset.get_name()
-    
-    print(f"Parent Asset: {parent_name}")
-    print(f"Parent Asset Path: {parent_path}")
-    print(f"Parent Asset Package Path: {parent_package_path}")
     
     # JSON에서 웹주소 조회 및 웹페이지 열기
     _open_web_page_from_json(parent_package_path, parent_path, parent_name)
@@ -164,9 +133,6 @@ def _handle_asset_found(asset_info, search_key, search_type):
     url = asset_info.get('url', '')
     
     if url:
-        print(f"✅ 애셋 매칭 ({search_type}): {search_key}")
-        print(f"📖 설명: {description}")
-        print(f"🌐 웹페이지 열기: {url}")
         _open_web_browser(url)
     else:
         print(f"❌ URL이 설정되지 않았습니다: {search_key}")
@@ -174,12 +140,6 @@ def _handle_asset_found(asset_info, search_key, search_type):
 
 def _handle_asset_not_found(package_path, asset_path, asset_name, asset_links):
     """애셋을 찾지 못한 경우 처리"""
-    print(f"❌ JSON에서 애셋을 찾을 수 없습니다:")
-    print(f"   - 패키지 경로: {package_path}")
-    print(f"   - 전체 경로: {asset_path}")
-    print(f"   - 이름: {asset_name}")
-    print(f"💡 JSON에 등록된 애셋: {list(asset_links.keys())}")
-    
     # 사용자에게 새로 추가할지 물어보기
     _prompt_add_new_asset(package_path, asset_path, asset_name)
 
@@ -199,13 +159,34 @@ def _prompt_add_new_asset(package_path, asset_path, asset_name):
         )
         
         if result == unreal.AppReturnType.YES:
-            print("✅ 사용자가 새 애셋 정보 추가를 선택했습니다.")
-            print("💡 다음 함수를 사용하여 수동으로 추가하세요:")
-            print(f"   asset_link.add_asset_to_json(")
-            print(f"       asset_path='{package_path}',")
-            print(f"       description='설명을 입력하세요',")
-            print(f"       url='https://웹주소.com'")
-            print(f"   )")
+            # JSON 파일을 기본 편집기로 열기
+            json_path = get_json_file_path()
+            try:
+                import subprocess
+                import platform
+                
+                system = platform.system()
+                if system == "Windows":
+                    subprocess.run(['start', json_path], shell=True, check=True)
+                elif system == "Darwin":  # macOS
+                    subprocess.run(['open', json_path], check=True)
+                else:  # Linux
+                    subprocess.run(['xdg-open', json_path], check=True)
+                
+                print("💡 다음 형식으로 애셋 정보를 추가하세요:")
+                print(f'    "{package_path}": {{')
+                print(f'        "description": "설명을 입력하세요",')
+                print(f'        "url": "https://웹주소.com"')
+                print(f'    }}')
+                
+            except Exception as e:
+                print(f"❌ 파일 열기 실패: {e}")
+                print("💡 수동으로 다음 함수를 사용하여 추가할 수 있습니다:")
+                print(f"   asset_link.add_asset_to_json(")
+                print(f"       asset_path='{package_path}',")
+                print(f"       description='설명을 입력하세요',")
+                print(f"       url='https://웹주소.com'")
+                print(f"   )")
         else:
             print("❌ 사용자가 새 애셋 정보 추가를 취소했습니다.")
             
@@ -220,13 +201,11 @@ def _open_web_browser(url):
     try:
         import webbrowser
         webbrowser.open(url)
-        print(f"✅ 웹브라우저에서 열렸습니다: {url}")
     except Exception as e:
         print(f"❌ 웹브라우저 열기 실패: {e}")
         # 대안: 언리얼 엔진의 시스템 브라우저 사용
         try:
             unreal.SystemLibrary.launch_url(url)
-            print(f"✅ 시스템 브라우저에서 열렸습니다: {url}")
         except:
             print(f"❌ 시스템 브라우저 열기도 실패했습니다: {url}")
 
@@ -258,8 +237,6 @@ def add_asset_to_json(asset_path, description, url):
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
         
-        print(f"✅ 애셋 정보가 JSON에 추가되었습니다: {asset_path}")
-        
     except Exception as e:
         print(f"❌ JSON 저장 실패: {e}")
 
@@ -284,8 +261,6 @@ def remove_asset_from_json(asset_path):
             # 파일 저장
             with open(json_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
-            
-            print(f"✅ 애셋 정보가 JSON에서 제거되었습니다: {asset_path}")
         else:
             print(f"❌ JSON에서 해당 애셋을 찾을 수 없습니다: {asset_path}")
         
