@@ -1,0 +1,92 @@
+{
+    "TabLabel": "Name Dialog",
+    "InitTabSize": [400, 200],
+    "InitTabPosition": [50, 200],
+    "IsModalWindow": true,
+    "InitPyCmd": "import ui.name_window; ch_name_window = ui.name_window.Dialog(%JsonPath)",
+    "Root":
+    {
+        "SBorder": {
+            "BorderImage": {
+                "Style": "FEditorStyle",
+                "Brush": "ToolPanel.DarkGroupBorder"
+            },
+            "Content":{
+                "SVerticalBox":
+                {
+                    "Slots": [
+                        {
+                            "VAlign": "Center",
+                            "HAlign": "Center",
+                            "AutoHeight": true,
+                            "Padding": [0, 10],
+                            "SRichTextBlock":
+                            {
+                                "Text": "<Credits.H2>Enter Name</>"
+                            }
+                        },
+                        {
+                            "AutoHeight": true,
+                            "Padding": [20, 10],
+                            "SHorizontalBox":
+                            {
+                                "Slots": [
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "Padding": [0, 0, 10, 0],
+                                        "STextBlock":
+                                        {
+                                            "Text": "Name :"
+                                        }
+                                    },
+                                    {
+                                        "SEditableTextBox":
+                                        {
+                                            "Aka": "NameInput",
+                                            "HintText": "Enter Name...",
+                                            "Text": ""
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+						{
+                            "HAlign": "Right",
+                            "AutoHeight": true,
+                            "Padding": [20, 10],
+							"SHorizontalBox":
+							{
+							    "Slots": [
+									{
+                                        "AutoWidth": true,
+                                        "Padding": [0, 0, 10, 0],
+										"SButton":
+										{	
+											"VAlign": "Center",
+											"HAlign": "Center",
+											"Text": "Cancel",
+                                            "ContentPadding": [16, 4],
+											"OnClick": "ch_name_window.cancel()"
+										}
+									},
+									{
+                                        "AutoWidth": true,
+										"SButton":
+										{	
+											"VAlign": "Center",
+											"HAlign": "Center",
+											"Text": "Submit",
+                                            "ContentPadding": [16, 4],
+											"OnClick": "ch_name_window.submit()"
+										}
+									}
+							    ]
+							}
+						}
+					]
+                }
+            }
+        }
+    }
+}
