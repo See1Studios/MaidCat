@@ -15,16 +15,16 @@ def initialize():
     """에디터 확장 시스템 초기화"""
     try:
         # Python 컨텍스트 메뉴 초기화
-        python_context.initialize()
+        python_context.register()
         
         # 애셋 브라우저 컨텍스트 메뉴 초기화
-        asset_context.initialize()
+        asset_context.register()
 
         # MI 에디터 컨텍스트 메뉴 초기화
-        mi_context.initialize()
+        mi_context.register()
         
         # 애셋 에디터 컨텍스트 메뉴 초기화
-        asset_editor.initialize()
+        asset_editor.register()
 
         unreal.log("✅ 에디터 확장 시스템이 성공적으로 추가되었습니다.")
         

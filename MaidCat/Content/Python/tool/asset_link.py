@@ -35,10 +35,55 @@ def load_asset_web_links():
                 return data.get('material_web_links', {})
         else:
             print(f"⚠️ JSON 파일을 찾을 수 없습니다: {json_path}")
+            _prompt_create_data_file(json_path)
             return {}
     except Exception as e:
         print(f"❌ JSON 파일 로드 실패: {e}")
         return {}
+
+
+def _prompt_create_data_file(json_path):
+    """데이터 파일이 없을 때 새로 생성할지 물어보기"""
+    try:
+        title = "데이터 파일 없음"
+        message = f"애셋 웹링크 데이터 파일이 없습니다.\n\n새로 생성하시겠습니까?\n\n경로: {json_path}"
+        
+        result = unreal.EditorDialog.show_message(
+            unreal.Text(title),
+            unreal.Text(message),
+            unreal.AppMsgType.YES_NO
+        )
+        
+        if result == unreal.AppReturnType.YES:
+            _create_empty_data_file(json_path)
+        else:
+            print("❌ 사용자가 데이터 파일 생성을 취소했습니다.")
+            
+    except Exception as e:
+        print(f"❌ 데이터 파일 생성 다이얼로그 실패: {e}")
+
+
+def _create_empty_data_file(json_path):
+    """빈 데이터 파일 생성"""
+    try:
+        # 기본 구조의 빈 JSON 파일 생성
+        empty_data = {
+            "material_web_links": {},
+            "_comment": "MaidCat Asset Web Links - 애셋과 웹페이지 연결 정보"
+        }
+        
+        # 디렉토리 생성 (필요한 경우)
+        os.makedirs(os.path.dirname(json_path), exist_ok=True)
+        
+        # 파일 생성
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(empty_data, f, indent=2, ensure_ascii=False)
+        
+        print(f"✅ 빈 데이터 파일이 생성되었습니다: {json_path}")
+        print("💡 이제 add_asset_to_json() 함수를 사용하여 애셋 정보를 추가할 수 있습니다.")
+        
+    except Exception as e:
+        print(f"❌ 데이터 파일 생성 실패: {e}")
 
 
 # ================================
@@ -134,6 +179,40 @@ def _handle_asset_not_found(package_path, asset_path, asset_name, asset_links):
     print(f"   - 전체 경로: {asset_path}")
     print(f"   - 이름: {asset_name}")
     print(f"💡 JSON에 등록된 애셋: {list(asset_links.keys())}")
+    
+    # 사용자에게 새로 추가할지 물어보기
+    _prompt_add_new_asset(package_path, asset_path, asset_name)
+
+
+def _prompt_add_new_asset(package_path, asset_path, asset_name):
+    """사용자에게 새 애셋 정보 추가 여부를 물어보기"""
+    try:
+        # 언리얼 엔진의 다이얼로그 사용
+        title = "애셋 정보 없음"
+        message = f"'{asset_name}' 애셋에 대한 웹링크 정보가 없습니다.\n\n새로 추가하시겠습니까?"
+        
+        # 언리얼 엔진 다이얼로그로 Yes/No 선택
+        result = unreal.EditorDialog.show_message(
+            unreal.Text(title), 
+            unreal.Text(message), 
+            unreal.AppMsgType.YES_NO
+        )
+        
+        if result == unreal.AppReturnType.YES:
+            print("✅ 사용자가 새 애셋 정보 추가를 선택했습니다.")
+            print("💡 다음 함수를 사용하여 수동으로 추가하세요:")
+            print(f"   asset_link.add_asset_to_json(")
+            print(f"       asset_path='{package_path}',")
+            print(f"       description='설명을 입력하세요',")
+            print(f"       url='https://웹주소.com'")
+            print(f"   )")
+        else:
+            print("❌ 사용자가 새 애셋 정보 추가를 취소했습니다.")
+            
+    except Exception as e:
+        print(f"❌ 다이얼로그 표시 실패: {e}")
+        print("💡 수동으로 다음 함수를 사용하여 추가할 수 있습니다:")
+        print(f"   asset_link.add_asset_to_json('{package_path}', '설명', 'URL')")
 
 
 def _open_web_browser(url):

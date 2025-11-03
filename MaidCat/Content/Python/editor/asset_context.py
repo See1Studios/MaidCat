@@ -184,7 +184,7 @@ def setup_reference_replacer_menu():
     unreal.log("✅ Reference replacer menu initialized")
 
 
-def initialize():
+def register():
     """애셋 컨텍스트 메뉴 초기화"""
     # 의존 모듈들 미리 리로드
     try:

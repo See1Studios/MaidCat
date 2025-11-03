@@ -608,14 +608,14 @@ def register_python_folder_menu():
     tool_menus.refresh_all_widgets()
 
 
-def initialize():
+def register():
     """Python 컨텍스트 메뉴 시스템 초기화"""
     register_python_menu_entry()
     register_python_folder_menu()
 
 
 if __name__ == "__main__":
-    initialize()
+    register()
 
 
 """

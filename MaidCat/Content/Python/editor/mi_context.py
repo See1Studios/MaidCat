@@ -773,10 +773,10 @@ class MaterialInstanceContextMenu:
             unreal.log_error(f"머티리얼 정보 표시 오류: {e}")
 
 
-def initialize():
+def register():
     """모듈 초기화 함수"""
     MaterialInstanceContextMenu.register_context_menu()
 
 # 자동 등록
 if __name__ == "__main__":
-    initialize()
+    register()
