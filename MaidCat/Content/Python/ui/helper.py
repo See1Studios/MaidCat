@@ -1,51 +1,43 @@
 import unreal
 import ui.name_window
-import os
+from pathlib import Path
 
 class NameDialog:
-	name:str = ""
+	name: str = ""
+	JSON_FILENAME = "name_window.json"
 	
 	@staticmethod
-	def on_submit(text: str):
+	def on_submit(text: str) -> None:
 		NameDialog.name = text
 
 	@staticmethod
-	def on_cancel():
+	def on_cancel() -> None:
 		NameDialog.name = ""
 	
 	@staticmethod
-	def _get_json_path():
-		"""
-		현재 실행 컨텍스트가 프로젝트인지 플러그인인지 판단하여 적절한 경로를 반환
-		"""
-		# 현재 파일의 디렉토리에서 JSON 파일 경로 생성
-		current_dir = os.path.dirname(os.path.abspath(__file__))
-		json_file_path = os.path.join(current_dir, "name_window.json")
-		
-		# 디버깅 정보 출력
-		print(f"PythonTA: Current directory: {current_dir}")
-		print(f"PythonTA: Looking for JSON at: {json_file_path}")
-		print(f"PythonTA: JSON file exists: {os.path.exists(json_file_path)}")
-		
-		# JSON 파일이 존재하는지 확인
-		if os.path.exists(json_file_path):
-			# 절대 경로를 언리얼 엔진 형식으로 변환 (백슬래시를 슬래시로)
-			final_path = json_file_path.replace("\\", "/")
-			print(f"PythonTA: Using JSON path: {final_path}")
-			return final_path
-		else:
-			# 파일이 없으면 기본 상대 경로 반환
-			print("PythonTA: JSON file not found, using relative path")
-			return "./name_window.json"
-	
-	@staticmethod
-	def open_dialog():
+	def open_dialog() -> str:
+		"""이름 입력 다이얼로그를 열고 결과를 반환"""
 		NameDialog.name = ""
-		ui.name_window.Dialog._on_submit_callback = NameDialog.on_submit
-		ui.name_window.Dialog._on_cancel_callback = NameDialog.on_cancel
 		
-		json_path = NameDialog._get_json_path()
-		unreal.ChameleonData.modal_window(json_path)
+		# JSON 파일 경로 찾기
+		current_dir = Path(__file__).parent
+		json_path = current_dir / NameDialog.JSON_FILENAME
+		
+		if not json_path.exists():
+			unreal.log_warning(f"JSON file not found: {json_path}")
+			return ""
+		
+		try:
+			# 다이얼로그 콜백 설정
+			ui.name_window.Dialog._on_submit_callback = NameDialog.on_submit
+			ui.name_window.Dialog._on_cancel_callback = NameDialog.on_cancel
+			
+			# 다이얼로그 열기
+			unreal.ChameleonData.modal_window(str(json_path).replace("\\", "/"))
+			
+		except Exception as e:
+			unreal.log_error(f"Failed to open dialog: {e}")
+			return ""
 		
 		return NameDialog.name
 		

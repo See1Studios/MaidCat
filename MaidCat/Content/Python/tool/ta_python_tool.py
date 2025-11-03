@@ -36,34 +36,7 @@ FONT_MEDIUM = ("맑은 고딕", 10)         # 중간 텍스트
 FONT_TITLE = ("맑은 고딕", 12, "bold")  # 제목 텍스트
 FONT_LARGE = ("맑은 고딕", 16)          # 큰 텍스트
 FONT_SMALL = ("맑은 고딕", 8)           # 작은 텍스트 (툴팁 포함)
-FONT_TINY = ("맑은 고딕", 7)            # 매우 작은 텍스트
-FONT_ICON = ("맑은 고딕", 24)           # 아이콘 텍스트
 FONT_CODE = ("Consolas", 9)             # 코드 전용
-
-# UI 스타일 및 컬러
-STYLE_COLORS = {
-    'primary': '#0078d4',      # Microsoft Blue
-    'secondary': '#6c757d',    # Gray
-    'success': '#28a745',      # Green
-    'danger': '#dc3545',       # Red
-    'dark': '#343a40',         # Dark Gray
-    'background': '#ffffff',    # White
-    'surface': '#f5f5f5',      # Light Surface
-    'text_primary': '#212529', # Dark Text
-    'text_secondary': '#6c757d', # Gray Text
-    'text_muted': '#868e96',   # Muted Text
-}
-
-# TTK 스타일 이름들
-STYLE_NAMES = {
-    'primary_button': 'Primary.TButton',
-    'secondary_button': 'Secondary.TButton',
-    'danger_button': 'Danger.TButton',
-    'success_button': 'Success.TButton',
-    'title_label': 'Title.TLabel',
-    'subtitle_label': 'Subtitle.TLabel',
-    'muted_label': 'Muted.TLabel',
-}
 
 # URL 링크
 TAPYTHON_WEBSITE = "https://www.tacolor.xyz/"
@@ -98,10 +71,6 @@ SAVE_DIALOG_TITLE = "MenuConfig.json 파일 저장 위치 선택"
 
 # UI 레이아웃 설정
 CENTER_PADDING = 50
-TITLE_ICON_FONT_SIZE = 48
-TITLE_TEXT_FONT_SIZE = 16
-DESC_FONT_SIZE = 11
-DETAIL_FONT_SIZE = 10
 TEXT_WRAP_LENGTH = 500
 BUTTON_PADY = (0, 10)
 CONTENT_PADY = (0, 30)
@@ -265,10 +234,11 @@ def setup_logging():
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.WARNING)  # 콘솔에는 WARNING 이상만 표시
     
-    # 파일 핸들러 (스크립트 디렉토리에 저장)
+    # 파일 핸들러 (임시 폴더에 저장)
     try:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        log_file = os.path.join(script_dir, 'ta_python_tool.log')
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+        log_file = os.path.join(temp_dir, 'ta_python_tool.log')
         file_handler = logging.FileHandler(log_file, encoding='utf-8')
         file_handler.setLevel(logging.DEBUG)
         setup_logging._file_handler = file_handler  # 함수 속성으로 저장
@@ -295,7 +265,7 @@ logger, file_handler = setup_logging()
 
 
 def setup_ui_styles():
-    """UI 스타일 설정"""
+    """UI 스타일 설정 - 기본 ttk 스타일만 사용"""
     try:
         style = ttk.Style()
         
@@ -309,51 +279,6 @@ def setup_ui_styles():
             if theme in available_themes:
                 style.theme_use(theme)
                 break
-        
-        # 커스텀 버튼 스타일들
-        style.configure(STYLE_NAMES['primary_button'],
-                       foreground='white',
-                       background=STYLE_COLORS['primary'],
-                       borderwidth=1,
-                       focuscolor='none')
-        
-        style.map(STYLE_NAMES['primary_button'],
-                 background=[('active', '#106ebe'),  # 호버 시 더 어두운 파란색
-                            ('pressed', '#005a9e')])  # 클릭 시 더욱 어두운 파란색
-        
-        style.configure(STYLE_NAMES['secondary_button'],
-                       foreground=STYLE_COLORS['text_primary'],
-                       background=STYLE_COLORS['secondary'],
-                       borderwidth=1,
-                       focuscolor='none')
-        
-        style.configure(STYLE_NAMES['danger_button'],
-                       foreground='white',
-                       background=STYLE_COLORS['danger'],
-                       borderwidth=1,
-                       focuscolor='none')
-        
-        style.configure(STYLE_NAMES['success_button'],
-                       foreground='white',
-                       background=STYLE_COLORS['success'],
-                       borderwidth=1,
-                       focuscolor='none')
-        
-        # 커스텀 라벨 스타일들
-        style.configure(STYLE_NAMES['title_label'],
-                       foreground=STYLE_COLORS['text_primary'],
-                       font=FONT_TITLE,
-                       background=STYLE_COLORS['background'])
-        
-        style.configure(STYLE_NAMES['subtitle_label'],
-                       foreground=STYLE_COLORS['text_primary'],
-                       font=FONT_TITLE,
-                       background=STYLE_COLORS['background'])
-        
-        style.configure(STYLE_NAMES['muted_label'],
-                       foreground=STYLE_COLORS['text_muted'],
-                       font=FONT_SMALL,
-                       background=STYLE_COLORS['background'])
         
         logger.info(f"UI 스타일 설정 완료 - 사용 중인 테마: {style.theme_use()}")
         return style
@@ -441,7 +366,7 @@ class TAPythonGuide:
             title_frame = ttk.Frame(content_frame)
             title_frame.pack(pady=CONTENT_PADY)
             
-            ttk.Label(title_frame, text=UI_PLUGIN_NEEDED_TITLE, font=FONT_ICON).pack()
+            ttk.Label(title_frame, text=UI_PLUGIN_NEEDED_TITLE, font=FONT_LARGE).pack()
             ttk.Label(title_frame, text=UI_PLUGIN_NEEDED_MSG, 
                      font=FONT_LARGE, foreground="red").pack(pady=BUTTON_PADY)
             
@@ -474,8 +399,7 @@ class TAPythonGuide:
             
             # 새 설정 파일 생성 버튼
             create_btn = ttk.Button(file_row, text=BTN_CREATE_NEW_CONFIG,
-                                  command=self._create_new_config_file_guide,
-                                  style="Accent.TButton")
+                                  command=self._create_new_config_file_guide)
             create_btn.pack(side=tk.LEFT, padx=(0, 10))
             
             # 수동 파일 선택 버튼
@@ -926,8 +850,9 @@ class TAPythonTool:
             text_widget.delete(1.0, tk.END)
             
             # 로그 파일 읽기
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            log_file = os.path.join(script_dir, LOG_FILE_NAME)
+            import tempfile
+            temp_dir = tempfile.gettempdir()
+            log_file = os.path.join(temp_dir, LOG_FILE_NAME)
             
             if os.path.exists(log_file):
                 with open(log_file, 'r', encoding='utf-8') as f:
@@ -2417,14 +2342,14 @@ class TAPythonTool:
         button_frame = ttk.Frame(parent)
         button_frame.pack(side=tk.LEFT)
         
-        # 저장 버튼 (Primary 스타일)
+        # 저장 버튼
         self.save_button = ttk.Button(button_frame, text="💾 저장", command=self.save_config, 
-                                     state=tk.DISABLED, style=STYLE_NAMES['primary_button'])
+                                     state=tk.DISABLED)
         self.save_button.pack(side=tk.LEFT, padx=(0, 5))
         
-        # 다른 이름으로 저장 버튼 (Secondary 스타일)
+        # 다른 이름으로 저장 버튼
         self.save_as_button = ttk.Button(button_frame, text="📄 다른 이름으로 저장", 
-                                        command=self.save_as_config, style=STYLE_NAMES['secondary_button'])
+                                        command=self.save_as_config)
         self.save_as_button.pack(side=tk.LEFT)
         
         # 툴팁 추가
@@ -2520,7 +2445,7 @@ class TAPythonTool:
         # 카테고리 정보 및 설정
         self._create_category_info_section(left_frame, tool_menu_id)
         
-        ttk.Label(left_frame, text="메뉴 엔트리", style=STYLE_NAMES['subtitle_label']).pack(anchor=tk.W, padx=5, pady=2)
+        ttk.Label(left_frame, text="메뉴 엔트리", font=FONT_TITLE).pack(anchor=tk.W, padx=5, pady=2)
         
         # 트리뷰 생성
         treeview = self._create_treeview(left_frame, tool_menu_id)
@@ -2564,7 +2489,7 @@ class TAPythonTool:
         # 툴바인 경우 권장사항 표시
         if "ToolBar" in tool_menu_id or "Toolbar" in tool_menu_id:
             ttk.Label(info_frame, text="💡 툴바에서는 HasSection=false 권장", 
-                     font=FONT_TINY, foreground="blue").pack(anchor=tk.W, padx=5, pady=1)
+                     font=FONT_SMALL, foreground="blue").pack(anchor=tk.W, padx=5, pady=1)
     
     def _update_category_has_section(self, tool_menu_id, has_section_value):
         """카테고리의 HasSection 값 업데이트"""
@@ -2645,11 +2570,11 @@ class TAPythonTool:
         right_frame = ttk.Frame(parent)
         right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
-        ttk.Label(right_frame, text="엔트리 편집", style=STYLE_NAMES['subtitle_label']).pack(anchor=tk.W, padx=5, pady=2)
+        ttk.Label(right_frame, text="엔트리 편집", font=FONT_TITLE).pack(anchor=tk.W, padx=5, pady=2)
         
         # 설명 라벨
         help_text = "아래에서 엔트리 정보를 수정한 후 '변경사항 저장' 버튼을 클릭하세요."
-        ttk.Label(right_frame, text=help_text, style=STYLE_NAMES['muted_label']).pack(anchor=tk.W, padx=5, pady=(2, 5))
+        ttk.Label(right_frame, text=help_text, font=FONT_SMALL).pack(anchor=tk.W, padx=5, pady=(2, 5))
         
         # 편집 폼
         return self._create_edit_form(right_frame, tool_menu_id)
@@ -2690,7 +2615,7 @@ class TAPythonTool:
         center_frame.pack(expand=True)
         
         # 안내 메시지
-        ttk.Label(center_frame, text="📝", font=FONT_ICON).pack(pady=(0, 10))
+        ttk.Label(center_frame, text="📝", font=FONT_LARGE).pack(pady=(0, 10))
         ttk.Label(center_frame, text="엔트리를 선택하세요", 
                  font=FONT_TITLE).pack(pady=(0, 5))
         ttk.Label(center_frame, text="왼쪽 목록에서 편집할 엔트리를 선택하면\n여기에 편집 폼이 표시됩니다.", 
