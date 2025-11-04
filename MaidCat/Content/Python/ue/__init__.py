@@ -14,8 +14,12 @@
 - asset_sys: EditorAssetSubsystem 래퍼들 (에셋 서브시스템)
 - util_sys: EditorUtilitySubsystem 래퍼들 (유틸리티 서브시스템)
 - level_lib: EditorLevelLibrary + PythonLevelLib 래퍼들 (레벨 관리)
+- level_util: EditorLevelUtils 래퍼들 (레벨 유틸리티)
+- level_sys: LevelEditorSubsystem 래퍼들 (레벨 에디터 서브시스템)
 - asset_tool: AssetTools 래퍼들 (에셋 도구)
 - asset_reg: AssetRegistry 래퍼들 (에셋 레지스트리)
+- loadsave_util: EditorLoadingAndSavingUtils 래퍼들 (로딩 및 저장)
+- file_util: BlueprintFileUtilsBPLibrary 래퍼들 (파일 시스템 조작)
 
 TAPython 확장 라이브러리 (https://www.tacolor.xyz/):
 - bp_lib: PythonBPLib 래퍼들 (Python BP 라이브러리)
@@ -29,12 +33,16 @@ TAPython 확장 라이브러리 (https://www.tacolor.xyz/):
 - landscape_lib: PythonLandscapeLib 래퍼들 (랜드스케이프 라이브러리)
 
 사용 예시:
-    from ue import asset_lib, actor_sys, util_lib, bp_lib, mat_lib, mesh_lib, tex_lib, data_lib, phys_lib, enum_lib, struct_lib, landscape_lib
+    from ue import asset_lib, actor_sys, util_lib, level_util, level_sys, loadsave_util, file_util, bp_lib, mat_lib, mesh_lib, tex_lib, data_lib, phys_lib, enum_lib, struct_lib, landscape_lib
     
     # 언리얼 엔진 내장 API 사용
     asset = asset_lib.load_asset("/Game/MyAsset")  # EditorAssetLibrary
     actors = actor_sys.get_selected_level_actors()  # EditorActorSubsystem
     selected = util_lib.get_selected_assets()  # EditorUtilityLibrary
+    level_util.create_new_streaming_level(class, "/Game/MyLevel")  # EditorLevelUtils
+    level_sys.save_current_level()  # LevelEditorSubsystem
+    loadsave_util.save_all()  # EditorLoadingAndSavingUtils
+    file_util.copy_file("dest.txt", "src.txt")  # BlueprintFileUtilsBPLibrary
     
     # TAPython 확장 라이브러리 사용 (https://www.tacolor.xyz/)
     bp_lib.message_dialog("Hello", "Title")  # PythonBPLib
@@ -58,8 +66,12 @@ from . import actor_sys
 from . import asset_sys
 from . import util_sys
 from . import level_lib
+from . import level_util
+from . import level_sys
 from . import asset_tool
 from . import asset_reg
+from . import loadsave_util
+from . import file_util
 from . import bp_lib
 from . import mat_lib
 from . import mesh_lib
@@ -82,8 +94,12 @@ __all__ = [
     "asset_sys",
     "util_sys",
     "level_lib",
+    "level_util",
+    "level_sys",
     "asset_tool",
     "asset_reg",
+    "loadsave_util",
+    "file_util",
     "bp_lib",
     "mat_lib",
     "mesh_lib",
