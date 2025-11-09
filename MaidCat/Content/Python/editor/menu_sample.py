@@ -5,9 +5,9 @@ tool_menus = unreal.ToolMenus.get()
 # 새로운 메뉴 생성하거나 확장할 메뉴 얻어오기
 menu_name = unreal.Name("ContentBrowser.ItemContextMenu.PythonData") # Python 파일 컨텍스트 메뉴
 # 메뉴 등록.
-tool_menus.register_menu(menu_name...)
+tool_menus.register_menu(menu_name)
 # 메뉴 찾기. 이걸로 추가하면 메뉴가 덮어써지는 듯.
-tool_menus.find_menu(menu_name...)
+tool_menus.find_menu(menu_name)
 # 메뉴 확장. 찾기와 미묘하게 다름...기존 메뉴에 변동이 없음.
 menu = tool_menus.extend_menu(menu_name)
 # 기존에 존재하는 섹션 이름 

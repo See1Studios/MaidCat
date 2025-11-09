@@ -15,6 +15,8 @@ Version: 2.0.0
 """
 
 import unreal
+import json
+import os
 from typing import Dict, Optional, Any
 from datetime import datetime
 
@@ -74,14 +76,41 @@ class MaterialInstanceSerializer:
         Returns:
             직렬화된 데이터 딕셔너리
         """
+        # 오브젝트 경로를 패키지 경로로 변환 (unreal.Paths 사용)
+        def convert_to_package_path(object_path: str) -> str:
+            """오브젝트 경로를 패키지 경로로 변환"""
+            try:
+                # AssetData를 통한 변환 (검증된 최적 방법)
+                asset_data = unreal.EditorAssetLibrary.find_asset_data(object_path)
+                if asset_data and asset_data.package_name:
+                    return str(asset_data.package_name)
+                        
+            except Exception as e:
+                unreal.log_warning(f"AssetData 경로 변환 실패: {e}")
+            
+            # Fallback: 수동 변환
+            if "." in object_path and object_path.count(".") >= 1:
+                path_parts = object_path.rsplit(".", 1)  # 마지막 점에서 분리
+                if len(path_parts) == 2:
+                    package_path_candidate = path_parts[0]
+                    object_name = path_parts[1]
+                    
+                    # 패키지 경로의 마지막 부분이 오브젝트명과 같은지 확인
+                    package_name = package_path_candidate.split("/")[-1]
+                    if package_name == object_name:
+                        return package_path_candidate  # 패키지 경로 반환
+            
+            return object_path  # 변환 불가하면 원본 반환
+        
+        # 애셋 경로를 패키지 경로로 변환
+        object_path = material_instance.get_path_name()
+        asset_package_path = convert_to_package_path(object_path)
+        
         data = {
             "metadata": {
-                "asset_path": material_instance.get_path_name(),
-                "asset_name": material_instance.get_name(),
+                "asset_path": asset_package_path,  # 패키지 경로 저장
                 "parent_material": None,
-                "root_material": None,
-                "serialized_date": datetime.now().isoformat(),
-                "unreal_version": unreal.SystemLibrary.get_engine_version()
+                "root_material": None
             },
             "parameters": {
                 "scalar": {},
@@ -91,15 +120,15 @@ class MaterialInstanceSerializer:
             }
         }
         
-        # 부모 머티리얼 경로 저장 (직접 부모)
+        # 부모 머티리얼 경로 저장 (직접 부모, 패키지 경로로 변환)
         parent_path = MaterialInstanceSerializer.get_parent_material_path(material_instance)
         if parent_path:
-            data["metadata"]["parent_material"] = parent_path
+            data["metadata"]["parent_material"] = convert_to_package_path(parent_path)
         
-        # 루트 머티리얼 경로 저장 (최상위 부모)
+        # 루트 머티리얼 경로 저장 (최상위 부모, 패키지 경로로 변환)
         root_path = MaterialInstanceSerializer.get_root_material_path(material_instance)
         if root_path:
-            data["metadata"]["root_material"] = root_path
+            data["metadata"]["root_material"] = convert_to_package_path(root_path)
         
         # Scalar Parameters 수집
         scalar_params = unreal.MaterialEditingLibrary.get_scalar_parameter_names(material_instance)
@@ -340,14 +369,464 @@ class MaterialInstanceSerializer:
         except Exception as e:
             unreal.log_error(f"머티리얼 인스턴스 역직렬화 실패: {e}")
             return False
+    
+    @staticmethod
+    def save_to_file(
+        material_instance: unreal.MaterialInstance,
+        file_path: str,
+        create_dirs: bool = True
+    ) -> bool:
+        """
+        머티리얼 인스턴스를 JSON 파일로 저장
+        
+        Args:
+            material_instance: 저장할 머티리얼 인스턴스
+            file_path: 저장할 파일 경로 (절대 경로 또는 상대 경로)
+            create_dirs: 디렉토리가 없으면 자동 생성 여부
+            
+        Returns:
+            성공 여부
+        """
+        try:
+            # 직렬화
+            data = MaterialInstanceSerializer.serialize(material_instance)
+            
+            # 상대 경로인 경우 프로젝트 디렉토리 기준으로 변환
+            if not os.path.isabs(file_path):
+                project_dir = unreal.Paths.project_dir()
+                file_path = os.path.join(project_dir, file_path)
+            
+            # 디렉토리 생성
+            if create_dirs:
+                directory = os.path.dirname(file_path)
+                if not os.path.exists(directory):
+                    try:
+                        os.makedirs(directory)
+                        unreal.log(f"📁 디렉토리 생성: {directory}")
+                    except Exception as e:
+                        unreal.log_error(f"디렉토리 생성 실패: {directory}, 오류: {e}")
+                        return False
+            
+            # JSON 파일로 저장
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)
+            
+            unreal.log(f"💾 머티리얼 인스턴스 저장 완료: {file_path}")
+            unreal.log(f"   - Asset: {material_instance.get_name()}")
+            
+            # 저장된 파라미터 정보 출력
+            params = data.get("parameters", {})
+            scalar_count = len(params.get("scalar", {}))
+            vector_count = len(params.get("vector", {}))
+            texture_count = len(params.get("texture", {}))
+            switch_count = len(params.get("static_switch", {}))
+            unreal.log(f"   - 파라미터: Scalar({scalar_count}), Vector({vector_count}), Texture({texture_count}), Switch({switch_count})")
+            
+            return True
+            
+        except Exception as e:
+            unreal.log_error(f"파일 저장 실패: {e}")
+            return False
+    
+    @staticmethod
+    def load_from_file(
+        material_instance: unreal.MaterialInstance,
+        file_path: str
+    ) -> bool:
+        """
+        JSON 파일에서 머티리얼 인스턴스로 로드
+        
+        Args:
+            material_instance: 적용할 머티리얼 인스턴스
+            file_path: 로드할 파일 경로 (절대 경로 또는 상대 경로)
+            
+        Returns:
+            성공 여부
+        """
+        try:
+            # 상대 경로인 경우 프로젝트 디렉토리 기준으로 변환
+            if not os.path.isabs(file_path):
+                project_dir = unreal.Paths.project_dir()
+                file_path = os.path.join(project_dir, file_path)
+            
+            # 파일 존재 확인
+            if not os.path.exists(file_path):
+                unreal.log_error(f"파일을 찾을 수 없음: {file_path}")
+                return False
+            
+            # JSON 파일 로드
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            unreal.log(f"📂 파일 로드: {file_path}")
+            
+            # 메타데이터 정보 출력
+            metadata = data.get("metadata", {})
+            original_asset = metadata.get("asset_name", "Unknown")
+            serialized_date = metadata.get("serialized_date", "Unknown")
+            unreal.log(f"   - 원본 Asset: {original_asset}")
+            unreal.log(f"   - 저장 날짜: {serialized_date}")
+            
+            # 역직렬화 적용
+            success = MaterialInstanceSerializer.deserialize(material_instance, data)
+            
+            if success:
+                unreal.log(f"✅ 머티리얼 인스턴스 복원 완료: {material_instance.get_name()}")
+                
+                # 복원된 파라미터 정보 출력
+                params = data.get("parameters", {})
+                scalar_count = len(params.get("scalar", {}))
+                vector_count = len(params.get("vector", {}))
+                texture_count = len(params.get("texture", {}))
+                switch_count = len(params.get("static_switch", {}))
+                unreal.log(f"   - 복원된 파라미터: Scalar({scalar_count}), Vector({vector_count}), Texture({texture_count}), Switch({switch_count})")
+            else:
+                unreal.log_error("머티리얼 인스턴스 복원 실패")
+            
+            return success
+            
+        except Exception as e:
+            unreal.log_error(f"파일 로드 실패: {e}")
+            return False
+    
+    @staticmethod
+    def export_to_file(
+        material_instance: unreal.MaterialInstance,
+        file_path: Optional[str] = None,
+        base_folder: str = "Saved/MaterialExports"
+    ) -> Optional[str]:
+        """
+        머티리얼 인스턴스를 자동 생성된 파일명으로 내보내기
+        
+        Args:
+            material_instance: 내보낼 머티리얼 인스턴스
+            file_path: 지정할 파일 경로 (None이면 자동 생성)
+            base_folder: 기본 저장 폴더 (프로젝트 상대 경로)
+            
+        Returns:
+            저장된 파일 경로 (실패시 None)
+        """
+        try:
+            if file_path is None:
+                # 자동 파일명 생성: MaterialName_YYYYMMDD_HHMMSS.json
+                material_name = material_instance.get_name()
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"{material_name}_{timestamp}.json"
+                
+                # 프로젝트 기준 경로 생성
+                project_dir = unreal.Paths.project_dir()
+                export_dir = os.path.join(project_dir, base_folder)
+                file_path = os.path.join(export_dir, filename)
+            
+            # 파일 저장
+            success = MaterialInstanceSerializer.save_to_file(material_instance, file_path)
+            
+            if success:
+                return file_path
+            else:
+                return None
+                
+        except Exception as e:
+            unreal.log_error(f"내보내기 실패: {e}")
+            return None
+    
+    @staticmethod
+    def save_to_asset_path(
+        material_instance: unreal.MaterialInstance,
+        filename: Optional[str] = None,
+        create_dirs: bool = True
+    ) -> Optional[str]:
+        """
+        머티리얼 인스턴스를 원래 애셋 경로 기준으로 저장
+        
+        예시:
+        - 애셋 경로: /Game/Test/ParentMaterial
+        - 저장 경로: Project/Saved/Material/Test/ParentMaterial/{filename}.json
+        
+        Args:
+            material_instance: 저장할 머티리얼 인스턴스
+            filename: 저장할 파일명 (None이면 애셋명 사용)
+            create_dirs: 디렉토리가 없으면 자동 생성 여부
+            
+        Returns:
+            저장된 파일 경로 (실패시 None)
+        """
+        try:
+            # 애셋 경로 가져오기 (패키지 경로로 변환)
+            object_path = material_instance.get_path_name()  # 오브젝트 경로 (AssetName.AssetName)
+            asset_name = material_instance.get_name()
+            
+            if not object_path:
+                unreal.log_error("애셋 경로를 가져올 수 없습니다.")
+                return None
+            
+            # 오브젝트 경로를 패키지 경로로 변환 (AssetData 사용)
+            def convert_to_package_path(object_path: str) -> str:
+                """오브젝트 경로를 패키지 경로로 변환"""
+                try:
+                    # AssetData를 통한 변환 (검증된 최적 방법)
+                    asset_data = unreal.EditorAssetLibrary.find_asset_data(object_path)
+                    if asset_data and asset_data.package_name:
+                        return str(asset_data.package_name)
+                        
+                except Exception as e:
+                    unreal.log_warning(f"AssetData 경로 변환 실패: {e}")
+                
+                # Fallback: 수동 변환
+                if "." in object_path and object_path.count(".") >= 1:
+                    path_parts = object_path.rsplit(".", 1)  # 마지막 점에서 분리
+                    if len(path_parts) == 2:
+                        package_path_candidate = path_parts[0]
+                        object_name = path_parts[1]
+                        
+                        # 패키지 경로의 마지막 부분이 오브젝트명과 같은지 확인
+                        package_name = package_path_candidate.split("/")[-1]
+                        if package_name == object_name:
+                            return package_path_candidate  # 패키지 경로 반환
+                
+                return object_path  # 변환 불가하면 원본 반환
+            
+            # 패키지 경로로 변환
+            asset_path = convert_to_package_path(object_path)
+            
+            # 애셋 경로 정규화 및 변환 (패키지 루트 유지)
+            def clean_asset_path_with_package(path: str, asset_name: str) -> str:
+                """애셋 경로를 정리하고 저장 경로로 변환 (패키지 루트 유지)"""
+                if not path.startswith("/"):
+                    return path
+                
+                # "/" 제거하고 경로 부분들을 분리
+                clean_path = path[1:]  # 첫 번째 / 제거
+                path_parts = [part for part in clean_path.split("/") if part]  # 빈 문자열 제거
+                
+                if len(path_parts) == 0:
+                    return ""
+                
+                # 패키지 루트 (Game, MaidCat 등) 유지
+                package_root = path_parts[0]  # Game, MaidCat, SomePlugin 등
+                sub_path_parts = path_parts[1:]  # 나머지 경로
+                
+                # 마지막 부분이 "AssetName.AssetName" 형태인 경우 정리
+                if len(sub_path_parts) > 0:
+                    last_part = sub_path_parts[-1]
+                    # "NewMat_Inst.NewMat_Inst" -> "NewMat_Inst"
+                    if "." in last_part and last_part.count(".") == 1:
+                        base_name = last_part.split(".")[0]
+                        if base_name == asset_name:
+                            # 중복된 애셋명 제거
+                            sub_path_parts = sub_path_parts[:-1]
+                        else:
+                            # 애셋명과 다르면 폴더명으로 사용
+                            sub_path_parts[-1] = base_name
+                    elif last_part == asset_name:
+                        # 마지막 부분이 애셋명과 같으면 제거
+                        sub_path_parts = sub_path_parts[:-1]
+                
+                # 패키지 루트 + 하위 경로 결합
+                if sub_path_parts:
+                    return f"{package_root}/{'/'.join(sub_path_parts)}"
+                else:
+                    return package_root
+            
+            # 정리된 상대 경로 생성 (패키지 루트 포함)
+            relative_path = clean_asset_path_with_package(asset_path, asset_name)
+            
+            # Saved/Material/ 접두어 추가
+            save_folder = f"Saved/Material/{relative_path}" if relative_path else "Saved/Material"
+            
+            # 파일명 결정
+            if filename is None:
+                filename = f"{asset_name}.json"
+            elif not filename.endswith(".json"):
+                filename = f"{filename}.json"
+            
+            # 전체 파일 경로 생성
+            project_dir = unreal.Paths.project_dir()
+            full_file_path = os.path.join(project_dir, save_folder, filename)
+            
+            unreal.log(f"📁 애셋 기반 저장:")
+            unreal.log(f"   - 오브젝트 경로: {object_path}")
+            unreal.log(f"   - 패키지 경로: {asset_path}")
+            unreal.log(f"   - 저장 폴더: {save_folder}")
+            unreal.log(f"   - 파일명: {filename}")
+            
+            # 실제 저장
+            success = MaterialInstanceSerializer.save_to_file(
+                material_instance, 
+                full_file_path, 
+                create_dirs
+            )
+            
+            if success:
+                unreal.log(f"✅ 애셋 기반 저장 완료: {full_file_path}")
+                return full_file_path
+            else:
+                return None
+                
+        except Exception as e:
+            unreal.log_error(f"애셋 기반 저장 실패: {e}")
+            return None
+    
+    @staticmethod
+    def load_from_asset_path(
+        target_material_instance: unreal.MaterialInstance,
+        source_asset_path: str,
+        filename: Optional[str] = None
+    ) -> bool:
+        """
+        애셋 경로 기준으로 저장된 파일에서 로드
+        
+        Args:
+            target_material_instance: 적용할 머티리얼 인스턴스
+            source_asset_path: 원본 애셋 경로 (예: "/Game/Test/ParentMaterial")
+            filename: 로드할 파일명 (None이면 애셋명에서 추출)
+            
+        Returns:
+            성공 여부
+        """
+        try:
+            # source_asset_path에서 애셋명 추출
+            if filename is None:
+                source_asset_name = source_asset_path.split("/")[-1]
+                filename = f"{source_asset_name}.json"
+            elif not filename.endswith(".json"):
+                filename = f"{filename}.json"
+            
+            # 애셋 경로 정규화 및 변환 (패키지 루트 유지, save_to_asset_path와 동일한 로직)
+            def clean_asset_path_with_package(path: str, asset_name: str) -> str:
+                """애셋 경로를 정리하고 저장 경로로 변환 (패키지 루트 유지)"""
+                if not path.startswith("/"):
+                    return path
+                
+                # "/" 제거하고 경로 부분들을 분리
+                clean_path = path[1:]  # 첫 번째 / 제거
+                path_parts = [part for part in clean_path.split("/") if part]  # 빈 문자열 제거
+                
+                if len(path_parts) == 0:
+                    return ""
+                
+                # 패키지 루트 (Game, MaidCat 등) 유지
+                package_root = path_parts[0]  # Game, MaidCat, SomePlugin 등
+                sub_path_parts = path_parts[1:]  # 나머지 경로
+                
+                # 마지막 부분이 "AssetName.AssetName" 형태인 경우 정리
+                if len(sub_path_parts) > 0:
+                    last_part = sub_path_parts[-1]
+                    # "NewMat_Inst.NewMat_Inst" -> "NewMat_Inst"
+                    if "." in last_part and last_part.count(".") == 1:
+                        base_name = last_part.split(".")[0]
+                        if base_name == asset_name:
+                            # 중복된 애셋명 제거
+                            sub_path_parts = sub_path_parts[:-1]
+                        else:
+                            # 애셋명과 다르면 폴더명으로 사용
+                            sub_path_parts[-1] = base_name
+                    elif last_part == asset_name:
+                        # 마지막 부분이 애셋명과 같으면 제거
+                        sub_path_parts = sub_path_parts[:-1]
+                
+                # 패키지 루트 + 하위 경로 결합
+                if sub_path_parts:
+                    return f"{package_root}/{'/'.join(sub_path_parts)}"
+                else:
+                    return package_root
+            
+            # source_asset_path에서 애셋명 추출
+            source_asset_name = source_asset_path.split("/")[-1]
+            if "." in source_asset_name:
+                source_asset_name = source_asset_name.split(".")[0]
+            
+            # 정리된 상대 경로 생성 (패키지 루트 포함)
+            relative_path = clean_asset_path_with_package(source_asset_path, source_asset_name)
+            
+            # Saved/Material/ 접두어 추가
+            save_folder = f"Saved/Material/{relative_path}" if relative_path else "Saved/Material"
+            
+            # 전체 파일 경로 생성
+            project_dir = unreal.Paths.project_dir()
+            full_file_path = os.path.join(project_dir, save_folder, filename)
+            
+            unreal.log(f"📂 애셋 기반 로드:")
+            unreal.log(f"   - 원본 애셋 경로: {source_asset_path}")
+            unreal.log(f"   - 로드 폴더: {save_folder}")
+            unreal.log(f"   - 파일명: {filename}")
+            unreal.log(f"   - 대상 애셋: {target_material_instance.get_name()}")
+            
+            # 실제 로드
+            return MaterialInstanceSerializer.load_from_file(target_material_instance, full_file_path)
+            
+        except Exception as e:
+            unreal.log_error(f"애셋 기반 로드 실패: {e}")
+            return False
+    
+    @staticmethod
+    def import_from_file(
+        target_material_instance: unreal.MaterialInstance,
+        file_path: str,
+        show_confirmation: bool = True
+    ) -> bool:
+        """
+        파일에서 머티리얼 인스턴스로 가져오기 (확인 메시지 포함)
+        
+        Args:
+            target_material_instance: 대상 머티리얼 인스턴스
+            file_path: 가져올 파일 경로
+            show_confirmation: 가져오기 전 확인 메시지 표시 여부
+            
+        Returns:
+            성공 여부
+        """
+        try:
+            # 상대 경로인 경우 프로젝트 디렉토리 기준으로 변환
+            if not os.path.isabs(file_path):
+                project_dir = unreal.Paths.project_dir()
+                file_path = os.path.join(project_dir, file_path)
+            
+            # 파일 존재 확인
+            if not os.path.exists(file_path):
+                unreal.log_error(f"파일을 찾을 수 없음: {file_path}")
+                return False
+            
+            # 미리보기를 위해 메타데이터 읽기
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                
+                metadata = data.get("metadata", {})
+                original_asset = metadata.get("asset_name", "Unknown")
+                serialized_date = metadata.get("serialized_date", "Unknown")
+                
+                if show_confirmation:
+                    unreal.log(f"📋 가져오기 정보:")
+                    unreal.log(f"   - 파일: {os.path.basename(file_path)}")
+                    unreal.log(f"   - 원본 Asset: {original_asset}")
+                    unreal.log(f"   - 저장 날짜: {serialized_date}")
+                    unreal.log(f"   - 대상 Asset: {target_material_instance.get_name()}")
+                    
+                    # 실제 환경에서는 다이얼로그를 사용할 수 있지만, 
+                    # 여기서는 로그로 정보만 출력
+                    unreal.log(f"🔄 가져오기를 진행합니다...")
+                
+            except Exception as e:
+                unreal.log_warning(f"메타데이터 읽기 실패, 가져오기를 계속 진행: {e}")
+            
+            # 실제 가져오기 수행
+            return MaterialInstanceSerializer.load_from_file(target_material_instance, file_path)
+            
+        except Exception as e:
+            unreal.log_error(f"가져오기 실패: {e}")
+            return False
 
 
 # 사용 예제
 if __name__ == "__main__":
     """
-    직렬화/역직렬화 테스트 예제
+    직렬화/역직렬화 및 파일 저장/로드 테스트 예제
     """
     selected_assets = unreal.EditorUtilityLibrary.get_selected_assets()
+    
+    if not selected_assets:
+        print("⚠️  머티리얼 인스턴스를 선택하고 실행하세요.")
     
     for asset in selected_assets:
         if isinstance(asset, unreal.MaterialInstance):
@@ -355,7 +834,7 @@ if __name__ == "__main__":
             print(f"머티리얼 인스턴스: {asset.get_name()}")
             print(f"{'='*60}")
             
-            # 직렬화
+            # 1. 직렬화 테스트
             data = MaterialInstanceSerializer.serialize(asset)
             
             # 직렬화된 데이터 정보 출력
@@ -378,9 +857,120 @@ if __name__ == "__main__":
             
             print(f"\n✅ 직렬화 완료!")
             
+            # 2. 파일 내보내기 테스트 (자동 파일명)
+            exported_file = MaterialInstanceSerializer.export_to_file(asset)
+            if exported_file:
+                print(f"📤 자동 내보내기 성공: {exported_file}")
+                
+                # 3. 파일 가져오기 테스트 (동일한 머티리얼 인스턴스에 다시 로드)
+                # 주의: 실제로는 다른 머티리얼 인스턴스에 적용하는 것이 일반적
+                print(f"\n🔄 가져오기 테스트 (동일 Asset):")
+                import_success = MaterialInstanceSerializer.import_from_file(asset, exported_file)
+                if import_success:
+                    print(f"📥 가져오기 성공!")
+                else:
+                    print(f"❌ 가져오기 실패!")
+            else:
+                print(f"❌ 내보내기 실패!")
+            
+            # 4. 수동 파일 저장 테스트
+            manual_file_path = f"Saved/ManualExport/{asset.get_name()}_manual.json"
+            print(f"\n💾 수동 저장 테스트: {manual_file_path}")
+            manual_save_success = MaterialInstanceSerializer.save_to_file(asset, manual_file_path)
+            if manual_save_success:
+                print(f"✅ 수동 저장 성공!")
+                
+                # 5. 수동 파일 로드 테스트
+                print(f"\n📂 수동 로드 테스트:")
+                manual_load_success = MaterialInstanceSerializer.load_from_file(asset, manual_file_path)
+                if manual_load_success:
+                    print(f"✅ 수동 로드 성공!")
+                else:
+                    print(f"❌ 수동 로드 실패!")
+            else:
+                print(f"❌ 수동 저장 실패!")
+            
+            # 6. 애셋 경로 기반 저장 테스트 (NEW!)
+            print(f"\n🆕 애셋 경로 기반 저장 테스트:")
+            asset_based_file = MaterialInstanceSerializer.save_to_asset_path(asset)
+            if asset_based_file:
+                print(f"✅ 애셋 경로 기반 저장 성공!")
+                print(f"   저장 위치: {asset_based_file}")
+                
+                # 7. 애셋 경로 기반 로드 테스트 (NEW!)
+                print(f"\n🆕 애셋 경로 기반 로드 테스트:")
+                asset_path = asset.get_path_name()
+                load_success = MaterialInstanceSerializer.load_from_asset_path(asset, asset_path)
+                if load_success:
+                    print(f"✅ 애셋 경로 기반 로드 성공!")
+                else:
+                    print(f"❌ 애셋 경로 기반 로드 실패!")
+            else:
+                print(f"❌ 애셋 경로 기반 저장 실패!")
+            
+            # 8. 커스텀 파일명으로 애셋 기반 저장
+            custom_asset_file = MaterialInstanceSerializer.save_to_asset_path(
+                asset, 
+                filename="backup_version"  # .json은 자동 추가됨
+            )
+            if custom_asset_file:
+                print(f"✅ 커스텀 파일명 저장 성공: {custom_asset_file}")
+            
+            print(f"\n{'='*60}")
+            print(f"🎯 사용법 요약:")
+            print(f"{'='*60}")
+            print(f"1. 자동 내보내기:")
+            print(f"   MaterialInstanceSerializer.export_to_file(material_instance)")
+            print(f"")
+            print(f"2. 수동 저장:")
+            print(f"   MaterialInstanceSerializer.save_to_file(material_instance, 'path/file.json')")
+            print(f"")
+            print(f"3. 🆕 애셋 경로 기반 저장:")
+            print(f"   MaterialInstanceSerializer.save_to_asset_path(material_instance)")
+            print(f"   MaterialInstanceSerializer.save_to_asset_path(material_instance, 'custom_name')")
+            print(f"")
+            print(f"4. 파일에서 가져오기:")
+            print(f"   MaterialInstanceSerializer.import_from_file(target_material, 'path/file.json')")
+            print(f"")
+            print(f"5. 파일에서 로드:")
+            print(f"   MaterialInstanceSerializer.load_from_file(target_material, 'path/file.json')")
+            print(f"")
+            print(f"6. 🆕 애셋 경로 기반 로드:")
+            print(f"   MaterialInstanceSerializer.load_from_asset_path(target_material, '/Game/Source/Path')")
+            print(f"")
+            print(f"💡 Tip: 상대 경로는 프로젝트 폴더 기준으로 자동 변환됩니다!")
+            
             # 역직렬화 테스트 (주석 처리)
             # success = MaterialInstanceSerializer.deserialize(asset, data)
             # if success:
             #     print(f"✅ 역직렬화 완료!")
             # else:
             #     print(f"❌ 역직렬화 실패!")
+        else:
+            print(f"⚠️  {asset.get_name()}은(는) 머티리얼 인스턴스가 아닙니다. 건너뜁니다.")
+    
+    print(f"\n{'='*80}")
+    print(f"🚀 MaterialInstanceSerializer 파일 저장/로드 기능 추가 완료!")
+    print(f"{'='*80}")
+    print(f"새로운 기능:")
+    print(f"  • save_to_file() - 지정된 경로에 JSON 파일로 저장")
+    print(f"  • load_from_file() - JSON 파일에서 머티리얼 인스턴스로 로드")
+    print(f"  • export_to_file() - 자동 파일명으로 내보내기")
+    print(f"  • import_from_file() - 확인 정보와 함께 가져오기")
+    print(f"  • 🆕 save_to_asset_path() - 애셋 경로 기준 저장")
+    print(f"  • 🆕 load_from_asset_path() - 애셋 경로 기준 로드")
+    print(f"")
+    print(f"저장 위치:")
+    print(f"  • 자동 내보내기: Project/Saved/MaterialExports/")
+    print(f"  • 수동 저장: 지정된 경로 (상대경로는 프로젝트 기준)")
+    print(f"  • 🆕 애셋 기반 저장: Project/Saved/Material/{{애셋경로}}/")
+    print(f"")
+    print(f"💡 애셋 기반 저장 예시:")
+    print(f"  게임 애셋: /Game/Test/ParentMaterial")
+    print(f"  → 저장 위치: Project/Saved/Material/Game/Test/ParentMaterial/{{파일명}}.json")
+    print(f"")
+    print(f"  플러그인 애셋: /MaidCat/Tools/MyMaterial")
+    print(f"  → 저장 위치: Project/Saved/Material/MaidCat/Tools/MyMaterial/{{파일명}}.json")
+    print(f"")
+    print(f"파일 형식: UTF-8 인코딩된 JSON 파일 (.json)")
+    print(f"{'='*80}")

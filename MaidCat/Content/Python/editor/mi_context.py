@@ -21,9 +21,20 @@ Material Instance Context Menu System
 """
 
 import unreal
+import importlib
+import os
 from typing import List, Optional
 from tool.mi_preset import MaterialInstancePresetManager
-from tool.mi_serializer import MaterialInstanceSerializer
+import tool.mi_migrator_samples
+from tool.mi_migrator_samples import create_test_migration_table, create_reverse_test_migration_table
+# mi_serializer 모듈 임포트 및 reload
+try:
+    import tool.mi_serializer as mi_serializer_module
+    importlib.reload(mi_serializer_module)
+    from tool.mi_serializer import MaterialInstanceSerializer
+except ImportError as e:
+    unreal.log_error(f"MaterialInstanceSerializer 임포트 실패: {e}")
+    raise
 
 
 def get_selected_material_instance() -> Optional['unreal.MaterialInstance']:
@@ -409,6 +420,7 @@ class MaterialInstanceContextMenu:
                                custom_type=unreal.Name(""),
                                string="import tool.mi_context as mic; mic.MaterialInstanceContextMenu.list_root_presets_dialog()")
         root_submenu.add_menu_entry(unreal.Name("RootPresetOps"), entry)
+
     
     @staticmethod
     def _add_parent_preset_menu(menu: unreal.ToolMenu, section_name: unreal.Name):
@@ -772,10 +784,221 @@ class MaterialInstanceContextMenu:
         except Exception as e:
             unreal.log_error(f"머티리얼 정보 표시 오류: {e}")
 
+@unreal.uclass()
+class MigrationTestEntry(unreal.ToolMenuEntryScript):
+    """머티리얼 마이그레이션 테스트 메뉴 항목 스크립트
+    
+    기능:
+    - 선택된 머티리얼 인스턴스의 현재 부모에 따라 자동으로 정방향/역방향 마이그레이션 실행
+    - 테스트용 마이그레이션 테이블 자동 생성
+    - JSON 파일 분석을 통한 마이그레이션 결과 검증
+    
+    상수:
+    - TEST_FOLDER_PATH: 테스트 대상 폴더 경로
+    - OLD_PARENT_MATERIAL: 구 부모 머티리얼 경로
+    - NEW_PARENT_MATERIAL: 신 부모 머티리얼 경로
+    """
+    
+    # 테스트 설정 상수들
+    TEST_FOLDER_PATH = "/MaidCat/MigrationTest/Test"
+    OLD_PARENT_MATERIAL = "/MaidCat/MigrationTest/Material/OldMat"
+    NEW_PARENT_MATERIAL = "/MaidCat/MigrationTest/Material/NewMat"
+    FORWARD_TABLE_NAME = "test_migration_table"
+    REVERSE_TABLE_NAME = "reverse_test_migration_table"
+    
+    @unreal.ufunction(override=True)
+    def can_execute(self, context):
+        """머티리얼 인스턴스가 선택된 경우에만 활성화"""
+        try:
+            material = self._get_selected_material_instance(context)
+            return material is not None
+        except Exception:
+            return False
+    
+    @unreal.ufunction(override=True)
+    def execute(self, context):
+        """머티리얼 마이그레이션 테스트 실행"""
+        try:
+            material = self._get_selected_material_instance(context)
+            if not material:
+                unreal.log_error("선택된 머티리얼 인스턴스가 없습니다.")
+                return
+            
+            unreal.log("🚀 머티리얼 마이그레이션 테스트 시작...")
+            
+            # 현재 상태 로깅
+            self._log_current_material_state(material)
+            
+            # 마이그레이션 방향 결정 및 실행
+            success = self._execute_migration(material)
+            
+            # 결과 처리
+            self._handle_migration_result(success)
+            
+        except Exception as e:
+            unreal.log_error(f"마이그레이션 테스트 실행 중 오류: {e}")
+    
+    def _get_selected_material_instance(self, context) -> Optional['unreal.MaterialInstance']:
+        """컨텍스트에서 선택된 머티리얼 인스턴스 가져오기"""
+        try:
+            content_browser_context = context.find_by_class(unreal.ContentBrowserAssetContextMenuContext)
+            if not content_browser_context:
+                return None
+                
+            selected_assets = content_browser_context.load_selected_objects([])
+            if not selected_assets:
+                return None
+                
+            material = selected_assets[0]
+            if isinstance(material, unreal.MaterialInstance):
+                return material
+            
+            return None
+            
+        except Exception as e:
+            unreal.log_error(f"선택된 머티리얼 인스턴스 가져오기 실패: {e}")
+            return None
+    
+    def _log_current_material_state(self, material: 'unreal.MaterialInstance'):
+        """현재 머티리얼 상태 로깅"""
+        unreal.log("📋 현재 머티리얼 상태:")
+        unreal.log(f"   - 선택된 머티리얼: {material.get_name()}")
+        
+        parent = material.get_editor_property("parent")
+        if parent:
+            unreal.log(f"   - 현재 부모: {parent.get_path_name()}")
+        else:
+            unreal.log("   - 부모: None")
+    
+    def _execute_migration(self, material: 'unreal.MaterialInstance') -> bool:
+        """마이그레이션 방향을 결정하고 실행"""
+        parent = material.get_editor_property("parent")
+        
+        if parent and "NewMat" in parent.get_path_name():
+            return self._execute_reverse_migration()
+        else:
+            return self._execute_forward_migration()
+    
+    def _execute_forward_migration(self) -> bool:
+        """정방향 마이그레이션 실행 (OldMat -> NewMat)"""
+        unreal.log("🔄 OldMat -> NewMat 정방향 테스트 실행")
+        
+        # 정방향 테이블 생성
+        create_test_migration_table()
+        
+        return tool.mi_migrator_samples.batch_migrate_materials(
+            folder_path=self.TEST_FOLDER_PATH,
+            old_parent_material=self.OLD_PARENT_MATERIAL,
+            migration_table_or_path=self.FORWARD_TABLE_NAME
+        )
+    
+    def _execute_reverse_migration(self) -> bool:
+        """역방향 마이그레이션 실행 (NewMat -> OldMat)"""
+        unreal.log("🔄 NewMat -> OldMat 역방향 테스트 실행")
+        
+        # 역방향 테이블 생성
+        create_reverse_test_migration_table()
+        
+        return tool.mi_migrator_samples.batch_migrate_materials(
+            folder_path=self.TEST_FOLDER_PATH,
+            old_parent_material=self.NEW_PARENT_MATERIAL,
+            migration_table_or_path=self.REVERSE_TABLE_NAME
+        )
+    
+    def _handle_migration_result(self, success: bool):
+        """마이그레이션 결과 처리"""
+        if success:
+            unreal.log("✅ 마이그레이션 테스트 성공!")
+            self._analyze_migration_result()
+        else:
+            unreal.log_warning("⚠️ 마이그레이션 테스트 실패 또는 대상 없음")
+    
+    def _analyze_migration_result(self):
+        """마이그레이션 결과 분석"""
+        try:
+            # MaterialPathManager 사용하여 경로 관리 통일
+            from tool.mi_migrator_samples import MaterialPathManager
+            path_manager = MaterialPathManager()
+            
+            # 생성된 JSON 파일 분석
+            batch_folder = path_manager.get_batch_migration_folder()
+            json_file = os.path.join(batch_folder, "01_Original", "OldMat_Inst.json")
+            
+            if os.path.exists(json_file):
+                tool.mi_migrator_samples.analyze_json_parameters(json_file)
+            else:
+                unreal.log_warning(f"분석할 JSON 파일이 없습니다: {json_file}")
+                
+        except Exception as e:
+            unreal.log_error(f"마이그레이션 결과 분석 중 오류: {e}")
+
+
+
+class MigrationTestMenuRegistrar:
+    """머티리얼 마이그레이션 테스트 메뉴 등록 관리자"""
+    
+    # 메뉴 등록 관련 상수들
+    OWNER_NAME = unreal.Name("MaidCat")
+    MENU_NAME = unreal.Name("ContentBrowser.AssetContextMenu")
+    SECTION_NAME = unreal.Name("MigrationTestSection")
+    ENTRY_NAME = unreal.Name("MigrationTestEntry")
+    SECTION_LABEL = unreal.Text("🧪 Migration Test")
+    ENTRY_LABEL = unreal.Text("🔄 Test Material Migration")
+    ENTRY_TOOLTIP = unreal.Text("선택된 머티리얼 인스턴스로 양방향 마이그레이션 테스트 실행")
+    
+    @staticmethod
+    def register_migration_test_menu():
+        """머티리얼 마이그레이션 테스트 메뉴 등록"""
+        try:
+            tool_menus = unreal.ToolMenus.get()
+            if not tool_menus:
+                unreal.log_error("❌ ToolMenus 인스턴스를 가져올 수 없습니다.")
+                return False
+            
+            menu = tool_menus.extend_menu(MigrationTestMenuRegistrar.MENU_NAME)
+            if not menu:
+                unreal.log_error(f"❌ 메뉴를 찾을 수 없습니다: {MigrationTestMenuRegistrar.MENU_NAME}")
+                return False
+            
+            # 마이그레이션 테스트 섹션 추가
+            menu.add_section(MigrationTestMenuRegistrar.SECTION_NAME, MigrationTestMenuRegistrar.SECTION_LABEL)
+            
+            # 마이그레이션 테스트 엔트리 생성 및 등록
+            entry = MigrationTestEntry()
+            entry.init_entry(
+                MigrationTestMenuRegistrar.OWNER_NAME,
+                MigrationTestMenuRegistrar.MENU_NAME,
+                MigrationTestMenuRegistrar.SECTION_NAME,
+                MigrationTestMenuRegistrar.ENTRY_NAME,
+                MigrationTestMenuRegistrar.ENTRY_LABEL,
+                MigrationTestMenuRegistrar.ENTRY_TOOLTIP
+            )
+            entry.register_menu_entry()
+            
+            unreal.log("✅ 머티리얼 마이그레이션 테스트 메뉴 등록 완료")
+            return True
+            
+        except Exception as e:
+            unreal.log_error(f"마이그레이션 테스트 메뉴 등록 실패: {e}")
+            return False
 
 def register():
-    """모듈 초기화 함수"""
-    MaterialInstanceContextMenu.register_context_menu()
+    """모듈 초기화 함수 - 모든 컨텍스트 메뉴 등록"""
+    try:
+        # 머티리얼 프리셋 컨텍스트 메뉴 등록
+        preset_success = MaterialInstanceContextMenu.register_context_menu()
+        
+        # 마이그레이션 테스트 메뉴 등록  
+        migration_success = MigrationTestMenuRegistrar.register_migration_test_menu()
+        
+        # 등록 결과 로깅
+        if preset_success and migration_success:
+            unreal.log("✅ 모든 컨텍스트 메뉴 등록 완료")
+        else:
+            unreal.log_warning("⚠️ 일부 컨텍스트 메뉴 등록 실패")
+            
+    except Exception as e:
+        unreal.log_error(f"컨텍스트 메뉴 등록 중 오류: {e}")
 
 # 자동 등록
 if __name__ == "__main__":
