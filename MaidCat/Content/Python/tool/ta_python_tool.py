@@ -1555,14 +1555,14 @@ class TAPythonTool:
         button_frame = ttk.Frame(panel)
         button_frame.pack(fill=tk.X, pady=(5, 0))
         
-        ttk.Button(button_frame, text="➕ 추가", command=self.add_new_tool_menu).pack(fill=tk.X, pady=1)
-        ttk.Button(button_frame, text="🗑️삭제", command=self.delete_selected_tool_menu).pack(fill=tk.X, pady=1)
+        ttk.Button(button_frame, text="➕ 툴 메뉴 추가", command=self.add_new_tool_menu).pack(fill=tk.X, pady=1)
+        ttk.Button(button_frame, text="✖ 삭제", command=self.delete_selected_tool_menu).pack(fill=tk.X, pady=1)
 
         # 툴 메뉴 우클릭 메뉴
         self.category_context_menu = tk.Menu(self.root, tearoff=0)
         self.category_context_menu.add_command(label="🔧 HasSection 토글", command=self.toggle_has_section)
         self.category_context_menu.add_separator()
-        self.category_context_menu.add_command(label="🗑️ 툴 메뉴 삭제", command=self.delete_selected_tool_menu)
+        self.category_context_menu.add_command(label="✖ 툴 메뉴 삭제", command=self.delete_selected_tool_menu)
         
         # 툴 메뉴 데이터 저장용
         self.category_data = {}
@@ -1590,7 +1590,7 @@ class TAPythonTool:
         self.add_btn = ttk.Button(left_frame, text="➕ 추가", state=tk.DISABLED, command=lambda: self.add_entry(self.current_tool_menu_id))
         self.add_btn.pack(pady=(0, 3))  # 세로 배치
         
-        self.delete_item_btn = ttk.Button(left_frame, text="🗑️ 삭제", state=tk.DISABLED)
+        self.delete_item_btn = ttk.Button(left_frame, text="✖ 삭제", state=tk.DISABLED)
         self.delete_item_btn.pack()  # 세로 배치
         
         # 오른쪽 수직 패널: 위로/아래로
@@ -1832,7 +1832,7 @@ class TAPythonTool:
             
             self.mark_as_modified()
             self.refresh_category_list()
-            self.update_status(f"🗑️ 툴 메뉴 '{category_name}' 삭제됨!")
+            self.update_status(f"✖ 툴 메뉴 '{category_name}' 삭제됨!")
     
     def show_tool_menu_content(self, tool_menu_id, category_name):
         """선택된 툴 메뉴의 내용을 표시"""
@@ -1896,10 +1896,10 @@ class TAPythonTool:
         """엔트리 우클릭 컨텍스트 메뉴 생성"""
         self.entry_context_menu = tk.Menu(self.root, tearoff=0)
         self.entry_context_menu.add_command(label="📋 복사", command=self.copy_entry)
-        self.entry_context_menu.add_command(label="✂️ 잘라내기", command=self.cut_entry)
+        self.entry_context_menu.add_command(label="✄ 잘라내기", command=self.cut_entry)
         self.entry_context_menu.add_command(label="📋 붙여넣기", command=self.paste_entry)
         self.entry_context_menu.add_separator()
-        self.entry_context_menu.add_command(label="🗑️ 삭제", command=lambda: self.delete_entry(self.current_tool_menu_id))
+        self.entry_context_menu.add_command(label="✖ 삭제", command=lambda: self.delete_entry(self.current_tool_menu_id))
         self.entry_context_menu.add_separator()
         self.entry_context_menu.add_command(label="⬆️ 위로 이동", command=lambda: self.move_entry_up(self.current_tool_menu_id))
         self.entry_context_menu.add_command(label="⬇️ 아래로 이동", command=lambda: self.move_entry_down(self.current_tool_menu_id))
@@ -2018,7 +2018,7 @@ class TAPythonTool:
                     self.mark_as_modified()
                     
                     entry_name = item_data.get('name', '알 수 없음')
-                    self.update_status(f"✂️ '{entry_name}' 잘라냄")
+                    self.update_status(f"✄ '{entry_name}' 잘라냄")
                 else:
                     self._show_error("엔트리를 삭제할 수 없습니다.", "오류")
             else:
@@ -2242,10 +2242,10 @@ class TAPythonTool:
         edit_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="✏️ 편집", menu=edit_menu)
         edit_menu.add_command(label="📋 복사", command=self.copy_entry)
-        edit_menu.add_command(label="✂️ 잘라내기", command=self.cut_entry)
+        edit_menu.add_command(label="✄ 잘라내기", command=self.cut_entry)
         edit_menu.add_command(label="📋 붙여넣기", command=self.paste_entry)
         edit_menu.add_separator()
-        edit_menu.add_command(label="🗑️ 삭제", command=lambda: self.delete_entry(self.current_tool_menu_id))
+        edit_menu.add_command(label="✖ 삭제", command=lambda: self.delete_entry(self.current_tool_menu_id))
         edit_menu.add_separator()
         edit_menu.add_command(label="⬆️ 위로 이동", command=lambda: self.move_entry_up(self.current_tool_menu_id))
         edit_menu.add_command(label="⬇️ 아래로 이동", command=lambda: self.move_entry_down(self.current_tool_menu_id))
@@ -2414,12 +2414,19 @@ class TAPythonTool:
         """설정 파일에 실제로 존재하는 툴 메뉴만 반환"""
         available_tool_menus = []
         
-        # 모든 툴 메뉴를 동등하게 처리 - 설정 파일에 존재하는 것만 표시
+        # config_data에 있는 모든 툴 메뉴를 표시
         if self.config_data:
-            for tool_menu_id, tool_menu_name in all_tool_menus:
-                if tool_menu_id in self.config_data:
-                    # JSON의 name 필드는 무시하고 항상 기본 이름 사용
-                    available_tool_menus.append((tool_menu_id, tool_menu_name))
+            # 먼저 미리 정의된 툴 메뉴들 추가
+            predefined_menus = {tool_menu_id: tool_menu_name for tool_menu_id, tool_menu_name in all_tool_menus}
+            
+            for tool_menu_id in self.config_data.keys():
+                if tool_menu_id in predefined_menus:
+                    # 미리 정의된 메뉴는 기본 이름 사용
+                    available_tool_menus.append((tool_menu_id, predefined_menus[tool_menu_id]))
+                else:
+                    # 사용자 정의 메뉴는 ID를 기본으로 하되 가독성 있는 이름 생성
+                    display_name = self._get_default_tool_menu_name(tool_menu_id)
+                    available_tool_menus.append((tool_menu_id, display_name))
         
         return available_tool_menus
     
@@ -2558,7 +2565,7 @@ class TAPythonTool:
         btn_row2 = ttk.Frame(list_btn_frame)
         btn_row2.pack(fill=tk.X)
         
-        ttk.Button(btn_row2, text="🗑️ 삭제", 
+        ttk.Button(btn_row2, text="✖ 삭제", 
                   command=lambda: self.delete_entry(tool_menu_id)).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(btn_row2, text="⬆️ 위로", 
                   command=lambda: self.move_entry_up(tool_menu_id)).pack(side=tk.LEFT, padx=(0, 5))
@@ -4035,7 +4042,7 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
             if self._delete_entry_from_data(treeview, selected_item, tool_menu_id):
                 self.refresh_tab(tool_menu_id)
                 self.mark_as_modified()  # 변경사항 추적
-                self.update_status("🗑️ 엔트리가 삭제되었습니다!")
+                self.update_status("✖ 엔트리가 삭제되었습니다!")
     
     def _delete_entry_from_data(self, treeview, tree_item, tool_menu_id):
         """데이터에서 엔트리 삭제"""
@@ -4418,8 +4425,8 @@ class NewToolMenuAnchorDialog:
         
         # 다이얼로그 창 생성
         self.dialog = tk.Toplevel(parent)
-        self.dialog.title("새 툴 메뉴 항목 추가")
-        self.dialog.geometry("600x650")
+        self.dialog.title("새 툴 메뉴 추가 - 직접 입력 또는 선택")
+        self.dialog.geometry("600x700")
         self.dialog.resizable(False, False)
         self.dialog.transient(parent)
         self.dialog.grab_set()
@@ -4435,26 +4442,47 @@ class NewToolMenuAnchorDialog:
         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         
         # 제목
-        title_label = ttk.Label(main_frame, text="새 툴 메뉴 항목 추가", font=FONT_TITLE)
-        title_label.pack(pady=(0, 20))
+        title_label = ttk.Label(main_frame, text="새 툴 메뉴 추가", font=FONT_TITLE)
+        title_label.pack(pady=(0, 15))
+        
+        # 입력 방법 안내
+        info_frame = ttk.LabelFrame(main_frame, text="📝 입력 방법", padding=10)
+        info_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        info_text = "• 아래 텍스트 필드에 직접 입력하거나\n• 하단의 미리 정의된 메뉴에서 선택할 수 있습니다"
+        ttk.Label(info_frame, text=info_text, foreground="blue", font=FONT_MAIN).pack(anchor=tk.W)
         
         # 툴 메뉴 ID 입력
-        ttk.Label(main_frame, text="툴 메뉴 ID:").pack(anchor=tk.W)
-        self.tool_menu_id_entry = ttk.Entry(main_frame, width=50)
-        self.tool_menu_id_entry.pack(fill=tk.X, pady=(5, 10))
+        id_frame = ttk.Frame(main_frame)
+        id_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(id_frame, text="툴 메뉴 ID: *", font=("맑은 고딕", 9, "bold")).pack(anchor=tk.W)
+        self.tool_menu_id_entry = ttk.Entry(id_frame, width=50, font=FONT_MAIN)
+        self.tool_menu_id_entry.pack(fill=tk.X, pady=(5, 0))
+        
+        # 플레이스홀더 텍스트 효과
+        self.id_placeholder = "예: LevelEditor.MainMenu.MyTools 또는 CustomToolMenu"
+        self._setup_placeholder(self.tool_menu_id_entry, self.id_placeholder)
+        
         # 다양한 이벤트에 검증 바인딩
         self.tool_menu_id_entry.bind('<KeyRelease>', self._validate_input)
         self.tool_menu_id_entry.bind('<FocusOut>', self._validate_input)
-        self.tool_menu_id_entry.bind('<Button-1>', self._validate_input)
         
         # 툴 메뉴 이름 입력
-        ttk.Label(main_frame, text="툴 메뉴 이름:").pack(anchor=tk.W)
-        self.category_name_entry = ttk.Entry(main_frame, width=50)
-        self.category_name_entry.pack(fill=tk.X, pady=(5, 10))
+        name_frame = ttk.Frame(main_frame)
+        name_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(name_frame, text="툴 메뉴 이름: *", font=("맑은 고딕", 9, "bold")).pack(anchor=tk.W)
+        self.category_name_entry = ttk.Entry(name_frame, width=50, font=FONT_MAIN)
+        self.category_name_entry.pack(fill=tk.X, pady=(5, 0))
+        
+        # 플레이스홀더 텍스트 효과
+        self.name_placeholder = "예: 내 도구 모음 또는 사용자 정의 메뉴"
+        self._setup_placeholder(self.category_name_entry, self.name_placeholder)
+        
         # 다양한 이벤트에 검증 바인딩
         self.category_name_entry.bind('<KeyRelease>', self._validate_input)
         self.category_name_entry.bind('<FocusOut>', self._validate_input)
-        self.category_name_entry.bind('<Button-1>', self._validate_input)
         
         # HasSection 옵션 (모든 툴 메뉴에 적용)
         self.section_options_frame = ttk.LabelFrame(main_frame, text="툴 메뉴 옵션", padding=10)
@@ -4469,7 +4497,7 @@ class NewToolMenuAnchorDialog:
         self.has_section_check.pack(anchor=tk.W)
         
         # 미리 정의된 메뉴 목록 (참고용)
-        self.predefined_frame = ttk.LabelFrame(main_frame, text="미리 정의된 메뉴 예시", padding=10)
+        self.predefined_frame = ttk.LabelFrame(main_frame, text="📋 미리 정의된 메뉴 목록 (선택하면 자동 입력)", padding=10)
         self.predefined_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
         
         # 리스트박스
@@ -4492,7 +4520,7 @@ class NewToolMenuAnchorDialog:
         
         # 항상 미리 정의된 목록과 설명 표시
         self.predefined_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
-        self.info_label.configure(text="• 회색 텍스트는 이미 존재하는 툴 메뉴입니다")
+        self.info_label.configure(text="💡 팁: 위의 텍스트 필드에 직접 입력하거나, 아래 목록에서 선택하세요\n⚠️ 회색 텍스트는 이미 존재하는 툴 메뉴입니다", justify=tk.LEFT)
         
         # 사용 가능한 툴 메뉴 목록 채우기
         self._populate_available_categories()
@@ -4501,8 +4529,8 @@ class NewToolMenuAnchorDialog:
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill=tk.X)
         
-        ttk.Button(button_frame, text="취소", command=self.cancel).pack(side=tk.RIGHT, padx=(5, 0))
-        self.add_button = ttk.Button(button_frame, text="추가", command=self.add_category, state=tk.DISABLED)
+        ttk.Button(button_frame, text="❌ 취소", command=self.cancel).pack(side=tk.RIGHT, padx=(5, 0))
+        self.add_button = ttk.Button(button_frame, text="✅ 툴 메뉴 추가", command=self.add_category, state=tk.DISABLED)
         self.add_button.pack(side=tk.RIGHT)
         
         # Enter 키 바인딩 (버튼이 활성화되어 있을 때만 실행)
@@ -4514,6 +4542,26 @@ class NewToolMenuAnchorDialog:
         
         # 초기 버튼 상태 설정
         self._validate_input()
+    
+    def _setup_placeholder(self, entry_widget, placeholder_text):
+        """Entry 위젯에 플레이스홀더 텍스트 설정"""
+        def on_focus_in(event):
+            if entry_widget.get() == placeholder_text:
+                entry_widget.delete(0, tk.END)
+                entry_widget.config(foreground='black')
+        
+        def on_focus_out(event):
+            if not entry_widget.get():
+                entry_widget.insert(0, placeholder_text)
+                entry_widget.config(foreground='gray')
+        
+        # 초기 플레이스홀더 설정
+        entry_widget.insert(0, placeholder_text)
+        entry_widget.config(foreground='gray')
+        
+        # 이벤트 바인딩
+        entry_widget.bind('<FocusIn>', on_focus_in)
+        entry_widget.bind('<FocusOut>', on_focus_out)
     
     def _populate_available_categories(self):
         """사용 가능한 툴 메뉴 목록 채우기 (이미 존재하는 것은 제외)"""
@@ -4557,12 +4605,14 @@ class NewToolMenuAnchorDialog:
                 tool_menu_id = selected_text
                 category_name = selected_text.split('.')[-1] if '.' in selected_text else selected_text
             
-            # ID와 이름을 각각의 입력 필드에 설정
+            # ID와 이름을 각각의 입력 필드에 설정 (플레이스홀더 제거)
             self.tool_menu_id_entry.delete(0, tk.END)
             self.tool_menu_id_entry.insert(0, tool_menu_id)
+            self.tool_menu_id_entry.config(foreground='black')  # 플레이스홀더 색상에서 일반 색상으로 변경
             
             self.category_name_entry.delete(0, tk.END)
             self.category_name_entry.insert(0, category_name)
+            self.category_name_entry.config(foreground='black')  # 플레이스홀더 색상에서 일반 색상으로 변경
             
             # 입력 필드 변경 후 검증
             self._validate_input()
@@ -4571,6 +4621,12 @@ class NewToolMenuAnchorDialog:
         """입력 필드 내용을 검증하고 추가 버튼 상태를 업데이트합니다."""
         tool_menu_id = self.tool_menu_id_entry.get().strip()
         category_name = self.category_name_entry.get().strip()
+        
+        # 플레이스홀더 텍스트는 빈 값으로 처리
+        if tool_menu_id == self.id_placeholder:
+            tool_menu_id = ""
+        if category_name == self.name_placeholder:
+            category_name = ""
         
         # 디버깅 정보 (개발용)
         # print(f"Debug - ID: '{tool_menu_id}', Name: '{category_name}', Existing: {self._is_existing_category(tool_menu_id, category_name)}")
@@ -4598,6 +4654,12 @@ class NewToolMenuAnchorDialog:
         """추가 버튼"""
         tool_menu_id = self.tool_menu_id_entry.get().strip()
         category_name = self.category_name_entry.get().strip()
+        
+        # 플레이스홀더 텍스트는 빈 값으로 처리
+        if tool_menu_id == self.id_placeholder:
+            tool_menu_id = ""
+        if category_name == self.name_placeholder:
+            category_name = ""
         
         if not tool_menu_id:
             messagebox.showerror("오류", "툴 메뉴 ID를 입력하세요.")
