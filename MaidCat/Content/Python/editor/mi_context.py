@@ -25,8 +25,8 @@ import importlib
 import os
 from typing import List, Optional
 from tool.mi_preset import MaterialInstancePresetManager
-import tool.mi_migrator_samples
-from tool.mi_migrator_samples import create_test_migration_table, create_reverse_test_migration_table
+import tool.mi_toolkit
+from tool.mi_toolkit import create_test_migration_table, create_reverse_test_migration_table
 # mi_serializer 모듈 임포트 및 reload
 try:
     import tool.mi_serializer as mi_serializer_module
@@ -886,7 +886,7 @@ class MigrationTestEntry(unreal.ToolMenuEntryScript):
         # 정방향 테이블 생성
         create_test_migration_table()
         
-        return tool.mi_migrator_samples.batch_migrate_materials(
+        return tool.mi_toolkit.batch_migrate_materials(
             folder_path=self.TEST_FOLDER_PATH,
             old_parent_material=self.OLD_PARENT_MATERIAL,
             migration_table_or_path=self.FORWARD_TABLE_NAME
@@ -899,7 +899,7 @@ class MigrationTestEntry(unreal.ToolMenuEntryScript):
         # 역방향 테이블 생성
         create_reverse_test_migration_table()
         
-        return tool.mi_migrator_samples.batch_migrate_materials(
+        return tool.mi_toolkit.batch_migrate_materials(
             folder_path=self.TEST_FOLDER_PATH,
             old_parent_material=self.NEW_PARENT_MATERIAL,
             migration_table_or_path=self.REVERSE_TABLE_NAME
@@ -917,7 +917,7 @@ class MigrationTestEntry(unreal.ToolMenuEntryScript):
         """마이그레이션 결과 분석"""
         try:
             # MaterialPathManager 사용하여 경로 관리 통일
-            from tool.mi_migrator_samples import MaterialPathManager
+            from tool.mi_toolkit import MaterialPathManager
             path_manager = MaterialPathManager()
             
             # 생성된 JSON 파일 분석
@@ -925,7 +925,7 @@ class MigrationTestEntry(unreal.ToolMenuEntryScript):
             json_file = os.path.join(batch_folder, "01_Original", "OldMat_Inst.json")
             
             if os.path.exists(json_file):
-                tool.mi_migrator_samples.analyze_json_parameters(json_file)
+                tool.mi_toolkit.analyze_json_parameters(json_file)
             else:
                 unreal.log_warning(f"분석할 JSON 파일이 없습니다: {json_file}")
                 
