@@ -1514,12 +1514,12 @@ class TAPythonTool:
         return panel
     
     def _set_panel_proportions(self, paned_window):
-        """패널 비율 설정 (20%, 30%, 50%)"""
+        """패널 비율 설정 (18%, 35%, 47%)"""
         try:
             total_width = paned_window.winfo_width()
             if total_width > 100:  # 최소 크기 확인
-                first_pos = int(total_width * 0.20)  # 첫 번째 구분선: 20% 위치
-                second_pos = int(total_width * 0.50)  # 두 번째 구분선: 50% 위치 (20% + 30%)
+                first_pos = int(total_width * 0.18)  # 첫 번째 구분선: 18% 위치
+                second_pos = int(total_width * 0.53)  # 두 번째 구분선: 53% 위치 (18% + 35%)
                 
                 paned_window.sashpos(0, first_pos)
                 paned_window.sashpos(1, second_pos)
@@ -3188,17 +3188,17 @@ JSON 파일에는 UI 레이아웃과 동작이 정의되어 있어야 합니다.
         main_paned = ttk.PanedWindow(self.main_container, orient=tk.HORIZONTAL)
         main_paned.pack(fill=tk.BOTH, expand=True)
         
-        # 첫 번째 패널 - 툴 메뉴 리스트 (20%)
+        # 첫 번째 패널 - 툴 메뉴 리스트 (18%)
         self.category_panel = self._create_panel(main_paned, "📂 툴 메뉴")
-        main_paned.add(self.category_panel, weight=2)
+        main_paned.add(self.category_panel, weight=18)
         
-        # 두 번째 패널 - 메뉴 엔트리 리스트 (30%)  
+        # 두 번째 패널 - 메뉴 엔트리 리스트 (35%)  
         self.menu_panel = self._create_panel(main_paned, "📄 툴 메뉴 항목을 선택하세요")
-        main_paned.add(self.menu_panel, weight=3)
+        main_paned.add(self.menu_panel, weight=35)
         
-        # 세 번째 패널 - 엔트리 편집 영역 (50%)
+        # 세 번째 패널 - 엔트리 편집 영역 (47%)
         self.edit_panel = self._create_panel(main_paned, "✏️ 엔트리 항목을 선택하세요")
-        main_paned.add(self.edit_panel, weight=5)
+        main_paned.add(self.edit_panel, weight=47)
         
         # 각 패널 설정
         self._setup_category_panel(self.category_panel)
