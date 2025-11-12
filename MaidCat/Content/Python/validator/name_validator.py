@@ -21,15 +21,15 @@ ASSET_PREFIX_MAP = {
 @unreal.uclass()
 class AssetNamingValidator(unreal.EditorValidatorBase):
     
-
-     
     @unreal.ufunction(override=True)
-    def k2_can_validate(self, usecase: unreal.DataValidationUsecase):
-        return usecase == unreal.DataValidationUsecase.SAVE
+    def k2_can_validate_asset(self, asset):
 
     @unreal.ufunction(override=True)
     def k2_can_validate_asset(self, asset):
-        return isinstance(asset, unreal.Object)
+        if not asset:
+            return False
+        asset_class = str(asset.get_class().get_name())
+        return asset_class in ASSET_PREFIX_MAP
 
     @unreal.ufunction(override=True)
     def k2_validate_loaded_asset(self, asset):

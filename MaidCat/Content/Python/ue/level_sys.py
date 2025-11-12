@@ -29,7 +29,7 @@ Author: MaidCat Team
 """
 
 import unreal
-from typing import Optional
+from typing import Optional, Callable
 
 
 def get_level_editor_subsystem() -> unreal.LevelEditorSubsystem:
@@ -473,9 +473,15 @@ def print_level_editor_status() -> None:
     print(f"레벨 수정됨: {status['level_dirty']}")
 
 
-# 이벤트 프로퍼티 접근 함수들
+# ===== 델리게이트 헬퍼 함수들 =====
+
 def get_on_editor_camera_moved():
     """에디터 카메라 이동 이벤트 델리게이트를 가져옵니다.
+    
+    콜백 함수 시그니처: callback(location: unreal.Vector, rotation: unreal.Rotator, editor_viewport_type: int, viewport_index: int) -> None
+    
+    에디터 뷰포트 카메라가 이동할 때마다 호출됩니다.
+    주의: 매우 자주 호출될 수 있으므로 무거운 작업은 피하세요.
     
     Returns:
         OnLevelEditorEditorCameraMoved 델리게이트
@@ -486,7 +492,22 @@ def get_on_editor_camera_moved():
 
 def get_on_map_changed():
     """맵 변경 이벤트 델리게이트를 가져옵니다.
-    참고: 일부 에디터 스크립팅에는 너무 일찍 실행되므로, 작동하지 않으면 on_map_opened 사용을 고려하세요.
+    맵의 다양한 변경 상태를 세밀하게 추적할 수 있습니다.
+    
+    콜백 함수 시그니처: callback(map_change_type: int) -> None
+    
+    맵 변경 타입 (map_change_type):
+        0: SaveMap - 맵 저장 완료
+        1: NewMap/LoadMap - 새 레벨 생성 또는 로드 시작
+        2: LoadMap - 레벨 로드 완료  
+        3: WorldTearDown - 현재 월드 해체/정리 시작
+    
+    이벤트 발생 순서: WorldTearDown(3) → NewMap/LoadMap(1) → LoadMap(2)
+    
+    ⚠️ WorldTearDown(3) 주의사항:
+    - 월드 객체나 액터에 접근 금지! (이미 해체 과정 시작됨)
+    - 안전한 작업만 수행: 데이터 저장, 임시 파일 정리, 메모리 해제 등
+    - 발생 시점: 레벨 닫기, 에디터 종료, PIE 종료, 프로젝트 전환
     
     Returns:
         OnLevelEditorMapChanged 델리게이트
@@ -498,6 +519,11 @@ def get_on_map_changed():
 def get_on_map_opened():
     """맵 열림 이벤트 델리게이트를 가져옵니다.
     
+    콜백 함수 시그니처: callback(level_name: str) -> None
+    
+    맵이 성공적으로 열렸을 때 호출됩니다.
+    get_on_map_changed()와 함께 사용하면 더 세밀한 맵 상태 추적이 가능합니다.
+    
     Returns:
         OnLevelEditorMapOpened 델리게이트
     """
@@ -507,6 +533,10 @@ def get_on_map_opened():
 
 def get_on_post_save_world():
     """월드 저장 후 이벤트 델리게이트를 가져옵니다.
+    
+    콜백 함수 시그니처: callback(save_context: int, world: unreal.World, success: bool) -> None
+    
+    저장 성공/실패에 따른 후속 처리를 수행하기에 적합한 시점입니다.
     
     Returns:
         OnLevelEditorPostSaveWorld 델리게이트
@@ -518,8 +548,209 @@ def get_on_post_save_world():
 def get_on_pre_save_world():
     """월드 저장 전 이벤트 델리게이트를 가져옵니다.
     
+    콜백 함수 시그니처: callback(save_context: int, world: unreal.World) -> None
+    
+    저장 전 검증이나 준비 작업을 수행하기에 적합한 시점입니다.
+    
     Returns:
         OnLevelEditorPreSaveWorld 델리게이트
     """
     subsystem = get_level_editor_subsystem()
     return subsystem.on_pre_save_world
+
+
+# ===== 델리게이트 헬퍼 함수들 (시그니처 명확화) =====
+
+def add_map_changed_callback(callback_func: Callable[[int], None]) -> bool:
+    """맵 변경 이벤트 콜백을 등록합니다.
+    
+    Args:
+        callback_func: 콜백 함수 - callback(map_change_type: int) -> None
+    
+    맵 변경 타입 (map_change_type):
+        0: SaveMap - 맵 저장 완료
+        1: NewMap/LoadMap - 새 레벨 생성 또는 로드 시작
+        2: LoadMap - 레벨 로드 완료  
+        3: WorldTearDown - 현재 월드 해체/정리 시작
+    
+    ⚠️ WorldTearDown(3) 주의사항:
+    - 월드 객체나 액터에 접근 금지! (이미 해체 과정 시작됨)
+    - 안전한 작업만 수행: 데이터 저장, 임시 파일 정리, 메모리 해제 등
+    
+    Returns:
+        등록 성공 여부
+    
+    Example:
+        def my_map_changed(map_change_type: int):
+            if map_change_type == 3:  # WorldTearDown
+                print("월드 정리 중...")
+            else:
+                print(f"맵 변경: {map_change_type}")
+        
+        add_map_changed_callback(my_map_changed)
+    """
+    try:
+        subsystem = get_level_editor_subsystem()
+        subsystem.on_map_changed.add_callable(callback_func)
+        return True
+    except Exception as e:
+        print(f"맵 변경 콜백 등록 실패: {e}")
+        return False
+
+
+def add_map_opened_callback(callback_func: Callable[[str], None]) -> bool:
+    """맵 열림 이벤트 콜백을 등록합니다.
+    
+    Args:
+        callback_func: 콜백 함수 - callback(level_name: str) -> None
+    
+    Returns:
+        등록 성공 여부
+    
+    Example:
+        def my_map_opened(level_name: str):
+            print(f"맵 열림: {level_name}")
+        
+        add_map_opened_callback(my_map_opened)
+    """
+    try:
+        subsystem = get_level_editor_subsystem()
+        subsystem.on_map_opened.add_callable(callback_func)
+        return True
+    except Exception as e:
+        print(f"맵 열림 콜백 등록 실패: {e}")
+        return False
+
+
+def add_pre_save_world_callback(callback_func: Callable[[int, unreal.World], None]) -> bool:
+    """월드 저장 전 이벤트 콜백을 등록합니다.
+    
+    Args:
+        callback_func: 콜백 함수 - callback(save_context: int, world: unreal.World) -> None
+    
+    Returns:
+        등록 성공 여부
+    
+    Example:
+        def my_pre_save(save_context: int, world: unreal.World):
+            print(f"저장 전: {world.get_name()}")
+        
+        add_pre_save_world_callback(my_pre_save)
+    """
+    try:
+        subsystem = get_level_editor_subsystem()
+        subsystem.on_pre_save_world.add_callable(callback_func)
+        return True
+    except Exception as e:
+        print(f"저장 전 콜백 등록 실패: {e}")
+        return False
+
+
+def add_post_save_world_callback(callback_func: Callable[[int, unreal.World, bool], None]) -> bool:
+    """월드 저장 후 이벤트 콜백을 등록합니다.
+    
+    Args:
+        callback_func: 콜백 함수 - callback(save_context: int, world: unreal.World, success: bool) -> None
+    
+    Returns:
+        등록 성공 여부
+    
+    Example:
+        def my_post_save(save_context: int, world: unreal.World, success: bool):
+            status = "성공" if success else "실패"
+            print(f"저장 후: {world.get_name()} - {status}")
+        
+        add_post_save_world_callback(my_post_save)
+    """
+    try:
+        subsystem = get_level_editor_subsystem()
+        subsystem.on_post_save_world.add_callable(callback_func)
+        return True
+    except Exception as e:
+        print(f"저장 후 콜백 등록 실패: {e}")
+        return False
+
+
+def add_editor_camera_moved_callback(callback_func: Callable[[unreal.Vector, unreal.Rotator, int, int], None]) -> bool:
+    """에디터 카메라 이동 이벤트 콜백을 등록합니다.
+    
+    Args:
+        callback_func: 콜백 함수 - callback(location: unreal.Vector, rotation: unreal.Rotator, editor_viewport_type: int, viewport_index: int) -> None
+    
+    ⚠️ 주의: 매우 자주 호출되므로 가벼운 작업만 수행하세요!
+    
+    Returns:
+        등록 성공 여부
+    
+    Example:
+        def my_camera_moved(location: unreal.Vector, rotation: unreal.Rotator, editor_viewport_type: int, viewport_index: int):
+            print(f"카메라 이동: {location}")
+        
+        add_editor_camera_moved_callback(my_camera_moved)
+    """
+    try:
+        subsystem = get_level_editor_subsystem()
+        subsystem.on_editor_camera_moved.add_callable(callback_func)
+        return True
+    except Exception as e:
+        print(f"카메라 이동 콜백 등록 실패: {e}")
+        return False
+
+
+# ===== 콜백 제거 함수들 =====
+
+def remove_map_changed_callback(callback_func) -> bool:
+    """맵 변경 이벤트 콜백을 제거합니다."""
+    try:
+        subsystem = get_level_editor_subsystem()
+        subsystem.on_map_changed.remove_callable(callback_func)
+        return True
+    except Exception as e:
+        print(f"맵 변경 콜백 제거 실패: {e}")
+        return False
+
+
+def remove_map_opened_callback(callback_func) -> bool:
+    """맵 열림 이벤트 콜백을 제거합니다."""
+    try:
+        subsystem = get_level_editor_subsystem()
+        subsystem.on_map_opened.remove_callable(callback_func)
+        return True
+    except Exception as e:
+        print(f"맵 열림 콜백 제거 실패: {e}")
+        return False
+
+
+def remove_pre_save_world_callback(callback_func) -> bool:
+    """월드 저장 전 이벤트 콜백을 제거합니다."""
+    try:
+        subsystem = get_level_editor_subsystem()
+        subsystem.on_pre_save_world.remove_callable(callback_func)
+        return True
+    except Exception as e:
+        print(f"저장 전 콜백 제거 실패: {e}")
+        return False
+
+
+def remove_post_save_world_callback(callback_func) -> bool:
+    """월드 저장 후 이벤트 콜백을 제거합니다."""
+    try:
+        subsystem = get_level_editor_subsystem()
+        subsystem.on_post_save_world.remove_callable(callback_func)
+        return True
+    except Exception as e:
+        print(f"저장 후 콜백 제거 실패: {e}")
+        return False
+
+
+def remove_editor_camera_moved_callback(callback_func) -> bool:
+    """에디터 카메라 이동 이벤트 콜백을 제거합니다."""
+    try:
+        subsystem = get_level_editor_subsystem()
+        subsystem.on_editor_camera_moved.remove_callable(callback_func)
+        return True
+    except Exception as e:
+        print(f"카메라 이동 콜백 제거 실패: {e}")
+        return False
+
+
