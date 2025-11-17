@@ -3,7 +3,7 @@
 	"Version": 1,
 	"VersionName": "0.1",
 	"FriendlyName": "MaidCat",
-	"Description": "Unreal Engine Helper Tools",
+	"Description": "Unreal Engine Helper Tools with Property Inspector",
 	"Category": "tool",
 	"CreatedBy": "Jongwoo Park",
 	"CreatedByURL": "",
@@ -14,6 +14,13 @@
 	"IsBetaVersion": true,
 	"IsExperimentalVersion": true,
 	"Installed": false,
+	"Modules": [
+		{
+			"Name": "MaidCat",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	],
 	"Plugins": [
 		{
 			"Name": "PythonScriptPlugin",
@@ -21,3 +28,4 @@
 		}
 	]
 }
+
