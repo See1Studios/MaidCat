@@ -34,6 +34,21 @@ import unreal
 from pathlib import Path
 import sys
 import platform
+import time
+
+
+# ============================================================================
+# 전역 캐시 변수들
+# ============================================================================
+
+_cached_unreal_python_path = None
+_cached_engine_path = None
+_cached_engine_association = None
+_cached_project_data = None
+_cached_cspell_words = None
+_cached_pylance_permissive = None
+_cached_pylance_strict = None
+_cached_pylance_disabled = None
 
 
 # ============================================================================
@@ -56,11 +71,8 @@ def _is_plugin_in_project(resolved_plugin_path, project_path):
 
 
 def _print_debug_info(project_path, current_plugin_path, resolved_plugin_path):
-    """디버그 정보 출력"""
-    print(f"   🔍 프로젝트: {project_path}")
-    print(f"   🔍 플러그인: {current_plugin_path}")
-    print(f"   🔍 실제 경로: {resolved_plugin_path}")
-    print(f"   🔍 심볼릭 링크: {current_plugin_path.is_symlink()}")
+    """디버그 정보 출력 (비활성화)"""
+    pass
 
 
 # ============================================================================
@@ -83,13 +95,14 @@ def _get_standard_python_paths():
 def get_project_python_paths(plugin_path, project_path):
     """프로젝트용 Python 경로 리스트 생성"""
     python_paths = []
+    existing_count = 0
     
     # 표준 프로젝트 경로들 (상대 경로)
     for rel_path, description in _get_standard_python_paths():
         python_paths.append(rel_path)
         abs_path = project_path / rel_path.replace("./", "")
-        exists = abs_path.exists()
-        print(f"   {'✅' if exists else '⚠️'} {description}: {rel_path}")
+        if abs_path.exists():
+            existing_count += 1
     
     # 플러그인 경로 추가
     _add_plugin_paths_to_list(python_paths, plugin_path, project_path)
@@ -110,15 +123,12 @@ def get_plugin_python_paths(project_path):
         "./MaidCat/Content/Python/Lib/site-packages"
     ]
     python_paths.extend(plugin_paths)
-    print(f"   ✅ 플러그인 경로들: {plugin_paths}")
     
     # 프로젝트 경로들 (절대 경로)
     for rel_path, description in _get_standard_python_paths():
         abs_path = project_path / rel_path.replace("./", "")
         path_str = str(abs_path).replace("\\", "/")
         python_paths.append(path_str)
-        exists = abs_path.exists()
-        print(f"   {'✅' if exists else '⚠️'} {description}: {path_str}")
     
     return python_paths
 
@@ -133,7 +143,6 @@ def _add_plugin_paths_to_list(python_paths, plugin_path, project_path):
             str(plugin_relative / "Content" / "Python" / "Lib" / "site-packages").replace("\\", "/")
         ]
         python_paths.extend(plugin_paths)
-        print(f"   ✅ 플러그인 경로 (상대): {plugin_paths}")
     except ValueError:
         # 프로젝트 외부인 경우 절대 경로 사용
         plugin_paths = [
@@ -141,65 +150,115 @@ def _add_plugin_paths_to_list(python_paths, plugin_path, project_path):
             str(plugin_path / "Content" / "Python" / "Lib" / "site-packages")
         ]
         python_paths.extend(plugin_paths)
-        print(f"   ✅ 플러그인 경로 (절대): {plugin_paths}")
 
 
 def _add_other_plugins_paths(python_paths, project_path):
     """다른 플러그인들의 Python 경로도 추가"""
     plugins_dir = project_path / "Plugins"
-    if plugins_dir.exists():
+    if not plugins_dir.exists():
+        return
+    
+    other_count = 0
+    try:
         for plugin_dir in plugins_dir.iterdir():
-            if plugin_dir.is_dir() and plugin_dir.name != "MaidCat":
-                plugin_python = plugin_dir / "Content" / "Python"
-                if plugin_python.exists():
-                    try:
-                        plugin_relative = plugin_python.relative_to(project_path)
-                        rel_path = f"./{plugin_relative}".replace("\\", "/")
-                        python_paths.append(rel_path)
-                        print(f"   ✅ 다른 플러그인: {rel_path}")
-                    except ValueError:
-                        pass
+            if not plugin_dir.is_dir() or plugin_dir.name == "MaidCat":
+                continue
+            
+            plugin_python = plugin_dir / "Content" / "Python"
+            if plugin_python.exists():
+                try:
+                    plugin_relative = plugin_python.relative_to(project_path)
+                    rel_path = f"./{plugin_relative}".replace("\\", "/")
+                    python_paths.append(rel_path)
+                    other_count += 1
+                except ValueError:
+                    pass
+    except Exception:
+        pass
+        return
+    
+    try:
+        for plugin_dir in plugins_dir.iterdir():
+            if not plugin_dir.is_dir() or plugin_dir.name == "MaidCat":
+                continue
+            
+            plugin_python = plugin_dir / "Content" / "Python"
+            if plugin_python.exists():
+                try:
+                    plugin_relative = plugin_python.relative_to(project_path)
+                    rel_path = f"./{plugin_relative}".replace("\\", "/")
+                    python_paths.append(rel_path)
+                    print(f"   ✅ 다른 플러그인: {rel_path}")
+                except ValueError:
+                    pass
+    except Exception:
+        pass
 
 
 # ============================================================================
 # 언리얼 Python 인터프리터 감지
 # ============================================================================
 
+def _get_engine_association():
+    """엔진 연결 정보 가져오기 (캐싱)"""
+    global _cached_engine_association, _cached_project_data
+    
+    if _cached_engine_association is not None:
+        return _cached_engine_association
+    
+    try:
+        project_path = Path(unreal.Paths.project_dir())
+        uproject_files = list(project_path.glob("*.uproject"))
+        
+        if uproject_files:
+            with open(uproject_files[0], 'r', encoding='utf-8') as f:
+                _cached_project_data = json.load(f)
+                _cached_engine_association = _cached_project_data.get("EngineAssociation", "")
+                return _cached_engine_association
+    except Exception:
+        pass
+    
+    return None
+
+
 def _get_unreal_python_interpreter():
     """언리얼 엔진 Python 인터프리터 경로 자동 감지 (레지스트리 기반)"""
+    global _cached_unreal_python_path
+    
+    # 캐시된 값 반환
+    if _cached_unreal_python_path is not None:
+        return _cached_unreal_python_path
+    
     try:
         if platform.system() != "Windows":
             return _get_unreal_python_non_windows()
         
         import winreg
         
-        # 프로젝트 파일에서 엔진 연결 정보 읽기
-        project_path = Path(unreal.Paths.project_dir())
-        uproject_files = list(project_path.glob("*.uproject"))
+        # 캐시된 엔진 연결 정보 사용
+        engine_association = _get_engine_association()
         
-        if uproject_files:
-            with open(uproject_files[0], 'r', encoding='utf-8') as f:
-                project_data = json.load(f)
-                engine_association = project_data.get("EngineAssociation", "")
+        if engine_association:
                 
-                print(f"   🔍 엔진 연결: {engine_association}")
-                
-                if engine_association:
                     # 레지스트리에서 엔진 경로 찾기
-                    engine_path = _get_engine_path_from_registry(engine_association)
-                    if engine_path:
-                        python_exe = Path(engine_path) / "Engine" / "Binaries" / "ThirdParty" / "Python3" / "Win64" / "python.exe"
-                        if python_exe.exists():
-                            python_path = str(python_exe).replace("\\", "/")
-                            print(f"   ✅ 언리얼 Python 인터프리터 (레지스트리): {python_path}")
-                            return python_path
+            engine_path = _get_engine_path_from_registry(engine_association)
+            if engine_path:
+                python_exe = Path(engine_path) / "Engine" / "Binaries" / "ThirdParty" / "Python3" / "Win64" / "python.exe"
+                if python_exe.exists():
+                    python_path = str(python_exe).replace("\\", "/")
+                    _cached_unreal_python_path = python_path
+                    return python_path
         
         # 폴백: 일반적인 경로들 시도
-        return _get_unreal_python_fallback()
+        result = _get_unreal_python_fallback()
+        _cached_unreal_python_path = result
+        return result
         
     except Exception as e:
         print(f"   ❌ 언리얼 Python 인터프리터 감지 실패: {e}")
-        return _get_unreal_python_fallback()
+        result = _get_unreal_python_fallback()
+        _cached_unreal_python_path = result
+        return result
 
 
 def _get_unreal_python_non_windows():
@@ -292,8 +351,12 @@ def _is_guid(text):
 # ============================================================================
 
 def get_pylance_strict_settings():
-    """엄격한 Pylance 타입 설정 반환"""
-    return {
+    """엄격한 Pylance 타입 설정 반환 (캐싱)"""
+    global _cached_pylance_strict
+    if _cached_pylance_strict is not None:
+        return _cached_pylance_strict
+    
+    _cached_pylance_strict = {
         "python.analysis.typeCheckingMode": "strict",
         "python.analysis.diagnosticSeverityOverrides": {
             "reportMissingImports": "error",
@@ -309,11 +372,16 @@ def get_pylance_strict_settings():
             "reportOptionalOperand": "error"
         }
     }
+    return _cached_pylance_strict
 
 
 def get_pylance_permissive_settings():
-    """관대한 Pylance 타입 설정 반환 (외부 라이브러리 작업용)"""
-    return {
+    """관대한 Pylance 타입 설정 반환 (외부 라이브러리 작업용, 캐싱)"""
+    global _cached_pylance_permissive
+    if _cached_pylance_permissive is not None:
+        return _cached_pylance_permissive
+    
+    _cached_pylance_permissive = {
         "python.analysis.typeCheckingMode": "basic",
         "python.analysis.diagnosticSeverityOverrides": {
             "reportMissingImports": "none",
@@ -334,11 +402,16 @@ def get_pylance_permissive_settings():
             "reportUntypedNamedTuple": "none"
         }
     }
+    return _cached_pylance_permissive
 
 
 def get_pylance_disabled_settings():
-    """Pylance 타입 체크 완전 비활성화 설정"""
-    return {
+    """Pylance 타입 체크 완전 비활성화 설정 (캐싱)"""
+    global _cached_pylance_disabled
+    if _cached_pylance_disabled is not None:
+        return _cached_pylance_disabled
+    
+    _cached_pylance_disabled = {
         "python.analysis.typeCheckingMode": "off",
         "python.analysis.diagnosticSeverityOverrides": {
             "reportMissingImports": "none",
@@ -355,11 +428,16 @@ def get_pylance_disabled_settings():
             "reportGeneralTypeIssues": "none"
         }
     }
+    return _cached_pylance_disabled
 
 
 def get_vscode_cspell_words():
-    """언리얼 엔진용 cSpell 단어 목록"""
-    return [
+    """언리얼 엔진용 cSpell 단어 목록 (캐싱)"""
+    global _cached_cspell_words
+    if _cached_cspell_words is not None:
+        return _cached_cspell_words
+    
+    _cached_cspell_words = [
         # 언리얼 엔진 기본 매크로
         "uclass", "ufunction", "uproperty", "ustruct", "uenum",
         "uinterface", "umeta", "uparam", "udelegate", "umulticastdelegate",
@@ -388,10 +466,12 @@ def get_vscode_cspell_words():
         "vscode", "pycharm", "intellij", "pylance", "autopep", "flake",
         "mypy", "pytest", "unittest", "docstring", "setuptools", "pip"
     ]
+    return _cached_cspell_words
 
 
 def _create_vscode_python_settings(python_paths, pylance_mode="permissive"):
     """VSCode Python 설정 딕셔너리 생성"""
+    t_start = time.time()
     settings = {
         "python.analysis.extraPaths": python_paths,
         "python.autoComplete.extraPaths": python_paths,
@@ -411,8 +491,10 @@ def _create_vscode_python_settings(python_paths, pylance_mode="permissive"):
         },
         "cSpell.words": get_vscode_cspell_words()
     }
+    print(f"            ⏱️  기본 설정: {(time.time() - t_start) * 1000:.1f}ms")
     
     # Pylance 타입 설정 추가
+    t0 = time.time()
     if pylance_mode == "strict":
         pylance_settings = get_pylance_strict_settings()
     elif pylance_mode == "disabled":
@@ -421,9 +503,12 @@ def _create_vscode_python_settings(python_paths, pylance_mode="permissive"):
         pylance_settings = get_pylance_permissive_settings()
     
     settings.update(pylance_settings)
+    print(f"            ⏱️  Pylance 설정: {(time.time() - t0) * 1000:.1f}ms")
     
     # 언리얼 Python 인터프리터 경로 추가
+    t1 = time.time()
     unreal_python = _get_unreal_python_interpreter()
+    print(f"            ⏱️  Python 인터프리터: {(time.time() - t1) * 1000:.1f}ms")
     if unreal_python:
         settings["python.defaultInterpreterPath"] = unreal_python
     
@@ -443,65 +528,70 @@ def _load_existing_vscode_settings(settings_path):
         return {}
 
 
-def _save_vscode_settings(settings_path, settings):
-    """VSCode 설정 파일 저장"""
+def _save_vscode_settings(settings_path, settings, existing_settings=None):
+    """VSCode 설정 파일 저장 (변경사항이 있을 때만)"""
+    # 기존 설정과 비교하여 변경사항이 없으면 건너뛰기
+    if existing_settings is not None:
+        # Python 관련 키만 비교 (다른 설정은 무시)
+        python_keys = {
+            'python.analysis.extraPaths',
+            'python.autoComplete.extraPaths', 
+            'python.defaultInterpreterPath',
+            'python.analysis.typeCheckingMode',
+            'python.analysis.diagnosticSeverityOverrides'
+        }
+        
+        has_changes = False
+        for key in python_keys:
+            if settings.get(key) != existing_settings.get(key):
+                has_changes = True
+                break
+        
+        if not has_changes:
+            return False  # 변경사항 없음
+    
     settings_path.parent.mkdir(parents=True, exist_ok=True)
     
     with open(settings_path, 'w', encoding='utf-8') as f:
         json.dump(settings, f, indent=4, ensure_ascii=False)
+    
+    return True  # 저장 완료
 
 
 def update_vscode_settings_file(settings_path, python_paths, pylance_mode="permissive"):
     """VSCode 설정 파일 업데이트"""
     print(f"   📁 VSCode 설정: {settings_path}")
     
-    # 기존 설정 로드 및 업데이트
+    # 기존 설정 로드
+    t0 = time.time()
     existing_settings = _load_existing_vscode_settings(settings_path)
+    print(f"         ⏱️  로드: {(time.time() - t0) * 1000:.1f}ms")
+    
+    # 새 설정 생성
+    t1 = time.time()
     new_settings = _create_vscode_python_settings(python_paths, pylance_mode)
-    existing_settings.update(new_settings)
+    print(f"         ⏱️  설정 생성: {(time.time() - t1) * 1000:.1f}ms")
     
-    # 설정 저장
-    _save_vscode_settings(settings_path, existing_settings)
-    print(f"   ✅ VSCode 설정 완료 ({len(python_paths)} paths)")
+    # 병합
+    merged_settings = existing_settings.copy()
+    merged_settings.update(new_settings)
+    
+    # 변경사항이 있을 때만 저장
+    t2 = time.time()
+    saved = _save_vscode_settings(settings_path, merged_settings, existing_settings)
+    elapsed = (time.time() - t2) * 1000
+    
+    if saved:
+        print(f"         ⏱️  저장: {elapsed:.1f}ms")
+        print(f"   ✅ VSCode 설정 완료 ({len(python_paths)} paths)")
+    else:
+        print(f"         ⏱️  비교: {elapsed:.1f}ms")
+        print(f"   ✅ VSCode 설정 최신 상태 (변경사항 없음)")
 
 
 # ============================================================================
-# PyCharm 설정 관리
+# PyCharm 설정 관리 (프로젝트 작업 공간만)
 # ============================================================================
-
-def get_pycharm_config_dir():
-    """PyCharm 설정 디렉토리 찾기"""
-    home = Path.home()
-    
-    # OS별 PyCharm 설정 경로
-    if platform.system() == "Windows":
-        config_dirs = [
-            home / "AppData" / "Roaming" / "JetBrains" / "PyCharm2024.3",
-            home / "AppData" / "Roaming" / "JetBrains" / "PyCharm2024.2",
-            home / "AppData" / "Roaming" / "JetBrains" / "PyCharm2024.1",
-            home / "AppData" / "Roaming" / "JetBrains" / "PyCharm2023.3",
-            home / "AppData" / "Roaming" / "JetBrains" / "PyCharmCE2024.3",
-            home / "AppData" / "Roaming" / "JetBrains" / "PyCharmCE2024.2",
-        ]
-    elif platform.system() == "Darwin":  # macOS
-        config_dirs = [
-            home / "Library" / "Application Support" / "JetBrains" / "PyCharm2024.3",
-            home / "Library" / "Application Support" / "JetBrains" / "PyCharm2024.2",
-            home / "Library" / "Application Support" / "JetBrains" / "PyCharmCE2024.3",
-        ]
-    else:  # Linux
-        config_dirs = [
-            home / ".config" / "JetBrains" / "PyCharm2024.3",
-            home / ".config" / "JetBrains" / "PyCharm2024.2",
-            home / ".config" / "JetBrains" / "PyCharmCE2024.3",
-        ]
-    
-    for config_dir in config_dirs:
-        if config_dir.exists():
-            return config_dir
-    
-    return None
-
 
 def create_pycharm_project_config(project_path, python_paths):
     """PyCharm 프로젝트 설정 파일들 생성"""
@@ -514,17 +604,21 @@ def create_pycharm_project_config(project_path, python_paths):
     # 2. modules.xml - 모듈 설정
     _create_pycharm_modules_xml(idea_dir, project_path)
     
-    # 3. [프로젝트명].iml - 모듈 파일
+    # 3. [프로젝트명].iml - 모듈 파일 (Python 경로가 달라지므로 항상 생성)
     _create_pycharm_iml_file(idea_dir, project_path, python_paths)
     
     # 4. workspace.xml - 워크스페이스 설정
     _create_pycharm_workspace_xml(idea_dir)
-    
-    print(f"   ✅ PyCharm 프로젝트 설정 완료: {idea_dir}")
 
 
 def _create_pycharm_misc_xml(idea_dir):
     """PyCharm misc.xml 파일 생성"""
+    misc_path = idea_dir / "misc.xml"
+    
+    # 이미 존재하면 건너뛰기
+    if misc_path.exists():
+        return False
+    
     misc_content = '''<?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ProjectRootManager" version="2" project-jdk-name="Unreal Python" project-jdk-type="Python SDK" />
@@ -533,13 +627,20 @@ def _create_pycharm_misc_xml(idea_dir):
   </component>
 </project>'''
     
-    misc_path = idea_dir / "misc.xml"
     with open(misc_path, 'w', encoding='utf-8') as f:
         f.write(misc_content)
+    
+    return True
 
 
 def _create_pycharm_modules_xml(idea_dir, project_path):
     """PyCharm modules.xml 파일 생성"""
+    modules_path = idea_dir / "modules.xml"
+    
+    # 이미 존재하면 건너뛰기
+    if modules_path.exists():
+        return False
+    
     project_name = project_path.name
     modules_content = f'''<?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
@@ -550,22 +651,21 @@ def _create_pycharm_modules_xml(idea_dir, project_path):
   </component>
 </project>'''
     
-    modules_path = idea_dir / "modules.xml"
     with open(modules_path, 'w', encoding='utf-8') as f:
         f.write(modules_content)
+    
+    return True
 
 
 def _create_pycharm_iml_file(idea_dir, project_path, python_paths):
     """PyCharm .iml 모듈 파일 생성"""
     project_name = project_path.name
     
-    # Python 경로들을 절대 경로로 변환
+    # Python 경로들을 절대 경로로 변환 (존재하는 경로만)
     content_roots = []
-    source_folders = []
     
     for path in python_paths:
         if path.startswith("./"):
-            # 상대 경로를 절대 경로로 변환
             abs_path = project_path / path[2:]
         else:
             abs_path = Path(path)
@@ -605,6 +705,11 @@ def _create_pycharm_iml_file(idea_dir, project_path, python_paths):
 
 def _create_pycharm_workspace_xml(idea_dir):
     """PyCharm workspace.xml 파일 생성"""
+    workspace_path = idea_dir / "workspace.xml"
+    
+    # 이미 존재하면 건너뛰기 (workspace는 사용자 설정 포함)
+    if workspace_path.exists():
+        return False
     workspace_content = '''<?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
@@ -643,86 +748,10 @@ def _create_pycharm_workspace_xml(idea_dir):
   </component>
 </project>'''
     
-    workspace_path = idea_dir / "workspace.xml"
     with open(workspace_path, 'w', encoding='utf-8') as f:
         f.write(workspace_content)
-
-
-def setup_pycharm_python_interpreter():
-    """PyCharm에서 사용할 언리얼 Python 인터프리터 설정"""
-    unreal_python = _get_unreal_python_interpreter()
-    if not unreal_python:
-        print("   ⚠️  언리얼 Python 인터프리터를 찾을 수 없음")
-        return False
     
-    # PyCharm 설정 디렉토리 찾기
-    config_dir = get_pycharm_config_dir()
-    if not config_dir:
-        print("   ⚠️  PyCharm 설정 디렉토리를 찾을 수 없음")
-        return False
-    
-    # jdk.table.xml 파일에 Python SDK 추가
-    jdk_table_path = config_dir / "options" / "jdk.table.xml"
-    if jdk_table_path.exists():
-        _update_pycharm_jdk_table(jdk_table_path, unreal_python)
-    else:
-        _create_pycharm_jdk_table(jdk_table_path, unreal_python)
-    
-    print(f"   ✅ PyCharm Python 인터프리터 설정 완료: {unreal_python}")
     return True
-
-
-def _update_pycharm_jdk_table(jdk_table_path, python_path):
-    """기존 PyCharm jdk.table.xml 파일 업데이트"""
-    try:
-        tree = ET.parse(jdk_table_path)
-        root = tree.getroot()
-        
-        # 기존 "Unreal Python" SDK가 있는지 확인
-        for jdk in root.findall(".//jdk[@version='2']"):
-            name_elem = jdk.find("name")
-            if name_elem is not None and name_elem.get("value") == "Unreal Python":
-                # 기존 SDK 업데이트
-                homepath = jdk.find("homePath")
-                if homepath is not None:
-                    homepath.set("value", str(Path(python_path).parent))
-                return
-        
-        # 기존 SDK가 없으면 추가
-        _add_python_sdk_to_jdk_table(root, python_path)
-        tree.write(jdk_table_path, encoding='utf-8', xml_declaration=True)
-        
-    except Exception as e:
-        print(f"   ❌ PyCharm jdk.table.xml 업데이트 실패: {e}")
-
-
-def _create_pycharm_jdk_table(jdk_table_path, python_path):
-    """새로운 PyCharm jdk.table.xml 파일 생성"""
-    jdk_table_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    root = ET.Element("application")
-    component = ET.SubElement(root, "component", name="ProjectJdkTable")
-    
-    _add_python_sdk_to_jdk_table(component, python_path)
-    
-    tree = ET.ElementTree(root)
-    tree.write(jdk_table_path, encoding='utf-8', xml_declaration=True)
-
-
-def _add_python_sdk_to_jdk_table(parent, python_path):
-    """jdk.table.xml에 Python SDK 추가"""
-    python_home = str(Path(python_path).parent)
-    
-    jdk = ET.SubElement(parent, "jdk", version="2")
-    ET.SubElement(jdk, "name", value="Unreal Python")
-    ET.SubElement(jdk, "type", value="Python SDK")
-    ET.SubElement(jdk, "version", value="Python 3.11")
-    ET.SubElement(jdk, "homePath", value=python_home)
-    
-    # 추가 설정들
-    additional = ET.SubElement(jdk, "additional")
-    ET.SubElement(additional, "option", name="interpreterType", value="Python SDK")
-    ET.SubElement(additional, "option", name="sdkSeemsValid", value="true")
 
 
 # ============================================================================
@@ -731,12 +760,8 @@ def _add_python_sdk_to_jdk_table(parent, python_path):
 
 def update_project_settings():
     """프로젝트의 개발 환경 설정 업데이트 (기본: permissive 모드)"""
-    print(f"\n📁 프로젝트 개발 환경 설정 시작")
-    
     try:
-        # 경로 정보 수집
         project_path, current_plugin_path, resolved_plugin_path = _get_paths()
-        
         python_paths = get_project_python_paths(current_plugin_path, project_path)
         
         # VSCode 설정
@@ -747,24 +772,19 @@ def update_project_settings():
         create_pycharm_project_config(project_path, python_paths)
         
     except Exception as e:
-        print(f"   ❌ 프로젝트 설정 실패: {e}")
+        print(f"❌ 프로젝트 설정 실패: {e}")
         import traceback
         traceback.print_exc()
 
 
 def update_plugin_settings():
     """플러그인의 개발 환경 설정 업데이트 (기본: permissive 모드)"""
-    print(f"\n📁 플러그인 개발 환경 설정 시작")
-    
     try:
-        # 경로 정보 수집
         project_path, current_plugin_path, resolved_plugin_path = _get_paths()
         
         # 플러그인이 프로젝트 외부에 있는 경우에만 별도 설정
         if not _is_plugin_in_project(resolved_plugin_path, project_path):
             plugin_dev_root = resolved_plugin_path.parent
-            print(f"   🔧 독립 개발 폴더: {plugin_dev_root}")
-            
             python_paths = get_plugin_python_paths(project_path)
             
             # VSCode 설정
@@ -773,11 +793,9 @@ def update_plugin_settings():
             
             # PyCharm 설정  
             create_pycharm_project_config(plugin_dev_root, python_paths)
-        else:
-            print(f"   📁 프로젝트 내부 플러그인 - 별도 설정 불필요")
             
     except Exception as e:
-        print(f"   ❌ 플러그인 설정 실패: {e}")
+        print(f"❌ 플러그인 설정 실패: {e}")
         import traceback
         traceback.print_exc()
 
@@ -830,13 +848,8 @@ def update_plugin_settings_with_mode(pylance_mode="permissive"):
 
 def update_pylance_settings():
     """Pylance 타입 설정 업데이트 (기본: permissive 모드)"""
-    print(f"\n⚙️  Pylance 타입 설정 업데이트 (permissive 모드)...")
-    
     try:
-        # 경로 정보 수집
         project_path, current_plugin_path, resolved_plugin_path = _get_paths()
-        
-        # permissive 설정 사용
         pylance_settings = get_pylance_permissive_settings()
         
         # 프로젝트 설정 업데이트
@@ -849,10 +862,10 @@ def update_pylance_settings():
             plugin_settings_path = plugin_dev_root / ".vscode" / "settings.json"
             _update_pylance_in_settings_file(plugin_settings_path, pylance_settings)
         
-        print(f"   ✅ Pylance 설정 완료 (permissive 모드)")
+        print("✅ Pylance 설정 완료")
         
     except Exception as e:
-        print(f"   ❌ Pylance 설정 실패: {e}")
+        print(f"❌ Pylance 설정 실패: {e}")
         import traceback
         traceback.print_exc()
 
@@ -863,10 +876,7 @@ def update_pylance_settings_with_mode(mode="permissive"):
     Args:
         mode: "strict", "permissive", "disabled" 중 하나
     """
-    print(f"\n⚙️  Pylance 타입 설정 업데이트 ({mode} 모드)...")
-    
     try:
-        # 경로 정보 수집
         project_path, current_plugin_path, resolved_plugin_path = _get_paths()
         
         # 모드에 따른 설정 선택
@@ -887,75 +897,43 @@ def update_pylance_settings_with_mode(mode="permissive"):
             plugin_settings_path = plugin_dev_root / ".vscode" / "settings.json"
             _update_pylance_in_settings_file(plugin_settings_path, pylance_settings)
         
-        print(f"   ✅ Pylance 설정 완료 ({mode} 모드)")
+        print(f"✅ Pylance {mode} 모드 적용")
         
     except Exception as e:
-        print(f"   ❌ Pylance 설정 실패: {e}")
+        print(f"❌ Pylance 설정 실패: {e}")
         import traceback
         traceback.print_exc()
 
 
 def _update_pylance_in_settings_file(settings_path, pylance_settings):
     """특정 설정 파일의 Pylance 설정만 업데이트"""
-    print(f"   📁 Pylance 설정 업데이트: {settings_path}")
-    
-    # 기존 설정 로드
     existing_settings = _load_existing_vscode_settings(settings_path)
-    
-    # Pylance 설정만 업데이트
     existing_settings.update(pylance_settings)
-    
-    # 설정 저장
     _save_vscode_settings(settings_path, existing_settings)
 
 
 def update_all_settings():
     """모든 개발 환경 설정 업데이트 (VSCode + PyCharm, 기본: permissive 모드)"""
-    print("\n⚙️  통합 개발 환경 설정 시작...")
-    
     try:
-        # 경로 정보 수집 및 출력
-        project_path, current_plugin_path, resolved_plugin_path = _get_paths()
-        _print_debug_info(project_path, current_plugin_path, resolved_plugin_path)
-        
-        # 프로젝트 설정
         update_project_settings()
-        
-        # 플러그인 설정 (필요한 경우)
         update_plugin_settings()
-        
-        # PyCharm Python 인터프리터 전역 설정
-        setup_pycharm_python_interpreter()
-        
-        print(f"\n✅ 통합 개발 환경 설정 완료!")
-        print("   📝 VSCode와 PyCharm에서 언리얼 엔진 Python 개발이 가능합니다.")
-        print("   💡 IDE를 재시작하면 새 설정이 적용됩니다.")
+        print("✅ 개발 환경 설정 완료")
             
     except Exception as e:
-        print(f"   ❌ 통합 설정 실패: {e}")
+        print(f"❌ 설정 실패: {e}")
         import traceback
         traceback.print_exc()
 
 
 def update_all_settings_with_mode(pylance_mode="permissive"):
     """모든 개발 환경 설정 업데이트 (VSCode + PyCharm, pylance 모드 선택 가능)"""
-    print("\n⚙️  통합 개발 환경 설정 시작...")
-    
     try:
-        project_path, current_plugin_path, resolved_plugin_path = _get_paths()
-        _print_debug_info(project_path, current_plugin_path, resolved_plugin_path)
-        
         update_project_settings_with_mode(pylance_mode)
         update_plugin_settings_with_mode(pylance_mode)
-        
-        setup_pycharm_python_interpreter()
-        
-        print(f"\n✅ 통합 개발 환경 설정 완료!")
-        print("   📝 VSCode와 PyCharm에서 언리얼 엔진 Python 개발이 가능합니다.")
-        print("   💡 IDE를 재시작하면 새 설정이 적용됩니다.")
+        print("✅ 개발 환경 설정 완료")
             
     except Exception as e:
-        print(f"   ❌ 통합 설정 실패: {e}")
+        print(f"❌ 설정 실패: {e}")
         import traceback
         traceback.print_exc()
 
@@ -971,11 +949,8 @@ def setup_all():
 
 def setup_vscode():
     """VSCode 환경 설정만 - 파라미터 없음"""
-    print("\n⚙️  VSCode 개발 환경 설정...")
-    
     try:
         project_path, current_plugin_path, resolved_plugin_path = _get_paths()
-        _print_debug_info(project_path, current_plugin_path, resolved_plugin_path)
         
         # 프로젝트 VSCode 설정
         python_paths = get_project_python_paths(current_plugin_path, project_path)
@@ -989,21 +964,18 @@ def setup_vscode():
             vscode_settings_path = plugin_dev_root / ".vscode" / "settings.json"
             update_vscode_settings_file(vscode_settings_path, python_paths, "permissive")
         
-        print(f"   ✅ VSCode 설정 완료!")
+        print("✅ VSCode 설정 완료")
         
     except Exception as e:
-        print(f"   ❌ VSCode 설정 실패: {e}")
+        print(f"❌ VSCode 설정 실패: {e}")
         import traceback
         traceback.print_exc()
 
 
 def setup_pycharm():
     """PyCharm 환경 설정만 - 파라미터 없음"""
-    print("\n⚙️  PyCharm 개발 환경 설정...")
-    
     try:
         project_path, current_plugin_path, resolved_plugin_path = _get_paths()
-        _print_debug_info(project_path, current_plugin_path, resolved_plugin_path)
         
         # 프로젝트 PyCharm 설정
         python_paths = get_project_python_paths(current_plugin_path, project_path)
@@ -1015,13 +987,10 @@ def setup_pycharm():
             python_paths = get_plugin_python_paths(project_path)
             create_pycharm_project_config(plugin_dev_root, python_paths)
         
-        # 전역 Python 인터프리터 설정
-        setup_pycharm_python_interpreter()
-        
-        print(f"   ✅ PyCharm 설정 완료!")
+        print("✅ PyCharm 설정 완료")
         
     except Exception as e:
-        print(f"   ❌ PyCharm 설정 실패: {e}")
+        print(f"❌ PyCharm 설정 실패: {e}")
         import traceback
         traceback.print_exc()
 
@@ -1034,11 +1003,8 @@ def setup_all_with_mode(pylance_mode="permissive"):
 
 def setup_vscode_with_mode(pylance_mode="permissive"):
     """VSCode 환경 설정 (pylance 모드 선택 가능)"""
-    print("\n⚙️  VSCode 개발 환경 설정...")
-    
     try:
         project_path, current_plugin_path, resolved_plugin_path = _get_paths()
-        _print_debug_info(project_path, current_plugin_path, resolved_plugin_path)
         
         # 프로젝트 VSCode 설정
         python_paths = get_project_python_paths(current_plugin_path, project_path)
@@ -1052,10 +1018,10 @@ def setup_vscode_with_mode(pylance_mode="permissive"):
             vscode_settings_path = plugin_dev_root / ".vscode" / "settings.json"
             update_vscode_settings_file(vscode_settings_path, python_paths, pylance_mode)
         
-        print(f"   ✅ VSCode 설정 완료!")
+        print("✅ VSCode 설정 완료")
         
     except Exception as e:
-        print(f"   ❌ VSCode 설정 실패: {e}")
+        print(f"❌ VSCode 설정 실패: {e}")
         import traceback
         traceback.print_exc()
 
@@ -1079,13 +1045,3 @@ def pylance_off():
 ignore_types = pylance_permissive
 no_typecheck = pylance_off
 strict_types = pylance_strict
-
-
-print("🔧 언리얼 엔진 Python 통합 개발환경 설정 모듈 로드됨")
-print("   💡 사용법:")
-print("     dev_env_setup.setup_all()        - VSCode + PyCharm 전체 설정")
-print("     dev_env_setup.setup_vscode()     - VSCode만 설정")  
-print("     dev_env_setup.setup_pycharm()    - PyCharm만 설정")
-print("     dev_env_setup.ignore_types()     - 타입 에러 무시 (추천)")
-print("     dev_env_setup.strict_types()     - 엄격한 타입 체크")
-print("     dev_env_setup.no_typecheck()     - 타입 체크 완전 비활성화")

@@ -114,8 +114,6 @@ class MaidCatInitializer:
         
         # 제외할 파일들 (테스트나 특수 목적)
         exclude_files = {
-            "test_context_menu.py",  # 테스트 파일
-            "setup_python.py",      # 별도로 호출되는 설정 파일
             "__init__.py"           # 초기화 파일
         }
         
@@ -137,9 +135,14 @@ class MaidCatInitializer:
                 # 모듈명에서 .py 제거
                 module_name = f"startup.{file_name[:-3]}"
                 
-                # 모듈 import 및 실행
+                # 모듈 import 및 실행 (강제 리로드)
                 import importlib
-                module = importlib.import_module(module_name)
+                
+                # 이미 로드된 모듈인 경우 reload, 아니면 import
+                if module_name in sys.modules:
+                    module = importlib.reload(sys.modules[module_name])
+                else:
+                    module = importlib.import_module(module_name)
                 
                 # main 함수가 있으면 실행
                 if hasattr(module, 'main'):
