@@ -360,7 +360,7 @@ class PythonReloadScript(unreal.ToolMenuEntryScript):
 
     @unreal.ufunction(override=True)
     def execute(self, context):
-        """선택된 Python 폴더의 모든 모듈 리로드"""
+        """선택된 Python 폴더의 모든 모듈 리로드 (__pycache__ 삭제 포함)"""
         import sys
         import importlib
         
@@ -412,6 +412,9 @@ class PythonReloadScript(unreal.ToolMenuEntryScript):
             return
         
         unreal.log(f"📂 실제 경로: {real_path}")
+        
+        # __pycache__ 폴더 삭제 (바이트코드 캐시 제거)
+        self._clean_pycache(real_path)
         
         # 해당 폴더의 Python 파일들 찾기
         python_files = []
@@ -528,6 +531,45 @@ class PythonReloadScript(unreal.ToolMenuEntryScript):
         
         unreal.log("🎉 모듈 리로드 완료!")
         unreal.log("=" * 60)
+    
+    def _clean_pycache(self, root_path):
+        """__pycache__ 폴더들을 재귀적으로 삭제
+        
+        Args:
+            root_path (str): 검색 시작 경로
+            
+        Returns:
+            int: 삭제된 __pycache__ 폴더 개수
+        """
+        import shutil
+        
+        deleted_count = 0
+        
+        try:
+            if not os.path.exists(root_path):
+                return 0
+            
+            # 재귀적으로 모든 __pycache__ 폴더 찾기
+            for root, dirs, files in os.walk(root_path, topdown=False):
+                if '__pycache__' in dirs:
+                    pycache_path = os.path.join(root, '__pycache__')
+                    try:
+                        shutil.rmtree(pycache_path)
+                        deleted_count += 1
+                        unreal.log(f"  🗑️  삭제: {os.path.relpath(pycache_path, root_path)}")
+                    except Exception as e:
+                        unreal.log_warning(f"  ⚠️  삭제 실패: {pycache_path} - {e}")
+            
+            if deleted_count > 0:
+                unreal.log(f"✅ __pycache__ 폴더 {deleted_count}개 삭제 완료")
+            else:
+                unreal.log("ℹ️  삭제할 __pycache__ 폴더가 없습니다")
+                
+            return deleted_count
+            
+        except Exception as e:
+            unreal.log_error(f"❌ __pycache__ 정리 중 오류: {e}")
+            return 0
 
 
 def register_python_menu_entry():
