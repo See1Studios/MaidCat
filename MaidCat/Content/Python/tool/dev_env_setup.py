@@ -942,6 +942,18 @@ def update_all_settings_with_mode(pylance_mode="permissive"):
 # 공개 API
 # ============================================================================
 
+def check_tapython():
+    """TAPython 플러그인 설치 확인 및 자동 설치"""
+    try:
+        from tool.tapython_installer import check_and_install_tapython
+        return check_and_install_tapython()
+    except Exception as e:
+        print(f"❌ TAPython 확인 실패: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 def setup_all():
     """모든 개발 환경 설정 (VSCode + PyCharm) - 파라미터 없음"""
     update_all_settings()

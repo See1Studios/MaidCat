@@ -194,11 +194,23 @@ class MaidCatInitializer:
             print(f"   🐌 가장 느림: {slowest[0]} ({slowest[1]:.1f}ms)")
     
     @staticmethod
+    def check_tapython():
+        """TAPython 플러그인 설치 확인 및 자동 설치"""
+        try:
+            from tool.tapython_installer import check_and_install_tapython
+            check_and_install_tapython()
+        except Exception as e:
+            print(f"⚠️ TAPython 확인 실패: {e}")
+    
+    @staticmethod
     def initialize():
         """핵심 초기화 - 필수 기능만 실행"""
         print("\n🐱 MaidCat Plugin 핵심 초기화 시작...")
         
         try:
+            # TAPython 플러그인 확인 (먼저 실행)
+            MaidCatInitializer.check_tapython()
+            
             # Python 경로 설정 (필수)
             MaidCatInitializer.setup_python_paths()
             
