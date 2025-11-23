@@ -15,8 +15,14 @@ _selection_delegate_handle = None
 _last_registered_path: Optional[str] = None
 _registered_actors: Set[str] = set()  # 등록된 액터 경로 추적
 
-# 설정
-JSON_PATH = "DetailCustomization/PostProcessVolume.json"
+# 설정 Project 경로+ JSON Path 인식함. 
+# ex) Content/Python/ui/detail_ppv.json
+
+# TA/TAPython 경로도 임시로 인식함. 
+# ex) TA/Python/ui/detail_ppv.json 일 때 ui/detail_ppv.json 라고만 써도 임시로 인식은 됨. 
+# 기본은 프로젝트 경로 기반.
+
+JSON_PATH = "Plugins/MaidCat/Content/Python/ui/detail_ppv.json"
 
 
 def _try_register_actor(actor: unreal.Actor) -> bool:

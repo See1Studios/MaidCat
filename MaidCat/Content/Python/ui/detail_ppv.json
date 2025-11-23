@@ -1,0 +1,160 @@
+{
+    "TabLabel": "포스트 프로세스 프리셋",
+    "InitTabSize": [
+        200,
+        20
+    ],
+    "InitTabPosition": [
+        0,
+        0
+    ],
+    "InitPyCmd": "import ui.detail_ppv, importlib; importlib.reload(ui.detail_ppv); chameleon_example = ui.detail_ppv.PPDetailWidget(%JsonPath)",
+    "Root": {
+        "SVerticalBox": {
+            "ItemHeight": 10,
+            "Slots": [
+                {
+                    "SHorizontalBox": {
+                        "Slots": [
+                            {
+                                "SComboButton": {
+                                    "Aka": "CombBoxA",
+                                    "VAlign": "Center",
+                                    "ButtonContent": {
+                                        "STextBlock": {
+                                            "Text": "Save Preset"
+                                        }
+                                    },
+                                    "HasDownArrow": true,
+                                    "OnGetMenuContent": {
+                                        "items": [
+                                            {
+                                                "name": "kaka",
+                                                "Command": "print('kaka'       )"
+                                            },
+                                            {
+                                                "name": "Sponge",
+                                                "Command": "print('Sponge'     )"
+                                            },
+                                            {
+                                                "name": "Lime",
+                                                "Command": "print('Lime'       )"
+                                            },
+                                            {
+                                                "name": "GrandCanyon",
+                                                "Command": "print('GrandCanyon')"
+                                            },
+                                            {
+                                                "name": "RockMine",
+                                                "Command": "print('RockMine'   )"
+                                            },
+                                            {
+                                                "name": "Pink",
+                                                "Command": "print('Pink'       )"
+                                            },
+                                            {
+                                                "name": "White",
+                                                "Command": "print('White'      )"
+                                            }
+                                        ]
+                                    },
+                                    "HAlign": "Center"
+                                }
+                            },
+                            {
+                                "SComboButton": {
+                                    "Aka": "CombBoxB",
+                                    "VAlign": "Center",
+                                    "ButtonContent": {
+                                        "STextBlock": {
+                                            "Text": "Load Preset"
+                                        }
+                                    },
+                                    "HasDownArrow": true,
+                                    "OnGetMenuContent": {
+                                        "items": [
+                                            {
+                                                "name": "kaka",
+                                                "Command": "print('kaka'       )"
+                                            },
+                                            {
+                                                "name": "Sponge",
+                                                "Command": "print('Sponge'     )"
+                                            },
+                                            {
+                                                "name": "Lime",
+                                                "Command": "print('Lime'       )"
+                                            },
+                                            {
+                                                "name": "GrandCanyon",
+                                                "Command": "print('GrandCanyon')"
+                                            },
+                                            {
+                                                "name": "RockMine",
+                                                "Command": "print('RockMine'   )"
+                                            },
+                                            {
+                                                "name": "Pink",
+                                                "Command": "print('Pink'       )"
+                                            },
+                                            {
+                                                "name": "White",
+                                                "Command": "print('White'      )"
+                                            }
+                                        ]
+                                    },
+                                    "HAlign": "Center"
+                                }
+                            },
+                            {
+                                "SComboButton": {
+                                    "Aka": "CombBoxC",
+                                    "VAlign": "Center",
+                                    "ButtonContent": {
+                                        "STextBlock": {
+                                            "Text": "Options"
+                                        }
+                                    },
+                                    "HasDownArrow": true,
+                                    "OnGetMenuContent": {
+                                        "items": [
+                                            {
+                                                "name": "kaka",
+                                                "Command": "print('kaka'       )"
+                                            },
+                                            {
+                                                "name": "Sponge",
+                                                "Command": "print('Sponge'     )"
+                                            },
+                                            {
+                                                "name": "Lime",
+                                                "Command": "print('Lime'       )"
+                                            },
+                                            {
+                                                "name": "GrandCanyon",
+                                                "Command": "print('GrandCanyon')"
+                                            },
+                                            {
+                                                "name": "RockMine",
+                                                "Command": "print('RockMine'   )"
+                                            },
+                                            {
+                                                "name": "Pink",
+                                                "Command": "print('Pink'       )"
+                                            },
+                                            {
+                                                "name": "White",
+                                                "Command": "print('White'      )"
+                                            }
+                                        ]
+                                    },
+                                    "HAlign": "Center"
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}
