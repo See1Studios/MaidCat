@@ -24,10 +24,11 @@ import winreg
 # ==================== 상수 정의 ====================
 
 # 애플리케이션 설정
-LOG_FILE_NAME = 'ta_python_tool.log'
+LOG_FILE_NAME = 'tapython_tool.log'
 
 # 파일 경로 관련
-TAPYTHON_PATH = ["TA", "TAPython", "UI", "MenuConfig.json"]
+TAPYTHON_CONFIG_PATH = ["TA", "TAPython", "Config", "config.ini"]
+TAPYTHON_MENUCONFIG_PATH = ["TA", "TAPython", "UI", "MenuConfig.json"]
 FILE_TYPES = [("JSON files", "*.json"), ("All files", "*.*")]
 
 # UI 폰트 - 간소화된 폰트 체계
@@ -138,7 +139,7 @@ TITLE_FILE_PERMISSION_TEST = "파일 쓰기 권한 테스트 결과"
 
 # 모든 툴 메뉴 정의 (한 곳에서 관리)
 ALL_TOOL_MENUS = [
-    # 전통적인 툴 메뉴들
+    # TAPython 자체 제공 Anchor
     ("OnSelectFolderMenu", "폴더 메뉴"),
     ("OnSelectAssetsMenu", "에셋 메뉴"),
     ("OnMainMenu", "메인 메뉴"),
@@ -150,7 +151,7 @@ ALL_TOOL_MENUS = [
     ("OnControlRigEditorMenu", "ControlRig 에디터"),
     ("OnTabContextMenu", "탭 컨텍스트"),
     
-    # 언리얼 엔진 툴 메뉴들 (Tool Menu Anchor)
+    # 언리얼 엔진 ToolMenu Anchor
     ("AssetEditor.AnimationBlueprintEditor.MainMenu", "애니메이션 BP 에디터 메뉴"),
     ("AssetEditor.AnimationEditor.MainMenu", "애니메이션 에디터 메뉴"),
     ("AssetEditor.SkeletalMeshEditor.ToolBar", "스켈레탈 메시 에디터 툴바"),
@@ -238,7 +239,7 @@ def setup_logging():
     try:
         import tempfile
         temp_dir = tempfile.gettempdir()
-        log_file = os.path.join(temp_dir, 'ta_python_tool.log')
+        log_file = os.path.join(temp_dir, 'tapython_tool.log')
         file_handler = logging.FileHandler(log_file, encoding='utf-8')
         file_handler.setLevel(logging.DEBUG)
         setup_logging._file_handler = file_handler  # 함수 속성으로 저장
@@ -578,6 +579,15 @@ class TAPythonTool:
             "SourceControlSettings.ini"
         )
     
+    def _get_tapython_config_path(self):
+        """TAPython config.ini 설정 파일 경로 반환"""
+        project_root = self._get_project_root()
+        if not project_root:
+            return None
+        
+        # TAPYTHON_CONFIG_PATH 사용: ["TA", "TAPython", "Config", "config.ini"]
+        return os.path.join(project_root, *TAPYTHON_CONFIG_PATH)
+    
     def _setup_p4_environment(self, p4_settings):
         """퍼포스 환경 변수 설정 (재사용 가능)"""
         p4_env = os.environ.copy()
@@ -735,7 +745,7 @@ class TAPythonTool:
 
     def _check_tapython_config(self, project_path):
         """TAPython 설정 파일 존재 확인"""
-        target_config_path = os.path.join(project_path, *TAPYTHON_PATH)
+        target_config_path = os.path.join(project_path, *TAPYTHON_MENUCONFIG_PATH)
         logger.info(f"목표 파일 경로 확인: {target_config_path}")
         
         if os.path.exists(target_config_path):
@@ -749,6 +759,50 @@ class TAPythonTool:
             logger.info(f"언리얼 프로젝트 발견했지만 MenuConfig.json 없음: {target_config_path}")
             return False
 
+
+    def open_tapython_config(self):
+        """TAPython config.ini 설정 편집"""
+        try:
+            config_path = self._get_tapython_config_path()
+            
+            if not config_path:
+                self._show_warning("프로젝트 루트를 찾을 수 없습니다.\nMenuConfig.json이 로드된 상태에서 실행해주세요.", "경고")
+                return
+            
+            # config.ini 파일이 없으면 생성
+            if not os.path.exists(config_path):
+                # 디렉토리 생성
+                config_dir = os.path.dirname(config_path)
+                if not os.path.exists(config_dir):
+                    os.makedirs(config_dir)
+                
+                # 기본 config.ini 생성
+                default_config = """[Python]
+# Python 인터프리터 경로 (비워두면 시스템 기본값 사용)
+PythonPath=
+
+[Unreal]
+# 언리얼 에디터 관련 설정
+AutoRefreshMenu=True
+ShowDebugInfo=False
+
+[UI]
+# UI 관련 설정
+Theme=Default
+FontSize=9
+"""
+                with open(config_path, 'w', encoding='utf-8') as f:
+                    f.write(default_config)
+                logger.info(f"기본 config.ini 파일 생성: {config_path}")
+            
+            # 설정 편집 다이얼로그 열기
+            TAPythonConfigDialog(self.root, config_path, self)
+            
+        except Exception as e:
+            error_msg = f"TAPython 설정 열기 중 오류: {str(e)}"
+            logger.error(error_msg)
+            traceback.print_exc()
+            self._show_error(error_msg, "오류")
 
     def show_log_viewer(self):
         """로그 뷰어 다이얼로그"""
@@ -2253,6 +2307,8 @@ class TAPythonTool:
         # 도구 메뉴
         tools_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="🔧 도구", menu=tools_menu)
+        tools_menu.add_command(label="⚙️ TAPython 설정", command=self.open_tapython_config)
+        tools_menu.add_separator()
         tools_menu.add_command(label="📝 외부 편집기로 열기", command=self.open_in_external_editor)
         tools_menu.add_command(label="📂 파일 위치 열기", command=self.open_file_location)
         tools_menu.add_separator()
@@ -4899,6 +4955,167 @@ class NewEntryDialog:
         self.dialog.destroy()
 
 
+class TAPythonConfigDialog:
+    """TAPython config.ini 설정 편집 다이얼로그"""
+    
+    def __init__(self, parent, config_path, ta_tool):
+        self.config_path = config_path
+        self.ta_tool = ta_tool
+        self.config_data = {}
+        self.modified = False
+        
+        # 다이얼로그 창 생성
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("⚙️ TAPython 설정")
+        self.dialog.geometry("700x600")
+        self.dialog.resizable(True, True)
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+        
+        # 중앙 정렬
+        self.dialog.geometry("+%d+%d" % (parent.winfo_rootx() + 100, parent.winfo_rooty() + 50))
+        
+        self.setup_dialog()
+        self.load_config()
+    
+    def setup_dialog(self):
+        """다이얼로그 UI 설정"""
+        main_frame = ttk.Frame(self.dialog)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
+        
+        # 제목
+        header_frame = ttk.Frame(main_frame)
+        header_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(header_frame, text="⚙️ TAPython 설정", font=FONT_TITLE).pack(side=tk.LEFT)
+        
+        # 파일 경로 표시
+        path_frame = ttk.LabelFrame(main_frame, text="📁 설정 파일 경로", padding=8)
+        path_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        path_text = tk.Text(path_frame, height=2, wrap=tk.WORD, font=FONT_SMALL, bg="#f0f0f0")
+        path_text.pack(fill=tk.X)
+        path_text.insert(1.0, self.config_path)
+        path_text.configure(state=tk.DISABLED)
+        
+        # 설정 내용 편집 영역
+        content_frame = ttk.LabelFrame(main_frame, text="📝 설정 내용", padding=8)
+        content_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        
+        # 텍스트 편집기
+        text_container = ttk.Frame(content_frame)
+        text_container.pack(fill=tk.BOTH, expand=True)
+        
+        self.text_widget = tk.Text(text_container, wrap=tk.NONE, font=FONT_CODE)
+        
+        # 스크롤바
+        y_scrollbar = ttk.Scrollbar(text_container, orient=tk.VERTICAL, command=self.text_widget.yview)
+        x_scrollbar = ttk.Scrollbar(text_container, orient=tk.HORIZONTAL, command=self.text_widget.xview)
+        self.text_widget.configure(yscrollcommand=y_scrollbar.set, xscrollcommand=x_scrollbar.set)
+        
+        self.text_widget.grid(row=0, column=0, sticky=tk.NSEW)
+        y_scrollbar.grid(row=0, column=1, sticky=tk.NS)
+        x_scrollbar.grid(row=1, column=0, sticky=tk.EW)
+        
+        text_container.grid_rowconfigure(0, weight=1)
+        text_container.grid_columnconfigure(0, weight=1)
+        
+        # 변경 감지
+        self.text_widget.bind('<<Modified>>', self.on_text_modified)
+        
+        # 버튼들
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=(8, 0))
+        
+        ttk.Button(button_frame, text="❌ 취소", command=self.cancel).pack(side=tk.RIGHT, padx=(5, 0))
+        ttk.Button(button_frame, text="💾 저장", command=self.save_config).pack(side=tk.RIGHT)
+        ttk.Button(button_frame, text="🔄 되돌리기", command=self.reload_config).pack(side=tk.LEFT)
+        
+        # 키 바인딩
+        self.dialog.bind('<Control-s>', lambda e: self.save_config())
+        self.dialog.bind('<Escape>', lambda e: self.cancel())
+        self.dialog.protocol("WM_DELETE_WINDOW", self.on_closing)
+    
+    def load_config(self):
+        """설정 파일 로드"""
+        try:
+            if os.path.exists(self.config_path):
+                with open(self.config_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                self.text_widget.delete(1.0, tk.END)
+                self.text_widget.insert(1.0, content)
+                self.text_widget.edit_modified(False)
+                self.modified = False
+            else:
+                self.text_widget.insert(1.0, "# 새 설정 파일\n")
+        except Exception as e:
+            logger.error(f"설정 파일 로드 실패: {e}")
+            messagebox.showerror("오류", f"설정 파일을 불러올 수 없습니다:\n{str(e)}", parent=self.dialog)
+    
+    def reload_config(self):
+        """설정 파일 다시 로드"""
+        if self.modified:
+            result = messagebox.askyesno(
+                "확인",
+                "저장하지 않은 변경사항이 있습니다.\n되돌리시겠습니까?",
+                parent=self.dialog
+            )
+            if not result:
+                return
+        
+        self.load_config()
+    
+    def on_text_modified(self, event=None):
+        """텍스트 수정 이벤트"""
+        if self.text_widget.edit_modified():
+            self.modified = True
+            self.text_widget.edit_modified(False)
+    
+    def save_config(self):
+        """설정 저장"""
+        try:
+            content = self.text_widget.get(1.0, tk.END)
+            
+            # 디렉토리 확인 및 생성
+            config_dir = os.path.dirname(self.config_path)
+            if not os.path.exists(config_dir):
+                os.makedirs(config_dir)
+            
+            # 파일 저장
+            with open(self.config_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            self.modified = False
+            self.ta_tool.update_status("✅ TAPython 설정이 저장되었습니다")
+            messagebox.showinfo("성공", "설정이 저장되었습니다.", parent=self.dialog)
+            
+        except Exception as e:
+            error_msg = f"설정 저장 실패: {str(e)}"
+            logger.error(error_msg)
+            messagebox.showerror("오류", error_msg, parent=self.dialog)
+    
+    def on_closing(self):
+        """창 닫기 이벤트"""
+        if self.modified:
+            result = messagebox.askyesnocancel(
+                "확인",
+                "저장하지 않은 변경사항이 있습니다.\n저장하시겠습니까?",
+                parent=self.dialog
+            )
+            if result is True:  # 예
+                self.save_config()
+                self.dialog.destroy()
+            elif result is False:  # 아니오
+                self.dialog.destroy()
+            # None (취소)인 경우 아무것도 하지 않음
+        else:
+            self.dialog.destroy()
+    
+    def cancel(self):
+        """취소 버튼"""
+        self.on_closing()
+
+
 def find_unreal_python():
     """
     .uproject 파일에서 EngineAssociation을 찾아 
@@ -4995,8 +5212,9 @@ def start_new_process():
     warnings.filterwarnings("ignore", category=ResourceWarning, message=".*subprocess.*is still running")
     
     try:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        editor_path = os.path.join(script_dir, "ta_python_tool.py")
+        # 현재 스크립트의 절대 경로 사용 (파일명 하드코딩 제거)
+        editor_path = os.path.abspath(__file__)
+        script_dir = os.path.dirname(editor_path)
         
         if not os.path.exists(editor_path):
             print(f"오류: {editor_path} 파일을 찾을 수 없습니다.")
@@ -5103,11 +5321,12 @@ def start():
 
 def print_help():
     """도움말 출력"""
-    help_text = """
+    script_name = os.path.basename(__file__)
+    help_text = f"""
 🐍 TA Python Tool - TAPython MenuConfig.json 편집기
 
 사용법:
-    python ta_python_tool.py [옵션]
+    python {script_name} [옵션]
 
 옵션:
     --direct, -d     직접 실행 모드 (현재 프로세스에서 GUI 실행)
@@ -5115,10 +5334,10 @@ def print_help():
     --help, -h       이 도움말 표시
 
 예시:
-    python ta_python_tool.py              # 런처 모드 (새 프로세스)
-    python ta_python_tool.py --direct     # 직접 실행 모드
-    python ta_python_tool.py --launch     # 런처 모드 (명시적)
-    python ta_python_tool.py --help       # 도움말 표시
+    python {script_name}              # 런처 모드 (새 프로세스)
+    python {script_name} --direct     # 직접 실행 모드
+    python {script_name} --launch     # 런처 모드 (명시적)
+    python {script_name} --help       # 도움말 표시
 
 설명:
     --direct:  현재 Python 프로세스에서 직접 GUI를 실행합니다.

@@ -595,7 +595,8 @@ if __name__ == "__main__":
     """
     예제: 선택된 Post Process Volume 또는 Camera로 프리셋 관리
     """
-    selected_actors = unreal.EditorUtilityLibrary.get_selected_level_actors()
+    editor_actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+    selected_actors = editor_actor_subsystem.get_selected_level_actors()
     
     if not selected_actors:
         print("⚠️  Post Process Volume 또는 Camera Actor를 선택하고 실행하세요.")

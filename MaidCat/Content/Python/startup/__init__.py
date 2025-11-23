@@ -41,6 +41,16 @@ def initialize_maidcat():
     except ImportError as e:
         unreal.log_warning(f"extend_editor 모듈 로드 실패: {e}")
     
+    # Detail Panel Customization 등록
+    try:
+        from editor import detail_customize
+        detail_customize.register()
+        unreal.log("✅ Detail Panel Customization 등록 완료")
+    except ImportError as e:
+        unreal.log_warning(f"detail_customize 모듈 로드 실패: {e}")
+    except Exception as e:
+        unreal.log_error(f"Detail Panel Customization 등록 중 오류: {e}")
+    
     unreal.log("🎉 MaidCat 프로젝트 초기화 완료!")
 
 
