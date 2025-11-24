@@ -62,7 +62,7 @@ def _on_selection_changed(selection_set) -> None:
     
     try:
         # 먼저 삭제된 액터 정리
-        _cleanup_invalid_actors()
+        # _cleanup_invalid_actors()
         
         editor_actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
         selected_actors = editor_actor_subsystem.get_selected_level_actors()
@@ -86,8 +86,8 @@ def _on_selection_changed(selection_set) -> None:
             return
         
         # 새로운 액터 선택 시 이전 커스터마이징 제거 후 재등록
-        unreal.ChameleonData.clear_detail_customization()
-        _registered_actors.clear()
+        # unreal.ChameleonData.clear_detail_customization()
+        # _registered_actors.clear()
         
         if _try_register_actor(target_actor):
             _last_registered_path = actor_path
@@ -138,11 +138,15 @@ def register() -> bool:
         
         # 기존 콜백 제거 후 등록
         try:
-            _selection_set.on_selection_change.remove_callable(_on_selection_changed)  # type: ignore
+            _selection_set.on_pre_selection_change.remove_callable(_on_selection_changed)  # type: ignore
         except:
             pass
-        _selection_delegate_handle = _selection_set.on_selection_change.add_callable(_on_selection_changed)  # type: ignore
-        
+        _selection_delegate_handle = _selection_set.on_pre_selection_change.add_callable(_on_selection_changed)  # type: ignore
+        actor_sys = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+        actor_sys.on_new_actors_placed.add_callable(lambda obj, actors: print(f"obj : {obj.get_name()} : actors : {len(actors)}"))  # type: ignore
+        actor_sys.on_new_actors_dropped.add_callable(lambda dropped_objects, dropped_actors: print(f"New Actors Dropped : objects : {len(dropped_objects)} actors : { {len(dropped_actors)}}"))  # type: ignore  
+        actor_sys.on_delete_actors_begin.add_callable(lambda : print(f"Delete Actors Begin"))  # type: ignore
+        actor_sys.on_delete_actors_end.add_callable(lambda : print(f"Delete Actors End"))  # type: ignore
         unreal.log("✅ 이벤트 핸들러 등록 완료")
         unreal.log("   • 선택 변경 시 자동으로 삭제된 액터 정리")
         unreal.log("=" * 80)
