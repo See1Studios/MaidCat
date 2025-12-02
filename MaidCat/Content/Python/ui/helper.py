@@ -1,10 +1,11 @@
 import unreal
 import ui.name_window
+import ui.option_window
 from pathlib import Path
 
 class NameDialog:
-	name: str = ""
 	JSON_FILENAME = "name_window.json"
+	name: str = ""
 	
 	@staticmethod
 	def on_submit(text: str) -> None:
@@ -22,22 +23,63 @@ class NameDialog:
 		# JSON 파일 경로 찾기
 		current_dir = Path(__file__).parent
 		json_path = current_dir / NameDialog.JSON_FILENAME
-		
+		# unreal.log_warning(str(json_path))		
 		if not json_path.exists():
 			unreal.log_warning(f"JSON file not found: {json_path}")
-			return ""
-		
-		try:
-			# 다이얼로그 콜백 설정
-			ui.name_window.Dialog._on_submit_callback = NameDialog.on_submit
-			ui.name_window.Dialog._on_cancel_callback = NameDialog.on_cancel
-			
-			# 다이얼로그 열기
-			unreal.ChameleonData.modal_window(str(json_path).replace("\\", "/"))
-			
-		except Exception as e:
-			unreal.log_error(f"Failed to open dialog: {e}")
-			return ""
-		
+			return ""		
+
+		# 다이얼로그 설정
+		ui.name_window.NameDialog.message = "이름을 입력하세요."
+		ui.name_window.NameDialog._on_submit_callback = NameDialog.on_submit
+		ui.name_window.NameDialog._on_cancel_callback = NameDialog.on_cancel
+
+		unreal.ChameleonData.modal_window(str(json_path).replace("\\", "/"))
 		return NameDialog.name
+	
+class OptionDialog:
+	JSON_FILENAME = "option_window.json"
+	selected_option: str = ""
+	option_list: list[str] = []
+
+	@staticmethod
+	def on_submit(text: str) -> None:
+		OptionDialog.selected_option = text
+
+	@staticmethod
+	def on_cancel() -> None:
+		OptionDialog.selected_option = ""
+	
+	@staticmethod
+	def open_dialog(options : list[str]) -> str:
+
+		OptionDialog.selected_option = ""
+		# JSON 파일 경로 찾기
+		current_dir = Path(__file__).parent
+		json_path = current_dir / OptionDialog.JSON_FILENAME
+		# unreal.log_warning(str(json_path))		
+		if not json_path.exists():
+			unreal.log_warning(f"JSON file not found: {json_path}")
+			return ""		
+
+		# 다이얼로그 설정
+		ui.option_window.OptionDialog.message = "옵션을 선택하세요."
+		ui.option_window.OptionDialog._items = options
+		ui.option_window.OptionDialog._on_submit_callback = OptionDialog.on_submit
+		ui.option_window.OptionDialog._on_cancel_callback = OptionDialog.on_cancel
 		
+		# 다이얼로그 열기
+		unreal.ChameleonData.modal_window(str(json_path).replace("\\", "/"))
+
+		
+		return OptionDialog.selected_option	
+
+def open_name_dialog_test():
+	result = NameDialog.open_dialog()
+	unreal.log(f"User input: {result}")	
+	
+def open_option_dialog_test():
+	result = OptionDialog.open_dialog(["Option 1", "Option 2", "Option 3"])
+	unreal.log(f"User input: {result}")
+
+if __name__ == "__main__":
+	open_option_dialog_test()

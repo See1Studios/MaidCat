@@ -1,9 +1,9 @@
 {
-    "TabLabel": "Name Dialog",
+    "TabLabel": "Option Dialog",
     "InitTabSize": [400, 200],
     "InitTabPosition": [50, 200],
     "IsModalWindow": true,
-    "InitPyCmd": "import ui.name_window; ch_name_window = ui.name_window.NameDialog(%JsonPath); ch_name_window.init()",
+    "InitPyCmd": "import ui.option_window; ch_option_window = ui.option_window.OptionDialog(%JsonPath); ch_option_window.init()",
     "Root":
     {
         "SBorder": {
@@ -23,7 +23,7 @@
                             "STextBlock":
                             {
                                 "Aka": "MessageText",
-                                "Text": "Enter Name",
+                                "Text": "Enter Option",
 								"TextStyle": {"Style": "FEditorStyle", "StyleName": "Credits.H3"},
 								"Justification": "Center"
                             }
@@ -40,15 +40,17 @@
                                         "Padding": [0, 0, 10, 0],
                                         "STextBlock":
                                         {
-                                            "Text": "Name :"
+                                            "Text": "Option :"
                                         }
                                     },
                                     {
-                                        "SEditableTextBox":
-                                        {
-                                            "Aka": "NameInput",
-                                            "HintText": "Enter Name...",
-                                            "Text": ""
+                                        "SComboBox": {
+                                            "Aka": "ComboBoxInput",
+                                            "Content": {
+                                                "Text": "ComboBox"
+                                            },
+                                            "OptionsSource": [],
+                                            "OnSelectionChanged": "ch_option_window.selection_changed(%)"
                                         }
                                     }
                                 ]
@@ -70,7 +72,7 @@
 											"HAlign": "Center",
 											"Text": "Cancel",
                                             "ContentPadding": [16, 4],
-											"OnClick": "ch_name_window.cancel()"
+											"OnClick": "ch_option_window.cancel()"
 										}
 									},
 									{
@@ -81,7 +83,7 @@
 											"HAlign": "Center",
 											"Text": "Submit",
                                             "ContentPadding": [16, 4],
-											"OnClick": "ch_name_window.submit()"
+											"OnClick": "ch_option_window.submit()"
 										}
 									}
 							    ]
