@@ -1,20 +1,23 @@
 {
 	"servers": {
-		"upstash/context7": {
-			"type": "http",
-			"url": "https://mcp.context7.com/mcp",
-			"headers": {
-				"CONTEXT7_API_KEY": "${input:context7_api_key}"
+		"io.github.upstash/context7": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"@upstash/context7-mcp@1.0.31"
+			],
+			"env": {
+				"CONTEXT7_API_KEY": "${input:CONTEXT7_API_KEY}"
 			},
 			"gallery": "https://api.mcp.github.com",
-			"version": "1.0.0"
+			"version": "1.0.31"
 		}
 	},
 	"inputs": [
 		{
-			"id": "context7_api_key",
+			"id": "CONTEXT7_API_KEY",
 			"type": "promptString",
-			"description": "Context7 API key (optional; increases rate limits). Get one at https://context7.com/dashboard",
+			"description": "API key for authentication",
 			"password": true
 		}
 	]

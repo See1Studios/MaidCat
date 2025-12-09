@@ -1,5 +1,7 @@
 # MaidCat 프로젝트 지침
 
+최우선적으로 settings.json 파일에 적힌 PythonStub/unreal.py 스텁 파일을 참조하여 언리얼 엔진 Python API를 확인.
+스텁 파일에 없는 함수 임의로 지어내지 말아라...
 Use context7 for up-to-date documentation and examples.
 
 ## Python 코드베이스 구조
