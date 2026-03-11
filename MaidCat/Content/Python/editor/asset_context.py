@@ -150,7 +150,7 @@ def setup_asset_copier_menu():
 
 @unreal.uclass()
 class RunSmoothedNormalBaker(unreal.ToolMenuEntryScript):
-    """선택된 메시 애셋들에 대해 Smoothed Normal Baker 실행"""
+    """선택된 메시 애셋들에 대해 Smoothed Normal Baker 실행 (UV 채널)"""
 
     def __init__(self):
         super().__init__()
@@ -172,52 +172,18 @@ class RunSmoothedNormalBaker(unreal.ToolMenuEntryScript):
 
     @unreal.ufunction(override=True)
     def execute(self, context):
-        """smoothed_normal_baker.py 실행 (Vertex Color)"""
+        """smoothed_normal_baker.py 실행 (UV1)"""
         try:
-            unreal.log("🎨 Smoothed Normal Baker (Vertex Color) 실행...")
+            unreal.log("🎨 Smoothed Normal Baker (UV1) 실행...")
 
             if 'tool.smoothed_normal_baker' in sys.modules:
                 importlib.reload(sys.modules['tool.smoothed_normal_baker'])
 
             from tool import smoothed_normal_baker
-            smoothed_normal_baker.run_vertex_color()
+            smoothed_normal_baker.run(uv_channel=1)
 
         except Exception as e:
             unreal.log_error(f"❌ Smoothed Normal Baker 실행 중 오류: {e}")
-
-
-@unreal.uclass()
-class RunSmoothedNormalBakerUV(unreal.ToolMenuEntryScript):
-    """Smoothed Normal을 UV 채널에 저장하는 메뉴 항목"""
-
-    @unreal.ufunction(override=True)
-    def can_execute(self, context) -> bool:
-        """StaticMesh 또는 SkeletalMesh가 선택된 경우에만 활성화"""
-        try:
-            selected_assets = unreal.EditorUtilityLibrary.get_selected_assets()
-            if not selected_assets:
-                return False
-            return any(
-                isinstance(a, (unreal.StaticMesh, unreal.SkeletalMesh))
-                for a in selected_assets
-            )
-        except:
-            return False
-
-    @unreal.ufunction(override=True)
-    def execute(self, context):
-        """smoothed_normal_baker.py 실행 (UV Channel)"""
-        try:
-            unreal.log("🎨 Smoothed Normal Baker (UV Channel) 실행...")
-
-            if 'tool.smoothed_normal_baker' in sys.modules:
-                importlib.reload(sys.modules['tool.smoothed_normal_baker'])
-
-            from tool import smoothed_normal_baker
-            smoothed_normal_baker.run_uv(uv_channel=1)
-
-        except Exception as e:
-            unreal.log_error(f"❌ Smoothed Normal Baker (UV) 실행 중 오류: {e}")
 
 
 def setup_smoothed_normal_baker_menu():
@@ -236,29 +202,17 @@ def setup_smoothed_normal_baker_menu():
             menu_suffix = menu_name.split('.')[-1]
             baker_section = f"SmoothedNormalSection_{menu_suffix}"
 
-            # Vertex Color 모드
             baker_entry = RunSmoothedNormalBaker()
             baker_entry.init_entry(
                 menu_owner,
                 f"runSmoothedNormalBaker_{menu_suffix}",
                 baker_section,
-                "Smoothed Normal → Vertex Color",
-                "Bake smoothed normals to vertex color (Tangent Space, RGB=XYZ)"
-            )
-
-            # UV Channel 모드
-            baker_uv_entry = RunSmoothedNormalBakerUV()
-            baker_uv_entry.init_entry(
-                menu_owner,
-                f"runSmoothedNormalBakerUV_{menu_suffix}",
-                baker_section,
                 "Smoothed Normal → UV1",
-                "Bake smoothed normals to UV1 (Tangent Space, RG=XY, B=reconstruct in shader)"
+                "Bake smoothed normals to UV1 (Tangent Space, per-corner, RG=XY, B=reconstruct in shader)"
             )
 
             menu.add_section(baker_section, "Smoothed Normal Baker")
             menu.add_menu_entry_object(baker_entry)
-            menu.add_menu_entry_object(baker_uv_entry)
 
         except Exception as e:
             unreal.log_warning(f"⚠️ Failed to add Smoothed Normal Baker menu to {menu_name}: {e}")
