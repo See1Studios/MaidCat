@@ -54,7 +54,7 @@ if (-not (Test-Path (Join-Path -Path $ProjectDir -ChildPath "*.uproject"))) {
 }
 
 # Define paths
-$SourcePluginDir = Join-Path -Path $PSScriptRoot -ChildPath "MaidCat"
+$SourcePluginDir = $PSScriptRoot
 $PluginsDir = Join-Path -Path $ProjectDir -ChildPath "Plugins"
 $DestinationLinkPath = Join-Path -Path $PluginsDir -ChildPath "MaidCat"
 
