@@ -72,7 +72,23 @@ try {
     # Create the symbolic link
     New-Item -ItemType SymbolicLink -Path $DestinationLinkPath -Target $SourcePluginDir -ErrorAction Stop
 
-    [System.Windows.Forms.MessageBox]::Show("Symbolic link created successfully!`n`nSource: $SourcePluginDir`nDestination: $DestinationLinkPath", "Success", "OK", "Information")
+    # Read engine version from .uproject file
+    $UProjectFile = Get-ChildItem -Path $ProjectDir -Filter "*.uproject" | Select-Object -First 1
+    $EngineVersion = ""
+    if ($UProjectFile) {
+        $UProjectContent = Get-Content $UProjectFile.FullName -Raw | ConvertFrom-Json
+        $EngineVersion = $UProjectContent.EngineAssociation
+    }
+
+    # Write dev.local.json to plugin root
+    $DevConfig = [ordered]@{
+        host_project_dir = $ProjectDir
+        uproject_file    = $UProjectFile.FullName
+        engine_version   = $EngineVersion
+    }
+    $DevConfig | ConvertTo-Json | Set-Content -Path (Join-Path $SourcePluginDir "dev.local.json") -Encoding UTF8
+
+    [System.Windows.Forms.MessageBox]::Show("Symbolic link created successfully!`n`nSource: $SourcePluginDir`nDestination: $DestinationLinkPath`nEngine: $EngineVersion", "Success", "OK", "Information")
 
 } catch {
     [System.Windows.Forms.MessageBox]::Show("An error occurred during the linking process:`n`n$($_.Exception.Message)", "Error", "OK", "Error")
