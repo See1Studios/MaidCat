@@ -11,6 +11,7 @@ import ctypes
 import csv
 import datetime
 import json
+import os
 import shutil
 import subprocess
 import threading
@@ -44,18 +45,84 @@ AKA_FAVS_TOOLS      = "FavsTools"
 AKA_ENGINE_SELECTOR = "EngineSelector"
 AKA_FAVS_SELECTOR   = "FavsSelector"
 AKA_FAVS_NEW_NAME   = "FavsNewName"
-AKA_AUTO_REBUILD    = "AutoRebuild"
 AKA_TOGGLE_TRANS    = "ToggleTrans"
 AKA_PROGRESS_ROW    = "ProgressRow"
 AKA_PROGRESS_BAR    = "ProgressBar"
 AKA_PROGRESS_LABEL  = "ProgressLabel"
+AKA_NEW_FAV_SHARED  = "NewFavShared"
+AKA_BTN_ADD_FAV     = "BtnAddFav"
+AKA_BTN_REM_FAV     = "BtnRemFav"
 
 # ── 상수 ──────────────────────────────────────────────────────────────────────
 CSV_CVARS        = "DumpCVars.csv"
 CSV_CCMDS        = "DumpCCmds.csv"
-FAVS_FILE        = "favorites.json"
-TRANS_CACHE_FILE = "translations.json"
+FAVS_LOCAL_FILE  = "favorites.json"
+FAVS_SHARED_FILE = "console_browser_favorites.json"
+TRANS_CACHE_FILE = "console_browser_translations.json"
+SETTINGS_FILE    = "settings.json"
 DEFAULT_LIST     = "Default"
+
+# ── 데이터 폴더 ───────────────────────────────────────────────────────────────
+
+def _data_dir() -> Path:
+    """플러그인 데이터 폴더 — git 관리, 배포 포함 (tool/ 상위의 Python/data/)"""
+    return Path(__file__).parent.parent / "data"
+
+
+# ── Perforce 연동 ─────────────────────────────────────────────────────────────
+
+def _p4_read_settings() -> dict | None:
+    """SourceControlSettings.ini 에서 Perforce 접속 정보 읽기"""
+    ini_path = (
+        Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir()))
+        / "Config" / "WindowsEditor" / "SourceControlSettings.ini"
+    )
+    if not ini_path.exists():
+        return None
+    settings: dict[str, str] = {}
+    section = None
+    for line in ini_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line.startswith("["):
+            section = line[1:line.find("]")]
+        elif "=" in line:
+            key, _, value = line.partition("=")
+            if section == "PerforceSourceControl.PerforceSourceControlSettings":
+                settings[key.strip()] = value.strip()
+            elif section == "SourceControl.SourceControlSettings" and key.strip() == "Provider":
+                settings["Provider"] = value.strip()
+    return settings or None
+
+
+def _p4_run(cmd: list[str], settings: dict, timeout: int = 3) -> subprocess.CompletedProcess:
+    env = {**os.environ}
+    if "Port"      in settings: env["P4PORT"]  = settings["Port"]
+    if "UserName"  in settings: env["P4USER"]  = settings["UserName"]
+    if "Workspace" in settings: env["P4CLIENT"] = settings["Workspace"]
+    return subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=timeout)
+
+
+def _p4_ensure_writable(path: Path) -> bool:
+    """파일이 쓰기 가능한지 확인하고, Perforce 관리 중이면 자동 체크아웃.
+    이미 쓰기 가능하거나 파일이 없으면 True 반환 (신규 생성 허용).
+    """
+    if not path.exists() or os.access(str(path), os.W_OK):
+        return True
+    settings = _p4_read_settings()
+    if not settings or settings.get("Provider") != "Perforce":
+        return False
+    try:
+        if _p4_run(["p4", "fstat", str(path)], settings).returncode != 0:
+            return False  # Perforce 관리 파일 아님
+        result = _p4_run(["p4", "edit", str(path)], settings)
+        if result.returncode == 0:
+            unreal.log(f"ConsoleBrowser: Perforce 체크아웃 완료 — {path.name}")
+            return True
+        unreal.log_warning(f"ConsoleBrowser: Perforce 체크아웃 실패 — {result.stderr.strip()}")
+    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+        unreal.log_warning(f"ConsoleBrowser: p4 명령 실패 — {e}")
+    return False
+
 
 # ── 번역 엔진 ─────────────────────────────────────────────────────────────────
 
@@ -146,11 +213,13 @@ class ConsoleBrowser:
         self._switching_tab = False
         self._cv_last_exec_time = 0.0
         self._values_panel_count = 0
-        # 즐겨찾기 다중 목록: {list_name: [entries]}
-        self._favs_db:        dict[str, list] = {}
-        self._active_fav_list = DEFAULT_LIST
+        # 즐겨찾기 다중 목록: {(tier, name): [entries]}  tier = "shared" | "local"
+        self._favs_db:        dict[tuple[str, str], list] = {}
+        self._active_fav_list: tuple[str, str] = ("local", DEFAULT_LIST)
         # 번역 캐시: {name: translated_help}
         self._trans_cache:    dict[str, str] = {}
+        self._settings:       dict           = {}
+        self._favs_refreshing = False   # 리프레시 중 selection 콜백 무시용
 
     # _favs → 현재 활성 목록의 뷰
     @property
@@ -164,10 +233,12 @@ class ConsoleBrowser:
     # ── 초기화 ───────────────────────────────────────────────────────────────
 
     def init(self) -> None:
+        self._load_settings()
         self._load_favs()
         self._load_trans_cache()
         self._reload_all()
         self._show_tab("CVar")
+        self._apply_settings()
 
     # ── Rebuild ──────────────────────────────────────────────────────────────
 
@@ -217,6 +288,9 @@ class ConsoleBrowser:
             self._show_detail(self._ccmds_filtered, next(iter(self._ccmds_sel)))
 
     def on_favs_selection_changed(self) -> None:
+        if self._favs_refreshing:
+            self._favs_refreshing = False  # 한 번만 무시 후 해제
+            return
         self._favs_sel = set(self.data.get_list_view_multi_column_selection(AKA_LIST_FAVS))
         if len(self._favs_sel) != 1:
             self._refresh_values_panel()
@@ -233,11 +307,15 @@ class ConsoleBrowser:
 
     # ── 즐겨찾기 목록 관리 ───────────────────────────────────────────────────
 
-    def on_fav_list_changed(self, list_name: str) -> None:
+    def on_fav_list_changed(self, display_name: str) -> None:
         """콤보박스 목록 선택"""
-        if list_name not in self._favs_db:
+        if display_name.startswith("[공유] "):
+            key: tuple[str, str] = ("shared", display_name[len("[공유] "):])
+        else:
+            key = ("local", display_name)
+        if key not in self._favs_db:
             return
-        self._active_fav_list = list_name
+        self._active_fav_list = key
         self._favs_sel.clear()
         self._filter_all(self._last_query)
         self._refresh_all_lists()
@@ -248,39 +326,46 @@ class ConsoleBrowser:
         if not name:
             self._set_status("새 목록 이름을 입력하세요")
             return
-        if name in self._favs_db:
-            self._set_status(f"이미 존재하는 목록: {name}")
+        is_shared = self.data.get_is_checked(AKA_NEW_FAV_SHARED)
+        key: tuple[str, str] = ("shared" if is_shared else "local", name)
+        if key in self._favs_db:
+            tier_label = "공유" if is_shared else "로컬"
+            self._set_status(f"이미 존재하는 목록: {name} ({tier_label})")
             return
-        self._favs_db[name] = []
-        self._active_fav_list = name
+        self._favs_db[key] = []
+        self._active_fav_list = key
         self._save_favs()
         self.data.set_text(AKA_FAVS_NEW_NAME, "")
         self._update_fav_selector()
         self._filter_all(self._last_query)
         self._refresh_all_lists()
-        self._set_status(f"목록 추가: {name}")
+        tier = "공유" if is_shared else "로컬"
+        self._set_status(f"목록 추가: {name} ({tier})")
 
     def delete_fav_list(self) -> None:
         """현재 즐겨찾기 목록 삭제 (Default는 삭제 불가)"""
-        if self._active_fav_list == DEFAULT_LIST:
+        if self._active_fav_list[1] == DEFAULT_LIST:
             self._set_status("기본 목록은 삭제할 수 없습니다")
             return
         count = len(self._favs)
         confirmed = unreal.PythonBPLib.confirm_dialog(
-            f'"{self._active_fav_list}" 목록을 삭제하시겠습니까?\n({count:,}개 항목이 모두 제거됩니다)',
+            f'"{self._active_fav_list[1]}" 목록을 삭제하시겠습니까?\n({count:,}개 항목이 모두 제거됩니다)',
             "목록 삭제 확인",
         )
         if not confirmed:
             return
         removed = self._active_fav_list
         del self._favs_db[removed]
-        self._active_fav_list = DEFAULT_LIST
+        self._active_fav_list = next(
+            (k for k in self._favs_db if k != removed),
+            ("local", DEFAULT_LIST)
+        )
         self._save_favs()
         self._update_fav_selector()
         self._favs_sel.clear()
         self._filter_all(self._last_query)
         self._refresh_all_lists()
-        self._set_status(f"목록 삭제: {removed}")
+        self._set_status(f"목록 삭제: {removed[1]}")
 
     # ── 즐겨찾기 항목 조작 ───────────────────────────────────────────────────
 
@@ -312,7 +397,7 @@ class ConsoleBrowser:
         self._save_favs()
         self._filter_all(self._last_query)
         self._refresh_all_lists()
-        msg = f"[{self._active_fav_list}] 추가: {len(to_add)}개  (총 {len(self._favs):,}개)"
+        msg = f"[{self._active_fav_list[1]}] 추가: {len(to_add)}개  (총 {len(self._favs):,}개)"
         if skipped:
             msg += f"  ({skipped}개 중복)"
         self._set_status(msg)
@@ -415,7 +500,6 @@ class ConsoleBrowser:
         world = unreal.EditorLevelLibrary.get_editor_world()
         unreal.SystemLibrary.execute_console_command(world, cmd)
         self._set_status(f"▶ 실행: {cmd}")
-        self._rebuild_if_auto(entry)
 
     def delete_fav_value(self, val_idx: int) -> None:
         """값 배열에서 항목 제거"""
@@ -458,7 +542,7 @@ class ConsoleBrowser:
             self._set_status("내보낼 즐겨찾기 항목이 없습니다")
             return
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        default_name = f"Favs_{_safe_filename(self._active_fav_list)}_{timestamp}.csv"
+        default_name = f"Favs_{_safe_filename(self._active_fav_list[1])}_{timestamp}.csv"
         default_dir = self._saved_dir() / "Logs" / "ConsoleBrowser"
         default_dir.mkdir(parents=True, exist_ok=True)
 
@@ -486,45 +570,10 @@ class ConsoleBrowser:
         self._set_status(f"내보내기 완료: {out_path.name}  ({len(entries):,}개)")
         unreal.log(f"✅ ConsoleBrowser 즐겨찾기 내보내기: {out_path}")
 
-    def split_to_db(self) -> None:
-        all_data = [("CVars", self._cvar_entries), ("CCmds", self._ccmds_entries)]
-        if not any(e for _, e in all_data):
-            self._set_status("데이터 없음 — [Rebuild] 버튼을 누르세요")
-            return
-        db_root = self._saved_dir() / "Logs" / "ConsoleBrowser"
-        total = 0
-        for type_name, entries in all_data:
-            if not entries:
-                continue
-            type_dir = db_root / type_name
-            type_dir.mkdir(parents=True, exist_ok=True)
-            for f in type_dir.glob("*.json"):
-                f.unlink()
-            groups: dict[str, list] = {}
-            for e in entries:
-                parts = e["name"].split(".")
-                domain = ".".join(parts[:-1]) if len(parts) > 1 else "_root"
-                groups.setdefault(domain, []).append(e)
-            for domain, group in sorted(groups.items()):
-                payload = {
-                    "domain": domain, "count": len(group),
-                    "entries": [
-                        {"leaf": e["name"].rsplit(".", 1)[-1], "full_name": e["name"],
-                         "value": e.get("value", ""), "set_by": e.get("set_by", ""),
-                         "help": e["help"]}
-                        for e in sorted(group, key=lambda x: x["name"])
-                    ],
-                }
-                (type_dir / (_safe_filename(domain) + ".json")).write_text(
-                    json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
-                )
-                total += 1
-        self._set_status(f"DB 분할: {total}개 파일 → {db_root}")
-
     # ── 내부 헬퍼 ────────────────────────────────────────────────────────────
 
     def _rebuild_if_auto(self, entry: dict) -> None:
-        if entry.get("type") == "CVar" and self.data.get_is_checked(AKA_AUTO_REBUILD):
+        if entry.get("type") == "CVar":
             self.rebuild()
 
     def _refresh_values_panel(self) -> None:
@@ -578,7 +627,7 @@ class ConsoleBrowser:
         show_trans = self.data.get_is_checked(AKA_TOGGLE_TRANS)
         cached = self._trans_cache.get(e["name"])
         if show_trans:
-            help_text = cached if cached else "(번역 없음 — 🌐 번역 버튼을 누르세요)"
+            help_text = cached if cached else "(번역 없음 — 🔄 로 번역 파일 새로고침)"
         else:
             help_text = e["help"]
         lines = [
@@ -602,23 +651,25 @@ class ConsoleBrowser:
         return str(self._saved_dir() / "Logs" / filename)
 
     def _load_favs(self) -> None:
-        path = self._saved_dir() / "Logs" / "ConsoleBrowser" / FAVS_FILE
-        if not path.exists():
-            self._favs_db = {DEFAULT_LIST: []}
-            self._active_fav_list = DEFAULT_LIST
-            return
-        try:
-            raw = json.loads(path.read_text(encoding="utf-8"))
-            # 구형 포맷 (list) → 자동 마이그레이션
-            if isinstance(raw, list):
-                self._favs_db = {DEFAULT_LIST: raw}
-            else:
-                self._favs_db = raw
-        except Exception as e:
-            unreal.log_warning(f"ConsoleBrowser: 즐겨찾기 로드 오류: {e}")
-            self._favs_db = {DEFAULT_LIST: []}
+        self._favs_db = {}
+
+        def _load_file(path: Path, tier: str) -> None:
+            if not path.exists():
+                return
+            try:
+                raw = json.loads(path.read_text(encoding="utf-8"))
+                data = {DEFAULT_LIST: raw} if isinstance(raw, list) else raw
+                for name, entries in data.items():
+                    self._favs_db[(tier, name)] = entries
+            except Exception as e:
+                unreal.log_warning(f"ConsoleBrowser: 즐겨찾기 로드 오류 ({tier}): {e}")
+
+        _load_file(_data_dir() / FAVS_SHARED_FILE, "shared")
+        _load_file(self._saved_dir() / "Logs" / "ConsoleBrowser" / FAVS_LOCAL_FILE, "local")
+
         if not self._favs_db:
-            self._favs_db = {DEFAULT_LIST: []}
+            self._favs_db = {("local", DEFAULT_LIST): []}
+
         # custom_value(str) → custom_values(list) 마이그레이션
         for entries in self._favs_db.values():
             for item in entries:
@@ -627,36 +678,114 @@ class ConsoleBrowser:
                     item.setdefault("custom_values", [cv] if cv else [])
                 else:
                     item.setdefault("custom_values", [])
+
         self._active_fav_list = next(iter(self._favs_db))
 
     def _save_favs(self) -> None:
-        path = self._saved_dir() / "Logs" / "ConsoleBrowser" / FAVS_FILE
+        shared = {name: e for (tier, name), e in self._favs_db.items() if tier == "shared"}
+        local  = {name: e for (tier, name), e in self._favs_db.items() if tier == "local"}
+
+        if shared:
+            path = _data_dir() / FAVS_SHARED_FILE
+            path.parent.mkdir(parents=True, exist_ok=True)
+            _p4_ensure_writable(path)
+            try:
+                path.write_text(json.dumps(shared, ensure_ascii=False, indent=2), encoding="utf-8")
+            except OSError as e:
+                unreal.log_warning(f"ConsoleBrowser: 공유 즐겨찾기 저장 실패: {e}")
+
+        path = self._saved_dir() / "Logs" / "ConsoleBrowser" / FAVS_LOCAL_FILE
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(self._favs_db, ensure_ascii=False, indent=2), encoding="utf-8")
+        path.write_text(json.dumps(local, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def _plugin_trans_path(self) -> Path:
+        """플러그인 배포 번역 파일 경로 (git 관리, 팀 공유용)"""
+        return _data_dir() / TRANS_CACHE_FILE
+
+    def _fallback_trans_path(self) -> Path:
+        """플러그인 디렉터리 쓰기 불가 시 폴백 (프로젝트 Saved/)"""
+        return self._saved_dir() / "Logs" / "ConsoleBrowser" / TRANS_CACHE_FILE
+
+    def _settings_path(self) -> Path:
+        return self._saved_dir() / "Logs" / "ConsoleBrowser" / SETTINGS_FILE
+
+    def _load_settings(self) -> None:
+        path = self._settings_path()
+        try:
+            self._settings = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+        except Exception as e:
+            unreal.log_warning(f"ConsoleBrowser: 설정 로드 오류: {e}")
+            self._settings = {}
+
+    def _save_settings(self) -> None:
+        path = self._settings_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(self._settings, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def _apply_settings(self) -> None:
+        """로드된 설정을 UI에 반영"""
+        if "show_translation" in self._settings:
+            self.data.set_is_checked(AKA_TOGGLE_TRANS, self._settings["show_translation"])
+        if "translation_engine" in self._settings:
+            engine = self._settings["translation_engine"]
+            engines = ["Auto", "Claude", "Google"]
+            if engine in engines:
+                engines.remove(engine)
+                engines.insert(0, engine)
+            self.data.set_combo_box_items(AKA_ENGINE_SELECTOR, engines)
+        self._refresh_all_lists()
+
+    def on_engine_changed(self, engine: str) -> None:
+        """번역 엔진 변경 시 설정 저장"""
+        self._settings["translation_engine"] = engine
+        self._save_settings()
 
     def _load_trans_cache(self) -> None:
-        path = self._saved_dir() / "Logs" / "ConsoleBrowser" / TRANS_CACHE_FILE
-        if not path.exists():
-            self._trans_cache = {}
-            return
-        try:
-            self._trans_cache = json.loads(path.read_text(encoding="utf-8"))
-        except Exception as e:
-            unreal.log_warning(f"ConsoleBrowser: 번역 캐시 로드 오류: {e}")
-            self._trans_cache = {}
+        plugin_path = self._plugin_trans_path()
+        # 구버전 경로 자동 마이그레이션 (Saved/translations.json 또는 tool/ 경유)
+        old_paths = [
+            Path(__file__).parent / TRANS_CACHE_FILE,                          # tool/ (이전 위치)
+            self._saved_dir() / "Logs" / "ConsoleBrowser" / "translations.json",  # 최초 위치
+        ]
+        old_path = next((p for p in old_paths if p.exists()), None)
+        if not plugin_path.exists() and old_path and old_path.exists():
+            try:
+                plugin_path.write_text(old_path.read_text(encoding="utf-8"), encoding="utf-8")
+                old_path.unlink()
+                unreal.log(f"ConsoleBrowser: 번역 캐시 마이그레이션 완료 → {plugin_path}")
+            except OSError:
+                pass
+        for path in (plugin_path, self._fallback_trans_path()):
+            if path.exists():
+                try:
+                    self._trans_cache = json.loads(path.read_text(encoding="utf-8"))
+                    return
+                except Exception as e:
+                    unreal.log_warning(f"ConsoleBrowser: 번역 캐시 로드 오류: {e}")
+        self._trans_cache = {}
 
     def _save_trans_cache(self) -> None:
-        path = self._saved_dir() / "Logs" / "ConsoleBrowser" / TRANS_CACHE_FILE
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(self._trans_cache, ensure_ascii=False, indent=2), encoding="utf-8")
+        path = self._plugin_trans_path()
+        _p4_ensure_writable(path)
+        try:
+            path.write_text(json.dumps(self._trans_cache, ensure_ascii=False, indent=2), encoding="utf-8")
+        except OSError:
+            path = self._fallback_trans_path()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(self._trans_cache, ensure_ascii=False, indent=2), encoding="utf-8")
+            unreal.log_warning(f"ConsoleBrowser: 플러그인 디렉터리 쓰기 불가, 폴백 사용: {path}")
 
     def _update_fav_selector(self) -> None:
-        """콤보박스 항목 갱신 — 활성 목록을 맨 앞에"""
-        names = list(self._favs_db.keys())
-        if self._active_fav_list in names:
-            names.remove(self._active_fav_list)
-            names.insert(0, self._active_fav_list)
-        self.data.set_combo_box_items(AKA_FAVS_SELECTOR, names)
+        """콤보박스 항목 갱신 — 활성 목록을 맨 앞에, 공유 목록은 [공유] 접두사"""
+        def _display(key: tuple[str, str]) -> str:
+            tier, name = key
+            return f"[공유] {name}" if tier == "shared" else name
+
+        keys = list(self._favs_db.keys())
+        if self._active_fav_list in keys:
+            keys.remove(self._active_fav_list)
+            keys.insert(0, self._active_fav_list)
+        self.data.set_combo_box_items(AKA_FAVS_SELECTOR, [_display(k) for k in keys])
 
     # 탭별 버튼 배경색 (활성, 비활성)  — SButton.set_button_color_and_opacity 전용
     _TAB_BTN_COLORS = {
@@ -673,8 +802,8 @@ class ConsoleBrowser:
         active_aka = self._TAB_AKA[tab]
         for aka, (active_color, inactive_color) in self._TAB_BTN_COLORS.items():
             self.data.set_button_color_and_opacity(aka, active_color if aka == active_aka else inactive_color)
-        self.data.set_visibility("BtnAddFav",     "Collapsed" if is_favs else "Visible")
-        self.data.set_visibility("BtnRemFav",     "Visible"   if is_favs else "Collapsed")
+        self.data.set_visibility(AKA_BTN_ADD_FAV, "Collapsed" if is_favs else "Visible")
+        self.data.set_visibility(AKA_BTN_REM_FAV, "Visible"   if is_favs else "Collapsed")
         self.data.set_visibility(AKA_FAVS_TOOLS,  "Visible"   if is_favs else "Collapsed")
         self.data.set_visibility(AKA_LIST_CVARS,  "Visible" if tab == "CVar"  else "Collapsed")
         self.data.set_visibility(AKA_LIST_CCMDS,  "Visible" if tab == "CCmds" else "Collapsed")
@@ -722,27 +851,29 @@ class ConsoleBrowser:
     def _filter_all(self, query: str) -> None:
         self._cvar_sel.clear()
         self._ccmds_sel.clear()
-        self._favs_sel.clear()
+        # 즐겨찾기 선택은 이름 기준으로 보존 (rebuild/filter 후 인덱스 재계산)
+        selected_names = {self._favs_filtered[i]["name"] for i in self._favs_sel if i < len(self._favs_filtered)}
         if not query:
             self._cvar_filtered  = self._cvar_entries[:]
             self._ccmds_filtered = self._ccmds_entries[:]
             self._favs_filtered  = self._favs[:]
-            return
-        q = query.lower()
-        self._cvar_filtered = [
-            e for e in self._cvar_entries
-            if q in e["name"].lower() or q in e["help"].lower()
-        ]
-        self._ccmds_filtered = [
-            e for e in self._ccmds_entries
-            if q in e["name"].lower() or q in e["help"].lower()
-        ]
-        self._favs_filtered = [
-            e for e in self._favs
-            if q in e["name"].lower() or q in e["help"].lower()
-            or any(q in v.lower() for v in e.get("custom_values", []))
-            or q in e.get("memo", "").lower()
-        ]
+        else:
+            q = query.lower()
+            self._cvar_filtered = [
+                e for e in self._cvar_entries
+                if q in e["name"].lower() or q in e["help"].lower()
+            ]
+            self._ccmds_filtered = [
+                e for e in self._ccmds_entries
+                if q in e["name"].lower() or q in e["help"].lower()
+            ]
+            self._favs_filtered = [
+                e for e in self._favs
+                if q in e["name"].lower() or q in e["help"].lower()
+                or any(q in v.lower() for v in e.get("custom_values", []))
+                or q in e.get("memo", "").lower()
+            ]
+        self._favs_sel = {i for i, e in enumerate(self._favs_filtered) if e["name"] in selected_names}
 
     @staticmethod
     def _flat_help(text: str, limit: int) -> str:
@@ -772,10 +903,15 @@ class ConsoleBrowser:
                 e["name"],
                 ", ".join(e.get("custom_values", [])),
                 e.get("memo", ""),
+                _help(e, 120),
             ])
-        self.data.set_list_view_multi_column_items(AKA_LIST_FAVS, flat_favs, 3)
-        if self._favs_sel:
-            self.data.set_list_view_multi_column_selections(AKA_LIST_FAVS, list(self._favs_sel))
+        saved_favs_sel = set(self._favs_sel)
+        if saved_favs_sel:
+            self._favs_refreshing = True
+        self.data.set_list_view_multi_column_items(AKA_LIST_FAVS, flat_favs, 4)
+        if saved_favs_sel:
+            self._favs_sel = saved_favs_sel
+            self.data.set_list_view_multi_column_selections(AKA_LIST_FAVS, list(saved_favs_sel))
         if self._active_tab == "Favs":
             self._refresh_values_panel()
 
@@ -790,13 +926,15 @@ class ConsoleBrowser:
             status = "CSV 없음 — [Rebuild] 버튼을 눌러 생성하세요" if total == 0 else f"{shown:,} / {total:,} 개"
         else:
             shown, total = len(self._favs_filtered), len(self._favs)
-            list_label = f"[{self._active_fav_list}]  "
+            list_label = f"[{self._active_fav_list[1]}]  "
             status = (list_label + "비어 있음 — Variables/Commands 탭에서 항목 선택 후 [★ 추가]"
                       if total == 0 else list_label + f"{shown:,} / {total:,} 개")
         self._set_status(status)
 
     def on_toggle_trans(self) -> None:
         """원문 / 번역문 토글 — 리스트 및 상세 정보를 다시 렌더"""
+        self._settings["show_translation"] = self.data.get_is_checked(AKA_TOGGLE_TRANS)
+        self._save_settings()
         self._refresh_all_lists()
         if self._active_tab == "CVar":
             sel, entries = self._cvar_sel, self._cvar_filtered
@@ -892,6 +1030,12 @@ class ConsoleBrowser:
     def cancel_translate(self) -> None:
         """진행 중인 번역 취소"""
         _cancel_flag.set()
+
+    def reload_trans_cache(self) -> None:
+        """번역 파일을 디스크에서 다시 읽어 반영"""
+        self._load_trans_cache()
+        self._refresh_all_lists()
+        self._set_status(f"번역 파일 새로고침 완료 ({len(self._trans_cache):,}개)")
 
     def _set_status(self, text: str) -> None:
         self.data.set_text(AKA_STATUS, text)
