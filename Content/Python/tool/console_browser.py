@@ -11,6 +11,9 @@ import ctypes
 import csv
 import datetime
 import json
+import shutil
+import subprocess
+import threading
 import time
 import tkinter as tk
 import tkinter.filedialog as filedialog
@@ -37,17 +40,85 @@ AKA_CUSTOM_VALUE    = "CustomValueInput"
 AKA_VALUES_PANEL    = "ValuesPanel"
 AKA_MEMO_INPUT      = "MemoInput"
 AKA_MEMO_ROW        = "MemoRow"
-AKA_TOOLBAR_NORMAL  = "ToolbarNormal"
-AKA_TOOLBAR_FAVS    = "ToolbarFavs"
+AKA_FAVS_TOOLS      = "FavsTools"
+AKA_ENGINE_SELECTOR = "EngineSelector"
 AKA_FAVS_SELECTOR   = "FavsSelector"
 AKA_FAVS_NEW_NAME   = "FavsNewName"
 AKA_AUTO_REBUILD    = "AutoRebuild"
+AKA_TOGGLE_TRANS    = "ToggleTrans"
+AKA_PROGRESS_ROW    = "ProgressRow"
+AKA_PROGRESS_BAR    = "ProgressBar"
+AKA_PROGRESS_LABEL  = "ProgressLabel"
 
 # ── 상수 ──────────────────────────────────────────────────────────────────────
 CSV_CVARS        = "DumpCVars.csv"
 CSV_CCMDS        = "DumpCCmds.csv"
 FAVS_FILE        = "favorites.json"
+TRANS_CACHE_FILE = "translations.json"
 DEFAULT_LIST     = "Default"
+
+# ── 번역 엔진 ─────────────────────────────────────────────────────────────────
+
+_CLAUDE_PATH: str | None = None  # None = 미확인, 첫 호출 시 1회 탐색
+
+# ── 번역 큐 / 진행 상태 ───────────────────────────────────────────────────────
+# 백그라운드 스레드는 _signal_queue에 데이터 튜플만 넣고,
+# 메인 스레드의 slate_pre_tick 콜백이 큐를 소진하며 UI를 갱신한다.
+import queue as _queue
+_signal_queue: _queue.SimpleQueue = _queue.SimpleQueue()
+_cancel_flag  = threading.Event()
+_tick_handle  = None
+
+
+def _get_claude_path() -> str | None:
+    global _CLAUDE_PATH
+    if _CLAUDE_PATH is None:
+        found = shutil.which("claude")
+        _CLAUDE_PATH = found or ""
+        unreal.log(f"ConsoleBrowser: claude 경로 → {_CLAUDE_PATH!r}")
+    return _CLAUDE_PATH or None
+
+
+def _translate_with_claude(text: str) -> str | None:
+    claude = _get_claude_path()
+    if not claude:
+        return None
+    try:
+        prompt = (
+            "Translate the following Unreal Engine console variable description "
+            "from English to Korean. Output only the Korean translation, no explanations:\n\n"
+            + text
+        )
+        r = subprocess.run(
+            [claude, "-p", prompt],
+            capture_output=True, text=True, encoding="utf-8", timeout=60,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        if r.returncode == 0:
+            result = r.stdout.strip()
+            if result:
+                return result
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError, Exception) as e:
+        unreal.log_warning(f"ConsoleBrowser: claude 번역 실패 → {e}")
+    return None
+
+
+def _translate_text(text: str, engine_pref: str = "Auto") -> tuple[str | None, str]:
+    """번역 엔진 선택에 따라 번역.
+    engine_pref: "Auto" | "Claude" | "Google"
+    Returns: (번역문 또는 None, 사용된 엔진 이름)
+    """
+    from tool.console_cat.data_generator import translate_text_google
+    if engine_pref == "Claude":
+        result = _translate_with_claude(text)
+        return (result, "Claude") if result else (None, "Claude")
+    if engine_pref == "Google":
+        return translate_text_google(text), "Google"
+    # Auto: Claude 우선, 실패 시 Google
+    result = _translate_with_claude(text)
+    if result:
+        return result, "Claude"
+    return translate_text_google(text), "Google"
 
 _INVALID_FILENAME_CHARS = str.maketrans({c: "_" for c in r'<>:"/\|?* '})
 
@@ -78,6 +149,8 @@ class ConsoleBrowser:
         # 즐겨찾기 다중 목록: {list_name: [entries]}
         self._favs_db:        dict[str, list] = {}
         self._active_fav_list = DEFAULT_LIST
+        # 번역 캐시: {name: translated_help}
+        self._trans_cache:    dict[str, str] = {}
 
     # _favs → 현재 활성 목록의 뷰
     @property
@@ -92,6 +165,7 @@ class ConsoleBrowser:
 
     def init(self) -> None:
         self._load_favs()
+        self._load_trans_cache()
         self._reload_all()
         self._show_tab("CVar")
 
@@ -501,11 +575,17 @@ class ConsoleBrowser:
         if not (0 <= index < len(entries)):
             return
         e = entries[index]
+        show_trans = self.data.get_is_checked(AKA_TOGGLE_TRANS)
+        cached = self._trans_cache.get(e["name"])
+        if show_trans:
+            help_text = cached if cached else "(번역 없음 — 🌐 번역 버튼을 누르세요)"
+        else:
+            help_text = e["help"]
         lines = [
             f"[{e.get('type', '?')}]  {e['name']}",
             f"Value:  {e.get('value', '')}",
             f"Set By: {e.get('set_by', '')}",
-            f"\nHelp:\n{e['help']}",
+            f"\nHelp:\n{help_text}",
         ]
         if e.get("custom_values"):
             lines.append(f"\n실행 값: {', '.join(e['custom_values'])}")
@@ -554,6 +634,22 @@ class ConsoleBrowser:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(self._favs_db, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    def _load_trans_cache(self) -> None:
+        path = self._saved_dir() / "Logs" / "ConsoleBrowser" / TRANS_CACHE_FILE
+        if not path.exists():
+            self._trans_cache = {}
+            return
+        try:
+            self._trans_cache = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as e:
+            unreal.log_warning(f"ConsoleBrowser: 번역 캐시 로드 오류: {e}")
+            self._trans_cache = {}
+
+    def _save_trans_cache(self) -> None:
+        path = self._saved_dir() / "Logs" / "ConsoleBrowser" / TRANS_CACHE_FILE
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(self._trans_cache, ensure_ascii=False, indent=2), encoding="utf-8")
+
     def _update_fav_selector(self) -> None:
         """콤보박스 항목 갱신 — 활성 목록을 맨 앞에"""
         names = list(self._favs_db.keys())
@@ -562,19 +658,28 @@ class ConsoleBrowser:
             names.insert(0, self._active_fav_list)
         self.data.set_combo_box_items(AKA_FAVS_SELECTOR, names)
 
+    # 탭별 버튼 배경색 (활성, 비활성)  — SButton.set_button_color_and_opacity 전용
+    _TAB_BTN_COLORS = {
+        AKA_TAB_CVARS: (unreal.LinearColor(0.05, 0.40, 1.00, 1.0), unreal.LinearColor(0.15, 0.15, 0.15, 1.0)),  # Blue
+        AKA_TAB_CCMDS: (unreal.LinearColor(0.05, 0.70, 0.25, 1.0), unreal.LinearColor(0.15, 0.15, 0.15, 1.0)),  # Green
+        AKA_TAB_FAVS:  (unreal.LinearColor(0.85, 0.10, 0.10, 1.0), unreal.LinearColor(0.15, 0.15, 0.15, 1.0)),  # Red
+    }
+    _TAB_AKA = {"CVar": AKA_TAB_CVARS, "CCmds": AKA_TAB_CCMDS, "Favs": AKA_TAB_FAVS}
+
     def _show_tab(self, tab: str) -> None:
         self._switching_tab = True
         self._active_tab = tab
         is_favs = tab == "Favs"
-        self.data.set_is_checked(AKA_TAB_CVARS, tab == "CVar")
-        self.data.set_is_checked(AKA_TAB_CCMDS, tab == "CCmds")
-        self.data.set_is_checked(AKA_TAB_FAVS,  is_favs)
-        self.data.set_visibility(AKA_TOOLBAR_NORMAL, "Collapsed" if is_favs else "Visible")
-        self.data.set_visibility(AKA_TOOLBAR_FAVS,   "Visible"   if is_favs else "Collapsed")
-        self.data.set_visibility(AKA_LIST_CVARS,     "Visible"   if tab == "CVar"  else "Collapsed")
-        self.data.set_visibility(AKA_LIST_CCMDS,     "Visible"   if tab == "CCmds" else "Collapsed")
-        self.data.set_visibility(AKA_LIST_FAVS,  "Visible" if is_favs else "Collapsed")
-        self.data.set_visibility(AKA_MEMO_ROW,   "Visible" if is_favs else "Collapsed")
+        active_aka = self._TAB_AKA[tab]
+        for aka, (active_color, inactive_color) in self._TAB_BTN_COLORS.items():
+            self.data.set_button_color_and_opacity(aka, active_color if aka == active_aka else inactive_color)
+        self.data.set_visibility("BtnAddFav",     "Collapsed" if is_favs else "Visible")
+        self.data.set_visibility("BtnRemFav",     "Visible"   if is_favs else "Collapsed")
+        self.data.set_visibility(AKA_FAVS_TOOLS,  "Visible"   if is_favs else "Collapsed")
+        self.data.set_visibility(AKA_LIST_CVARS,  "Visible" if tab == "CVar"  else "Collapsed")
+        self.data.set_visibility(AKA_LIST_CCMDS,  "Visible" if tab == "CCmds" else "Collapsed")
+        self.data.set_visibility(AKA_LIST_FAVS,   "Visible" if is_favs else "Collapsed")
+        self.data.set_visibility(AKA_MEMO_ROW,    "Visible" if is_favs else "Collapsed")
         self._switching_tab = False
         self._update_status()
 
@@ -645,15 +750,20 @@ class ConsoleBrowser:
         return text.replace("\n", " ").replace("\r", "")[:limit]
 
     def _refresh_all_lists(self) -> None:
+        show_trans = self.data.get_is_checked(AKA_TOGGLE_TRANS)
+
+        def _help(e: dict, limit: int) -> str:
+            text = self._trans_cache.get(e["name"], e["help"]) if show_trans else e["help"]
+            return self._flat_help(text, limit)
+
         flat_cvars: list[str] = []
         for e in self._cvar_filtered:
-            flat_cvars.extend([e["name"], e["value"], e["set_by"],
-                               self._flat_help(e["help"], 120)])
+            flat_cvars.extend([e["name"], e["value"], e["set_by"], _help(e, 120)])
         self.data.set_list_view_multi_column_items(AKA_LIST_CVARS, flat_cvars, 4)
 
         flat_ccmds: list[str] = []
         for e in self._ccmds_filtered:
-            flat_ccmds.extend([e["name"], self._flat_help(e["help"], 200)])
+            flat_ccmds.extend([e["name"], _help(e, 200)])
         self.data.set_list_view_multi_column_items(AKA_LIST_CCMDS, flat_ccmds, 2)
 
         flat_favs: list[str] = []
@@ -684,6 +794,104 @@ class ConsoleBrowser:
             status = (list_label + "비어 있음 — Variables/Commands 탭에서 항목 선택 후 [★ 추가]"
                       if total == 0 else list_label + f"{shown:,} / {total:,} 개")
         self._set_status(status)
+
+    def on_toggle_trans(self) -> None:
+        """원문 / 번역문 토글 — 리스트 및 상세 정보를 다시 렌더"""
+        self._refresh_all_lists()
+        if self._active_tab == "CVar":
+            sel, entries = self._cvar_sel, self._cvar_filtered
+        elif self._active_tab == "CCmds":
+            sel, entries = self._ccmds_sel, self._ccmds_filtered
+        elif self._active_tab == "Favs":
+            sel, entries = self._favs_sel, self._favs_filtered
+        else:
+            return
+        if len(sel) == 1:
+            self._show_detail(entries, next(iter(sel)))
+
+    def translate_detail(self) -> None:
+        """선택한 항목들을 순서대로 번역 (Claude → Google fallback, 다중 선택 지원)"""
+        if self._active_tab == "CVar":
+            sel, entries = self._cvar_sel, self._cvar_filtered
+        elif self._active_tab == "CCmds":
+            sel, entries = self._ccmds_sel, self._ccmds_filtered
+        elif self._active_tab == "Favs":
+            sel, entries = self._favs_sel, self._favs_filtered
+        else:
+            return
+
+        items = [
+            (entries[i]["name"], entries[i].get("help", "").strip())
+            for i in sorted(sel)
+            if i < len(entries) and entries[i].get("help", "").strip()
+        ]
+        if not items:
+            self._set_status("번역할 항목을 선택하세요")
+            return
+
+        total = len(items)
+        engine_pref = self.data.get_combo_box_selected_item(AKA_ENGINE_SELECTOR)
+        engine_hint = engine_pref if engine_pref != "Auto" else ("Claude" if _get_claude_path() else "Google")
+        self._set_status(f"번역 대기 중... ({engine_hint})  0 / {total}")
+        self.data.set_progress_bar_percent(AKA_PROGRESS_BAR, 0.0)
+        self.data.set_text(AKA_PROGRESS_LABEL, f"0 / {total}")
+        self.data.set_visibility(AKA_PROGRESS_ROW, "Visible")
+
+        global _tick_handle, _cancel_flag
+        _cancel_flag.clear()
+
+        # ── tick 콜백: 큐를 소진하며 메인 스레드에서 UI 갱신 ──
+        def _tick(delta: float) -> None:
+            global _tick_handle
+            while not _signal_queue.empty():
+                msg = _signal_queue.get_nowait()
+
+                if msg[0] == "item":
+                    _, name, translated, engine, current, tot = msg
+                    self._trans_cache[name] = translated
+                    self._save_trans_cache()
+                    self.data.set_progress_bar_percent(AKA_PROGRESS_BAR, current / tot)
+                    self.data.set_text(AKA_PROGRESS_LABEL, f"{current} / {tot}")
+                    self._refresh_all_lists()
+                    self._set_status(f"[{engine}] {name}  ({current}/{tot})")
+
+                elif msg[0] == "fail":
+                    _, name, current, tot = msg
+                    self.data.set_progress_bar_percent(AKA_PROGRESS_BAR, current / tot)
+                    self.data.set_text(AKA_PROGRESS_LABEL, f"{current} / {tot}")
+                    self._set_status(f"번역 실패: {name}  ({current}/{tot})")
+
+                elif msg[0] in ("done", "cancelled"):
+                    _, done_count, tot = msg
+                    unreal.unregister_slate_pre_tick_callback(_tick_handle)
+                    _tick_handle = None
+                    self.data.set_visibility(AKA_PROGRESS_ROW, "Collapsed")
+                    self.data.set_is_checked(AKA_TOGGLE_TRANS, True)
+                    self._refresh_all_lists()
+                    verb = "완료" if msg[0] == "done" else "취소됨"
+                    self._set_status(f"번역 {verb}: {done_count} / {tot}개")
+
+        if _tick_handle is None:
+            _tick_handle = unreal.register_slate_pre_tick_callback(_tick)
+
+        # ── 백그라운드 스레드: 번역만, Unreal API 호출 없음 ──
+        def _run(items=items, total=total, engine_pref=engine_pref):
+            for current, (name, help_text) in enumerate(items, 1):
+                if _cancel_flag.is_set():
+                    _signal_queue.put(("cancelled", current - 1, total))
+                    return
+                translated, engine = _translate_text(help_text, engine_pref)
+                if translated:
+                    _signal_queue.put(("item", name, translated, engine, current, total))
+                else:
+                    _signal_queue.put(("fail", name, current, total))
+            _signal_queue.put(("done", total, total))
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def cancel_translate(self) -> None:
+        """진행 중인 번역 취소"""
+        _cancel_flag.set()
 
     def _set_status(self, text: str) -> None:
         self.data.set_text(AKA_STATUS, text)

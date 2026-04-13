@@ -19,38 +19,36 @@
                                         "AutoWidth": true,
                                         "VAlign": "Center",
                                         "Padding": [0, 0, 4, 0],
-                                        "SCheckBox": {
+                                        "SButton": {
                                             "Aka": "TabCVars",
-                                            "IsChecked": true,
-                                            "Padding": [10, 4],
-                                            "CheckBoxStyle": { "Style": "FCoreStyle", "StyleName": "Menu.ToggleButton" },
-                                            "Content": { "STextBlock": { "Text": "Variables" } },
-                                            "OnCheckStateChanged": "console_browser.on_tab_cvars()"
+                                            "ContentPadding": [10, 4],
+                                            "ButtonColorAndOpacity": [0.05, 0.40, 1.00, 1.0],
+                                            "Content": { "STextBlock": { "Text": "Variables", "Font": { "Style": "FEditorStyle", "StyleName": "BoldFont" }, "ColorAndOpacity": [1, 1, 1, 1] } },
+                                            "OnClick": "console_browser.on_tab_cvars()"
                                         }
                                     },
                                     {
                                         "AutoWidth": true,
                                         "VAlign": "Center",
                                         "Padding": [0, 0, 4, 0],
-                                        "SCheckBox": {
+                                        "SButton": {
                                             "Aka": "TabCCmds",
-                                            "IsChecked": false,
-                                            "Padding": [10, 4],
-                                            "CheckBoxStyle": { "Style": "FCoreStyle", "StyleName": "Menu.ToggleButton" },
-                                            "Content": { "STextBlock": { "Text": "Commands" } },
-                                            "OnCheckStateChanged": "console_browser.on_tab_ccmds()"
+                                            "ContentPadding": [10, 4],
+                                            "ButtonColorAndOpacity": [0.15, 0.15, 0.15, 1.0],
+                                            "Content": { "STextBlock": { "Text": "Commands", "Font": { "Style": "FEditorStyle", "StyleName": "BoldFont" }, "ColorAndOpacity": [1, 1, 1, 1] } },
+                                            "OnClick": "console_browser.on_tab_ccmds()"
                                         }
                                     },
                                     {
                                         "AutoWidth": true,
                                         "VAlign": "Center",
-                                        "SCheckBox": {
+                                        "Padding": [0, 0, 4, 0],
+                                        "SButton": {
                                             "Aka": "TabFavs",
-                                            "IsChecked": false,
-                                            "Padding": [10, 4],
-                                            "CheckBoxStyle": { "Style": "FCoreStyle", "StyleName": "Menu.ToggleButton" },
-                                            "Content": { "STextBlock": { "Text": "Favorites" } },
-                                            "OnCheckStateChanged": "console_browser.on_tab_favs()"
+                                            "ContentPadding": [10, 4],
+                                            "ButtonColorAndOpacity": [0.15, 0.15, 0.15, 1.0],
+                                            "Content": { "STextBlock": { "Text": "Favorites", "Font": { "Style": "FEditorStyle", "StyleName": "BoldFont" }, "ColorAndOpacity": [1, 1, 1, 1] } },
+                                            "OnClick": "console_browser.on_tab_favs()"
                                         }
                                     },
                                     {
@@ -85,15 +83,16 @@
                             "AutoHeight": true,
                             "Padding": [6, 2, 6, 6],
                             "SHorizontalBox": {
-                                "Aka": "ToolbarNormal",
                                 "Slots": [
                                     {
                                         "AutoWidth": true,
                                         "VAlign": "Center",
-                                        "Padding": [0, 0, 16, 0],
+                                        "Padding": [0, 0, 4, 0],
                                         "SButton": {
+                                            "Aka": "BtnAddFav",
                                             "Text": "★ 추가",
                                             "ContentPadding": [10, 3],
+                                            "ButtonStyle": {"Style": "FCoreStyle", "StyleName": "PrimaryButton"},
                                             "ToolTipText": "선택한 항목을 현재 즐겨찾기 목록에 추가",
                                             "OnClick": "console_browser.add_to_favs()"
                                         }
@@ -101,64 +100,53 @@
                                     {
                                         "AutoWidth": true,
                                         "VAlign": "Center",
-                                        "Padding": [0, 0, 4, 0],
-                                        "SButton": {
-                                            "Text": "Rebuild",
-                                            "ContentPadding": [10, 3],
-                                            "ToolTipText": "CVars/CCmds CSV 강제 재생성",
-                                            "OnClick": "console_browser.rebuild()"
-                                        }
-                                    },
-                                    {
-                                        "AutoWidth": true,
-                                        "VAlign": "Center",
-                                        "SButton": {
-                                            "Text": "Split to DB",
-                                            "ContentPadding": [10, 3],
-                                            "ToolTipText": "도메인별 JSON 파일로 분할 저장",
-                                            "OnClick": "console_browser.split_to_db()"
-                                        }
-                                    }
-                                ]
-                            }
-                        },
-                        {
-                            "AutoHeight": true,
-                            "Padding": [6, 2, 6, 6],
-                            "SHorizontalBox": {
-                                "Aka": "ToolbarFavs",
-                                "Visibility": "Collapsed",
-                                "Slots": [
-                                    {
-                                        "AutoWidth": true,
-                                        "VAlign": "Center",
                                         "Padding": [0, 0, 16, 0],
                                         "SButton": {
+                                            "Aka": "BtnRemFav",
                                             "Text": "✕ 제거",
                                             "ContentPadding": [10, 3],
+                                            "ButtonStyle": {"Style": "FCoreStyle", "StyleName": "PrimaryButton"},
                                             "ToolTipText": "선택한 항목을 즐겨찾기에서 제거",
                                             "OnClick": "console_browser.remove_from_favs()"
                                         }
                                     },
                                     {
                                         "AutoWidth": true,
+                                        "VAlign": "Fill",
+                                        "Padding": [0, 0, 16, 0],
+                                        "SSeparator": { "Orientation": "Vertical" }
+                                    },
+                                    {
+                                        "AutoWidth": true,
                                         "VAlign": "Center",
                                         "Padding": [0, 0, 4, 0],
-                                        "SButton": {
-                                            "Text": "Export",
-                                            "ContentPadding": [10, 3],
-                                            "ToolTipText": "현재 즐겨찾기 목록 전체를 CSV로 내보내기",
-                                            "OnClick": "console_browser.export_favs()"
+                                        "SCheckBox": {
+                                            "Aka": "ToggleTrans",
+                                            "IsChecked": false,
+                                            "Padding": [10, 3],
+                                            "CheckBoxStyle": { "Style": "FCoreStyle", "StyleName": "Menu.ToggleButton" },
+                                            "Content": { "STextBlock": { "Text": "🌐 번역문 보기" } },
+                                            "OnCheckStateChanged": "console_browser.on_toggle_trans()"
                                         }
                                     },
                                     {
                                         "AutoWidth": true,
                                         "VAlign": "Center",
-                                        "SCheckBox": {
-                                            "Aka": "AutoRebuild",
-                                            "IsChecked": false,
-                                            "Padding": [6, 4],
-                                            "Content": { "STextBlock": { "Text": "자동 Rebuild" } }
+                                        "Padding": [0, 0, 4, 0],
+                                        "SComboBox": {
+                                            "Aka": "EngineSelector",
+                                            "OptionsSource": ["Auto", "Claude", "Google"],
+                                            "InitiallySelectedItem": "Auto"
+                                        }
+                                    },
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "SButton": {
+                                            "Text": "번역",
+                                            "ContentPadding": [10, 3],
+                                            "ToolTipText": "선택한 항목의 도움말을 한국어로 번역하고 저장",
+                                            "OnClick": "console_browser.translate_detail()"
                                         }
                                     },
                                     {
@@ -169,37 +157,103 @@
                                                 {
                                                     "AutoWidth": true,
                                                     "VAlign": "Center",
-                                                    "Padding": [0, 0, 6, 0],
-                                                    "STextBlock": { "Text": "새 목록:" }
-                                                },
-                                                {
-                                                    "AutoWidth": true,
-                                                    "VAlign": "Center",
                                                     "Padding": [0, 0, 4, 0],
-                                                    "SEditableTextBox": {
-                                                        "Aka": "FavsNewName",
-                                                        "HintText": "목록 이름...",
-                                                        "MinDesiredWidth": 150
+                                                    "SButton": {
+                                                        "Text": "Rebuild",
+                                                        "ContentPadding": [10, 3],
+                                                        "ToolTipText": "CVars/CCmds CSV 강제 재생성",
+                                                        "OnClick": "console_browser.rebuild()"
                                                     }
                                                 },
                                                 {
                                                     "AutoWidth": true,
                                                     "VAlign": "Center",
-                                                    "Padding": [0, 0, 4, 0],
+                                                    "Padding": [0, 0, 16, 0],
                                                     "SButton": {
-                                                        "Text": "+ 추가",
-                                                        "ContentPadding": [8, 3],
-                                                        "OnClick": "console_browser.add_fav_list()"
+                                                        "Text": "Split to DB",
+                                                        "ContentPadding": [10, 3],
+                                                        "ToolTipText": "도메인별 JSON 파일로 분할 저장",
+                                                        "OnClick": "console_browser.split_to_db()"
                                                     }
                                                 },
                                                 {
                                                     "AutoWidth": true,
                                                     "VAlign": "Center",
-                                                    "SButton": {
-                                                        "Text": "− 삭제",
-                                                        "ContentPadding": [8, 3],
-                                                        "ToolTipText": "현재 목록 삭제 (Default는 삭제 불가)",
-                                                        "OnClick": "console_browser.delete_fav_list()"
+                                                    "SHorizontalBox": {
+                                                        "Aka": "FavsTools",
+                                                        "Visibility": "Collapsed",
+                                                        "Slots": [
+                                                            {
+                                                                "AutoWidth": true,
+                                                                "VAlign": "Fill",
+                                                                "Padding": [0, 0, 16, 0],
+                                                                "SSeparator": { "Orientation": "Vertical" }
+                                                            },
+                                                            {
+                                                                "AutoWidth": true,
+                                                                "VAlign": "Center",
+                                                                "Padding": [0, 0, 4, 0],
+                                                                "SButton": {
+                                                                    "Text": "Export",
+                                                                    "ContentPadding": [10, 3],
+                                                                    "ToolTipText": "현재 즐겨찾기 목록 전체를 CSV로 내보내기",
+                                                                    "OnClick": "console_browser.export_favs()"
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoWidth": true,
+                                                                "VAlign": "Center",
+                                                                "Padding": [0, 0, 16, 0],
+                                                                "SCheckBox": {
+                                                                    "Aka": "AutoRebuild",
+                                                                    "IsChecked": false,
+                                                                    "Padding": [6, 4],
+                                                                    "Content": { "STextBlock": { "Text": "자동 Rebuild" } }
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoWidth": true,
+                                                                "VAlign": "Fill",
+                                                                "Padding": [0, 0, 16, 0],
+                                                                "SSeparator": { "Orientation": "Vertical" }
+                                                            },
+                                                            {
+                                                                "AutoWidth": true,
+                                                                "VAlign": "Center",
+                                                                "Padding": [0, 0, 6, 0],
+                                                                "STextBlock": { "Text": "새 목록:" }
+                                                            },
+                                                            {
+                                                                "AutoWidth": true,
+                                                                "VAlign": "Center",
+                                                                "Padding": [0, 0, 4, 0],
+                                                                "SEditableTextBox": {
+                                                                    "Aka": "FavsNewName",
+                                                                    "HintText": "목록 이름...",
+                                                                    "MinDesiredWidth": 120
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoWidth": true,
+                                                                "VAlign": "Center",
+                                                                "Padding": [0, 0, 4, 0],
+                                                                "SButton": {
+                                                                    "Text": "+ 추가",
+                                                                    "ContentPadding": [8, 3],
+                                                                    "OnClick": "console_browser.add_fav_list()"
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoWidth": true,
+                                                                "VAlign": "Center",
+                                                                "SButton": {
+                                                                    "Text": "− 삭제",
+                                                                    "ContentPadding": [8, 3],
+                                                                    "ToolTipText": "현재 목록 삭제 (Default는 삭제 불가)",
+                                                                    "OnClick": "console_browser.delete_fav_list()"
+                                                                }
+                                                            }
+                                                        ]
                                                     }
                                                 }
                                             ]
@@ -368,9 +422,60 @@
                         {
                             "AutoHeight": true,
                             "Padding": [8, 2, 8, 4],
-                            "STextBlock": {
-                                "Aka": "StatusText",
-                                "Text": ""
+                            "SHorizontalBox": {
+                                "Slots": [
+                                    {
+                                        "VAlign": "Center",
+                                        "STextBlock": {
+                                            "Aka": "StatusText",
+                                            "Text": ""
+                                        }
+                                    },
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "SHorizontalBox": {
+                                            "Aka": "ProgressRow",
+                                            "Visibility": "Collapsed",
+                                            "Slots": [
+                                                {
+                                                    "AutoWidth": true,
+                                                    "VAlign": "Center",
+                                                    "Padding": [0, 0, 6, 0],
+                                                    "SBox": {
+                                                        "WidthOverride": 300,
+                                                        "VAlign": "Center",
+                                                        "Content": {
+                                                            "SProgressBar": {
+                                                                "Aka": "ProgressBar",
+                                                                "Percent": 0.0
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "AutoWidth": true,
+                                                    "VAlign": "Center",
+                                                    "Padding": [0, 0, 6, 0],
+                                                    "STextBlock": {
+                                                        "Aka": "ProgressLabel",
+                                                        "Text": ""
+                                                    }
+                                                },
+                                                {
+                                                    "AutoWidth": true,
+                                                    "VAlign": "Center",
+                                                    "SButton": {
+                                                        "Text": "✕",
+                                                        "ContentPadding": [6, 2],
+                                                        "ToolTipText": "번역 취소",
+                                                        "OnClick": "console_browser.cancel_translate()"
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
                             }
                         }
 
