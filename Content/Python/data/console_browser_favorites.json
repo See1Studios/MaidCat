@@ -1,3 +1,40 @@
 {
-  "Default": []
+  "Default": [
+    {
+      "type": "CCmds",
+      "name": "CollectionManager.Add",
+      "value": "",
+      "set_by": "",
+      "help": "??? ???? ??? ???? ??? ?????.",
+      "custom_values": [],
+      "memo": "컬렉션에 애셋 추가"
+    },
+    {
+      "type": "CCmds",
+      "name": "CollectionManager.Create",
+      "value": "",
+      "set_by": "",
+      "help": "??? ??? ??? ???? ?????.",
+      "custom_values": [],
+      "memo": "컬렉션 생성"
+    },
+    {
+      "type": "CCmds",
+      "name": "CollectionManager.Destroy",
+      "value": "",
+      "set_by": "",
+      "help": "??? ??? ??? ???? ?????.",
+      "custom_values": [],
+      "memo": "컬렉션 제거"
+    },
+    {
+      "type": "CCmds",
+      "name": "CollectionManager.Remove",
+      "value": "",
+      "set_by": "",
+      "help": "??? ????? ??? ???? ??? ?????.",
+      "custom_values": [],
+      "memo": "컬렉션에서 애셋 제거"
+    }
+  ]
 }

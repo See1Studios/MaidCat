@@ -419,6 +419,15 @@ class ConsoleBrowser:
         self._set_status(f"제거: {count}개  (총 {len(self._favs):,}개)")
 
     def save_memo(self) -> None:
+        """저장 버튼 클릭으로 메모 저장"""
+        self._do_save_memo()
+
+    def on_memo_committed(self) -> None:
+        """Enter 키로 메모 저장"""
+        if _is_enter_pressed():
+            self._do_save_memo()
+
+    def _do_save_memo(self) -> None:
         if len(self._favs_sel) != 1:
             self._set_status("메모를 저장할 항목을 하나 선택하세요")
             return
@@ -1036,6 +1045,23 @@ class ConsoleBrowser:
         self._load_trans_cache()
         self._refresh_all_lists()
         self._set_status(f"번역 파일 새로고침 완료 ({len(self._trans_cache):,}개)")
+
+    def open_trans_file(self) -> None:
+        """번역 파일을 기본 편집기로 열기"""
+        plugin_path = self._plugin_trans_path()
+        fallback_path = self._fallback_trans_path()
+        # 실제 존재하는 파일 우선, 없으면 plugin_path 생성 후 열기
+        if plugin_path.exists():
+            path = plugin_path
+        elif fallback_path.exists():
+            path = fallback_path
+        else:
+            plugin_path.parent.mkdir(parents=True, exist_ok=True)
+            plugin_path.write_text("{}\n", encoding="utf-8")
+            path = plugin_path
+        import subprocess
+        subprocess.Popen(["start", "", str(path)], shell=True)
+        self._set_status(f"번역 파일 열기: {path.name}")
 
     def _set_status(self, text: str) -> None:
         self.data.set_text(AKA_STATUS, text)

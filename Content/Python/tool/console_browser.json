@@ -93,7 +93,7 @@
                                             "Content": {
                                                 "SButton": {
                                                     "Aka": "BtnAddFav",
-                                                    "Text": "⊕ 추가",
+                                                    "Text": "⭐ 추가",
                                                     "ContentPadding": [8, 3],
                                                     "ButtonStyle": {"Style": "FCoreStyle", "StyleName": "PrimaryButton"},
                                                     "ButtonColorAndOpacity": [0.85, 0.6, 0.1, 1.0],
@@ -151,6 +151,17 @@
                                             "ContentPadding": [3, 1],
                                             "ToolTipText": "번역 파일 새로고침 (외부 편집 후 반영)",
                                             "OnClick": "console_browser.reload_trans_cache()"
+                                        }
+                                    },
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "Padding": [0, 0, 4, 0],
+                                        "SButton": {
+                                            "Text": "📝",
+                                            "ContentPadding": [3, 1],
+                                            "ToolTipText": "번역 파일을 기본 편집기로 열기",
+                                            "OnClick": "console_browser.open_trans_file()"
                                         }
                                     },
                                     {
@@ -408,10 +419,10 @@
                                                 {
                                                     "VAlign": "Fill",
                                                     "Padding": [0, 0, 6, 0],
-                                                    "SMultiLineEditableTextBox": {
+                                                    "SEditableTextBox": {
                                                         "Aka": "MemoInput",
                                                         "HintText": "메모...",
-                                                        "MinDesiredHeight": 40
+                                                        "OnTextCommitted": "console_browser.on_memo_committed()"
                                                     }
                                                 },
                                                 {
