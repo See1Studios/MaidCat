@@ -21,13 +21,13 @@ console_cat 을 대체하며, console_cat 에 대한 의존성은 없음.
   - entry: {"name", "value", "set_by", "help", "memo", "custom_values": [str, ...]}
 - 저장 위치
   - shared : MaidCat/Content/Python/data/console_browser_favorites.json  (git 관리)
-  - local  : {ProjectSaved}/Logs/ConsoleBrowser/favorites.json
+  - local  : {ProjectSaved}/ConsoleBrowser/favorites.json
 
 ## 번역 시스템
 - _trans_cache: dict[name, translated_help]  (영→한 번역 결과)
 - 저장 위치 (우선순위 순)
   1. MaidCat/Content/Python/data/console_browser_translations.json  (git 관리, 팀 공유)
-  2. {ProjectSaved}/Logs/ConsoleBrowser/console_browser_translations.json  (폴백)
+  2. {ProjectSaved}/ConsoleBrowser/console_browser_translations.json  (폴백)
 - Perforce 환경이면 공유 파일 수정 전 자동 p4 edit
 - 번역 엔진: Claude API (ANTHROPIC_API_KEY 환경변수) / Google Translate 공개 API
 - [🌐] 토글로 원문↔번역 전환, [🔄] 로 파일 새로고침, [📝] 로 파일 직접 편집
@@ -44,7 +44,7 @@ console_cat 을 대체하며, console_cat 에 대한 의존성은 없음.
 - 기타          : rebuild / export_favs
 
 ## 설정 영속성
-- {ProjectSaved}/Logs/ConsoleBrowser/settings.json
+- {ProjectSaved}/ConsoleBrowser/settings.json
 - 저장 항목: show_translation (bool), translation_engine (str)
 
 ## 주요 내부 메서드
@@ -626,7 +626,7 @@ class ConsoleBrowser:
             return
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         default_name = f"Favs_{_safe_filename(self._active_fav_list[1])}_{timestamp}.csv"
-        default_dir = self._saved_dir() / "Logs" / "ConsoleBrowser"
+        default_dir = self._saved_dir() / "ConsoleBrowser"
         default_dir.mkdir(parents=True, exist_ok=True)
 
         root = tk.Tk()
@@ -731,7 +731,7 @@ class ConsoleBrowser:
         ))
 
     def _logs_path(self, filename: str) -> str:
-        return str(self._saved_dir() / "Logs" / filename)
+        return str(self._saved_dir() / "ConsoleBrowser" / filename)
 
     def _load_favs(self) -> None:
         self._favs_db = {}
@@ -748,7 +748,17 @@ class ConsoleBrowser:
                 unreal.log_warning(f"ConsoleBrowser: 즐겨찾기 로드 오류 ({tier}): {e}")
 
         _load_file(_data_dir() / FAVS_SHARED_FILE, "shared")
-        _load_file(self._saved_dir() / "Logs" / "ConsoleBrowser" / FAVS_LOCAL_FILE, "local")
+        # 구버전 경로(Saved/Logs/ConsoleBrowser/) 에 파일이 있으면 새 경로로 이동
+        old_local = self._saved_dir() / "Logs" / "ConsoleBrowser" / FAVS_LOCAL_FILE
+        new_local = self._saved_dir() / "ConsoleBrowser" / FAVS_LOCAL_FILE
+        if old_local.exists() and not new_local.exists():
+            try:
+                new_local.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(old_local), str(new_local))
+                unreal.log(f"ConsoleBrowser: 즐겨찾기 마이그레이션 완료 → {new_local}")
+            except OSError:
+                pass
+        _load_file(new_local, "local")
 
         if not self._favs_db:
             self._favs_db = {("local", DEFAULT_LIST): []}
@@ -777,7 +787,7 @@ class ConsoleBrowser:
             except OSError as e:
                 unreal.log_warning(f"ConsoleBrowser: 공유 즐겨찾기 저장 실패: {e}")
 
-        path = self._saved_dir() / "Logs" / "ConsoleBrowser" / FAVS_LOCAL_FILE
+        path = self._saved_dir() / "ConsoleBrowser" / FAVS_LOCAL_FILE
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(local, ensure_ascii=False, indent=2), encoding="utf-8")
 
@@ -787,10 +797,10 @@ class ConsoleBrowser:
 
     def _fallback_trans_path(self) -> Path:
         """플러그인 디렉터리 쓰기 불가 시 폴백 (프로젝트 Saved/)"""
-        return self._saved_dir() / "Logs" / "ConsoleBrowser" / TRANS_CACHE_FILE
+        return self._saved_dir() / "ConsoleBrowser" / TRANS_CACHE_FILE
 
     def _settings_path(self) -> Path:
-        return self._saved_dir() / "Logs" / "ConsoleBrowser" / SETTINGS_FILE
+        return self._saved_dir() / "ConsoleBrowser" / SETTINGS_FILE
 
     def _load_settings(self) -> None:
         path = self._settings_path()
@@ -825,10 +835,11 @@ class ConsoleBrowser:
 
     def _load_trans_cache(self) -> None:
         plugin_path = self._plugin_trans_path()
-        # 구버전 경로 자동 마이그레이션 (Saved/translations.json 또는 tool/ 경유)
+        # 구버전 경로 자동 마이그레이션
         old_paths = [
-            Path(__file__).parent / TRANS_CACHE_FILE,                          # tool/ (이전 위치)
-            self._saved_dir() / "Logs" / "ConsoleBrowser" / "translations.json",  # 최초 위치
+            Path(__file__).parent / TRANS_CACHE_FILE,                                    # tool/ (이전 위치)
+            self._saved_dir() / "Logs" / "ConsoleBrowser" / TRANS_CACHE_FILE,            # Saved/Logs/ConsoleBrowser/ (이전 위치)
+            self._saved_dir() / "ConsoleBrowser" / "translations.json",                  # 최초 위치
         ]
         old_path = next((p for p in old_paths if p.exists()), None)
         if not plugin_path.exists() and old_path and old_path.exists():
