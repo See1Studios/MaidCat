@@ -1,10 +1,58 @@
 """
-ConsoleBrowser — Chameleon 툴
-UE CVar / CCmds 덤프 CSV를 로드해 탭별로 검색.
-즐겨찾기는 여러 목록으로 관리, 각 항목에 메모 첨부 가능.
+ConsoleBrowser — TAPython Chameleon 툴
+========================================
 
-초기 로드: CSV가 있으면 바로 사용, 없으면 안내 표시
-강제 재생성: [Rebuild] 버튼
+언리얼 엔진의 CVar(콘솔 변수)와 CCmds(콘솔 커맨드)를 탭별로 검색·관리하는 툴.
+console_cat 을 대체하며, console_cat 에 대한 의존성은 없음.
+
+## 탭 구성
+- CVar  : DumpCVars.csv 로드. 2열 리스트(Name / Help). 선택 시 상세 정보 표시.
+- CCmds : DumpCCmds.csv 로드. 2열 리스트(Name / Help).
+- Favs  : 즐겨찾기. 4열 리스트(Name / 값 / Memo / Help). 목록 다중 관리.
+
+## CSV 로드 흐름
+1. init() 호출 시 CSV 존재 여부 확인
+2. 없으면 자동으로 rebuild() 호출 (DumpCVars / DumpCCmds 콘솔 커맨드 실행)
+3. 이후 [🔨 Rebuild] 버튼으로 수동 갱신 가능
+
+## 즐겨찾기 데이터 구조
+- _favs_db: dict[(tier, name), list[entry]]
+  - tier: "shared" | "local"
+  - entry: {"name", "value", "set_by", "help", "memo", "custom_values": [str, ...]}
+- 저장 위치
+  - shared : MaidCat/Content/Python/data/console_browser_favorites.json  (git 관리)
+  - local  : {ProjectSaved}/Logs/ConsoleBrowser/favorites.json
+
+## 번역 시스템
+- _trans_cache: dict[name, translated_help]  (영→한 번역 결과)
+- 저장 위치 (우선순위 순)
+  1. MaidCat/Content/Python/data/console_browser_translations.json  (git 관리, 팀 공유)
+  2. {ProjectSaved}/Logs/ConsoleBrowser/console_browser_translations.json  (폴백)
+- Perforce 환경이면 공유 파일 수정 전 자동 p4 edit
+- 번역 엔진: Claude API (ANTHROPIC_API_KEY 환경변수) / Google Translate 공개 API
+- [🌐] 토글로 원문↔번역 전환, [🔄] 로 파일 새로고침, [📝] 로 파일 직접 편집
+
+## UI ↔ Python 콜백 매핑 (console_browser.json → console_browser.py)
+- 탭 전환       : on_tab_cvars / on_tab_ccmds / on_tab_favs
+- 검색          : on_search_changed(text)
+- 리스트 선택   : on_cvar_selection_changed / on_ccmds_selection_changed / on_favs_selection_changed
+- 즐겨찾기 목록 : on_fav_list_changed(display_name) / add_fav_list / delete_fav_list
+- 즐겨찾기 항목 : add_to_favs / remove_from_favs / on_fav_double_click(idx)
+- 메모          : save_memo (버튼) / on_memo_committed (Enter)
+- 커스텀 값     : on_custom_value_committed(text) / add_custom_value / exec_fav_value(val_idx) / delete_fav_value(val_idx)
+- 번역          : on_toggle_trans / on_engine_changed(engine) / translate_detail / cancel_translate / reload_trans_cache / open_trans_file
+- 기타          : rebuild / export_favs
+
+## 설정 영속성
+- {ProjectSaved}/Logs/ConsoleBrowser/settings.json
+- 저장 항목: show_translation (bool), translation_engine (str)
+
+## 주요 내부 메서드
+- _reload_all()        : CSV 재로드 + 필터 + 리스트 갱신
+- _filter_all(query)   : 세 탭 동시 필터링, 즐겨찾기 선택은 이름 기준 보존
+- _refresh_all_lists() : ChameleonData API로 리스트 위젯 갱신
+- _show_detail(...)    : 상세 텍스트 박스 갱신 (번역 모드 반영)
+- _favs_refreshing     : 리스트 갱신 중 spurious selection 콜백 억제 플래그
 """
 
 import ctypes
@@ -18,6 +66,8 @@ import threading
 import time
 import tkinter as tk
 import tkinter.filedialog as filedialog
+import urllib.parse
+import urllib.request
 import unreal
 from pathlib import Path
 
@@ -170,22 +220,41 @@ def _translate_with_claude(text: str) -> str | None:
     return None
 
 
+def _translate_text_google(text: str) -> str | None:
+    """Google Translate 공개 API로 영→한 번역"""
+    if not text or text.isspace():
+        return ""
+    try:
+        url = (
+            "https://translate.googleapis.com/translate_a/single"
+            f"?client=gtx&sl=en&tl=ko&dt=t&q={urllib.parse.quote(text)}"
+        )
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req) as resp:
+            if resp.status != 200:
+                return None
+            result = json.loads(resp.read().decode("utf-8"))
+            return "".join(seg[0] for seg in result[0] if seg[0]) or None
+    except Exception as e:
+        unreal.log_error(f"ConsoleBrowser: Google 번역 오류: {e}")
+        return None
+
+
 def _translate_text(text: str, engine_pref: str = "Auto") -> tuple[str | None, str]:
     """번역 엔진 선택에 따라 번역.
     engine_pref: "Auto" | "Claude" | "Google"
     Returns: (번역문 또는 None, 사용된 엔진 이름)
     """
-    from tool.console_cat.data_generator import translate_text_google
     if engine_pref == "Claude":
         result = _translate_with_claude(text)
         return (result, "Claude") if result else (None, "Claude")
     if engine_pref == "Google":
-        return translate_text_google(text), "Google"
+        return _translate_text_google(text), "Google"
     # Auto: Claude 우선, 실패 시 Google
     result = _translate_with_claude(text)
     if result:
         return result, "Claude"
-    return translate_text_google(text), "Google"
+    return _translate_text_google(text), "Google"
 
 _INVALID_FILENAME_CHARS = str.maketrans({c: "_" for c in r'<>:"/\|?* '})
 
