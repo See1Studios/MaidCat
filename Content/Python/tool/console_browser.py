@@ -236,7 +236,12 @@ class ConsoleBrowser:
         self._load_settings()
         self._load_favs()
         self._load_trans_cache()
-        self._reload_all()
+        cvars_missing = not Path(self._logs_path(CSV_CVARS)).exists()
+        ccmds_missing = not Path(self._logs_path(CSV_CCMDS)).exists()
+        if cvars_missing or ccmds_missing:
+            self.rebuild()
+        else:
+            self._reload_all()
         self._show_tab("CVar")
         self._apply_settings()
 

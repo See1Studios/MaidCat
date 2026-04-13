@@ -350,12 +350,16 @@
                         {
                             "AutoHeight": true,
                             "Padding": [6, 4, 6, 2],
-                            "SMultiLineEditableTextBox": {
-                                "Aka": "DetailText",
-                                "Text": "",
-                                "IsReadOnly": true,
-                                "HintText": "항목을 클릭하면 상세 정보가 표시됩니다.",
-                                "MinDesiredHeight": 80
+                            "SBox": {
+                                "MinDesiredHeight": 80,
+                                "Content": {
+                                    "SMultiLineEditableTextBox": {
+                                        "Aka": "DetailText",
+                                        "Text": "",
+                                        "IsReadOnly": true,
+                                        "HintText": "항목을 클릭하면 상세 정보가 표시됩니다."
+                                    }
+                                }
                             }
                         },
                         {
