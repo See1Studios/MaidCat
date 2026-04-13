@@ -18,6 +18,8 @@ When debugging, testing, or executing commands, check `dev.local.json` (gitignor
 - `dev.local.json` is generated automatically by `CreatePluginLink.ps1` when the symlink is created.
 - If the file is missing, ask the user to run `InstallAsLink.bat` first.
 - Logs are at `{host_project_dir}/Saved/Logs/`
+- Unreal Python stub file: `{host_project_dir}/Intermediate/PythonStub/unreal.py`
+  Always verify API against this file before writing any `unreal.*` code.
 
 ## General Principles
 
@@ -57,8 +59,11 @@ Python 코드베이스의 루트는 `MaidCat/Content/Python/` 폴더입니다.
 - `unreal.PythonLevelLib` - 레벨 에디터 인터페이스
 - `unreal.PythonTestLib` - 테스팅 인터페이스
 
-**TAPython 폴더 구조** (`{Project}/TA/TAPython/`):
-- `Python/`: TAPython 관련 Python 코드 저장 위치
+**TAPython 폴더 구조** (`{host_project_dir}/TA/TAPython/`):
+- `Python/`: TAPython 설치 시 자동 생성되는 예제 코드 (읽기 전용 참고용)
+  - `Example/`, `ChameleonGallery/`, `ChameleonSketch/` 등 Chameleon UI 예제 포함
+  - 각 예제는 `.py` + `.json` 쌍으로 구성됨
+  - **중요**: 이 폴더는 참고용이며, 실제 도구는 `MaidCat/Content/Python/` 에 작성
 - `Lib/site-packages/`: pip로 설치된 패키지 저장 폴더
 - `Config/`: TAPython 설정 파일
 - `UI/`: TAPython UI 정의 파일 (JSON)
@@ -131,6 +136,11 @@ Python 코드베이스의 루트는 `MaidCat/Content/Python/` 폴더입니다.
 - **참고 문서**: 
   - [TAPython 공식 문서](https://www.tacolor.xyz/tapython/welcome_to_tapython.html)
   - [Chameleon Data API](https://www.tacolor.xyz/pages/ChameleonDataAPI.html)
+
+- **Chameleon 도구 작성 위치**:
+  - 실제 도구는 반드시 **`MaidCat/Content/Python/`** 아래에 작성
+  - UI 예제 참고: `MaidCat/Content/Python/ui/` — `.py` + `.json` 쌍 구조 확인
+  - TAPython 설치 예제(`{host_project_dir}/TA/TAPython/Python/`)는 참고용으로만 활용
 
 
 

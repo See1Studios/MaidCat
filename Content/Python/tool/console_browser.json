@@ -1,0 +1,382 @@
+{
+    "TabLabel": "Console Browser",
+    "InitTabSize": [1100, 760],
+    "InitTabPosition": [200, 100],
+    "InitPyCmd": "import importlib; import tool.console_browser; importlib.reload(tool.console_browser); console_browser = tool.console_browser.ConsoleBrowser(%JsonPath); console_browser.init()",
+    "Root": {
+        "SBorder": {
+            "BorderImage": { "Style": "FCoreStyle", "Brush": "ToolPanel.GroupBorder" },
+            "Content": {
+                "SVerticalBox": {
+                    "Slots": [
+
+                        {
+                            "AutoHeight": true,
+                            "Padding": [6, 6, 6, 2],
+                            "SHorizontalBox": {
+                                "Slots": [
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "Padding": [0, 0, 4, 0],
+                                        "SCheckBox": {
+                                            "Aka": "TabCVars",
+                                            "IsChecked": true,
+                                            "Padding": [10, 4],
+                                            "CheckBoxStyle": { "Style": "FCoreStyle", "StyleName": "Menu.ToggleButton" },
+                                            "Content": { "STextBlock": { "Text": "Variables" } },
+                                            "OnCheckStateChanged": "console_browser.on_tab_cvars()"
+                                        }
+                                    },
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "Padding": [0, 0, 4, 0],
+                                        "SCheckBox": {
+                                            "Aka": "TabCCmds",
+                                            "IsChecked": false,
+                                            "Padding": [10, 4],
+                                            "CheckBoxStyle": { "Style": "FCoreStyle", "StyleName": "Menu.ToggleButton" },
+                                            "Content": { "STextBlock": { "Text": "Commands" } },
+                                            "OnCheckStateChanged": "console_browser.on_tab_ccmds()"
+                                        }
+                                    },
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "SCheckBox": {
+                                            "Aka": "TabFavs",
+                                            "IsChecked": false,
+                                            "Padding": [10, 4],
+                                            "CheckBoxStyle": { "Style": "FCoreStyle", "StyleName": "Menu.ToggleButton" },
+                                            "Content": { "STextBlock": { "Text": "Favorites" } },
+                                            "OnCheckStateChanged": "console_browser.on_tab_favs()"
+                                        }
+                                    },
+                                    {
+                                        "HAlign": "Right",
+                                        "VAlign": "Center",
+                                        "SHorizontalBox": {
+                                            "Slots": [
+                                                {
+                                                    "AutoWidth": true,
+                                                    "VAlign": "Center",
+                                                    "Padding": [0, 0, 4, 0],
+                                                    "STextBlock": { "Text": "즐겨찾기:" }
+                                                },
+                                                {
+                                                    "AutoWidth": true,
+                                                    "VAlign": "Center",
+                                                    "SComboBox": {
+                                                        "Aka": "FavsSelector",
+                                                        "OptionsSource": ["Default"],
+                                                        "InitiallySelectedItem": "Default",
+                                                        "OnSelectionChanged": "console_browser.on_fav_list_changed(%)"
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+
+                        {
+                            "AutoHeight": true,
+                            "Padding": [6, 2, 6, 6],
+                            "SHorizontalBox": {
+                                "Aka": "ToolbarNormal",
+                                "Slots": [
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "Padding": [0, 0, 16, 0],
+                                        "SButton": {
+                                            "Text": "★ 추가",
+                                            "ContentPadding": [10, 3],
+                                            "ToolTipText": "선택한 항목을 현재 즐겨찾기 목록에 추가",
+                                            "OnClick": "console_browser.add_to_favs()"
+                                        }
+                                    },
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "Padding": [0, 0, 4, 0],
+                                        "SButton": {
+                                            "Text": "Rebuild",
+                                            "ContentPadding": [10, 3],
+                                            "ToolTipText": "CVars/CCmds CSV 강제 재생성",
+                                            "OnClick": "console_browser.rebuild()"
+                                        }
+                                    },
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "SButton": {
+                                            "Text": "Split to DB",
+                                            "ContentPadding": [10, 3],
+                                            "ToolTipText": "도메인별 JSON 파일로 분할 저장",
+                                            "OnClick": "console_browser.split_to_db()"
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "AutoHeight": true,
+                            "Padding": [6, 2, 6, 6],
+                            "SHorizontalBox": {
+                                "Aka": "ToolbarFavs",
+                                "Visibility": "Collapsed",
+                                "Slots": [
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "Padding": [0, 0, 16, 0],
+                                        "SButton": {
+                                            "Text": "✕ 제거",
+                                            "ContentPadding": [10, 3],
+                                            "ToolTipText": "선택한 항목을 즐겨찾기에서 제거",
+                                            "OnClick": "console_browser.remove_from_favs()"
+                                        }
+                                    },
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "Padding": [0, 0, 4, 0],
+                                        "SButton": {
+                                            "Text": "Export",
+                                            "ContentPadding": [10, 3],
+                                            "ToolTipText": "현재 즐겨찾기 목록 전체를 CSV로 내보내기",
+                                            "OnClick": "console_browser.export_favs()"
+                                        }
+                                    },
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "SCheckBox": {
+                                            "Aka": "AutoRebuild",
+                                            "IsChecked": false,
+                                            "Padding": [6, 4],
+                                            "Content": { "STextBlock": { "Text": "자동 Rebuild" } }
+                                        }
+                                    },
+                                    {
+                                        "HAlign": "Right",
+                                        "VAlign": "Center",
+                                        "SHorizontalBox": {
+                                            "Slots": [
+                                                {
+                                                    "AutoWidth": true,
+                                                    "VAlign": "Center",
+                                                    "Padding": [0, 0, 6, 0],
+                                                    "STextBlock": { "Text": "새 목록:" }
+                                                },
+                                                {
+                                                    "AutoWidth": true,
+                                                    "VAlign": "Center",
+                                                    "Padding": [0, 0, 4, 0],
+                                                    "SEditableTextBox": {
+                                                        "Aka": "FavsNewName",
+                                                        "HintText": "목록 이름...",
+                                                        "MinDesiredWidth": 150
+                                                    }
+                                                },
+                                                {
+                                                    "AutoWidth": true,
+                                                    "VAlign": "Center",
+                                                    "Padding": [0, 0, 4, 0],
+                                                    "SButton": {
+                                                        "Text": "+ 추가",
+                                                        "ContentPadding": [8, 3],
+                                                        "OnClick": "console_browser.add_fav_list()"
+                                                    }
+                                                },
+                                                {
+                                                    "AutoWidth": true,
+                                                    "VAlign": "Center",
+                                                    "SButton": {
+                                                        "Text": "− 삭제",
+                                                        "ContentPadding": [8, 3],
+                                                        "ToolTipText": "현재 목록 삭제 (Default는 삭제 불가)",
+                                                        "OnClick": "console_browser.delete_fav_list()"
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+
+                        {
+                            "AutoHeight": true,
+                            "Padding": [6, 0, 6, 4],
+                            "SSearchBox": {
+                                "Aka": "SearchInput",
+                                "HintText": "이름, 도움말 또는 메모로 검색...",
+                                "OnTextChanged": "console_browser.on_search_changed(%)"
+                            }
+                        },
+
+                        {
+                            "Padding": [6, 0, 6, 0],
+                            "SListView<MultiColumn>": {
+                                "Aka": "ListCVars",
+                                "ItemHeight": 20,
+                                "EnableAnimatedScrolling": false,
+                                "SHeaderRow": {
+                                    "Columns": [
+                                        { "DefaultLabel": "Name",   "FillWidth": 0.30 },
+                                        { "DefaultLabel": "Value",  "FillWidth": 0.08 },
+                                        { "DefaultLabel": "Set By", "FillWidth": 0.12 },
+                                        { "DefaultLabel": "Help",   "FillWidth": 0.50 }
+                                    ]
+                                },
+                                "OnSelectionChanged": "console_browser.on_cvar_selection_changed()"
+                            }
+                        },
+                        {
+                            "Padding": [6, 0, 6, 0],
+                            "SListView<MultiColumn>": {
+                                "Aka": "ListCCmds",
+                                "Visibility": "Collapsed",
+                                "ItemHeight": 20,
+                                "EnableAnimatedScrolling": false,
+                                "SHeaderRow": {
+                                    "Columns": [
+                                        { "DefaultLabel": "Name", "FillWidth": 0.30 },
+                                        { "DefaultLabel": "Help", "FillWidth": 0.70 }
+                                    ]
+                                },
+                                "OnSelectionChanged": "console_browser.on_ccmds_selection_changed()"
+                            }
+                        },
+                        {
+                            "Padding": [6, 0, 6, 0],
+                            "SListView<MultiColumn>": {
+                                "Aka": "ListFavs",
+                                "Visibility": "Collapsed",
+                                "ItemHeight": 20,
+                                "EnableAnimatedScrolling": false,
+                                "SHeaderRow": {
+                                    "Columns": [
+                                        { "DefaultLabel": "Name", "FillWidth": 0.35 },
+                                        { "DefaultLabel": "값",   "FillWidth": 0.20 },
+                                        { "DefaultLabel": "Memo", "FillWidth": 0.45 }
+                                    ]
+                                },
+                                "OnSelectionChanged": "console_browser.on_favs_selection_changed()",
+                                "OnMouseButtonDoubleClick": "console_browser.on_fav_double_click(%Index)"
+                            }
+                        },
+
+                        {
+                            "AutoHeight": true,
+                            "Padding": [6, 4, 6, 2],
+                            "SMultiLineEditableTextBox": {
+                                "Aka": "DetailText",
+                                "Text": "",
+                                "IsReadOnly": true,
+                                "HintText": "항목을 클릭하면 상세 정보가 표시됩니다.",
+                                "MinDesiredHeight": 80
+                            }
+                        },
+                        {
+                            "AutoHeight": true,
+                            "Padding": [6, 2, 6, 6],
+                            "SVerticalBox": {
+                                "Aka": "MemoRow",
+                                "Visibility": "Collapsed",
+                                "Slots": [
+                                    {
+                                        "AutoHeight": true,
+                                        "Padding": [0, 0, 0, 4],
+                                        "SHorizontalBox": {
+                                            "Slots": [
+                                                {
+                                                    "AutoWidth": true,
+                                                    "VAlign": "Center",
+                                                    "Padding": [0, 0, 6, 0],
+                                                    "STextBlock": { "Text": "값:" }
+                                                },
+                                                {
+                                                    "VAlign": "Center",
+                                                    "Padding": [0, 0, 4, 0],
+                                                    "SEditableTextBox": {
+                                                        "Aka": "CustomValueInput",
+                                                        "HintText": "Enter로 탐색, + 로 저장",
+                                                        "OnTextCommitted": "console_browser.on_custom_value_committed(%)"
+                                                    }
+                                                },
+                                                {
+                                                    "AutoWidth": true,
+                                                    "VAlign": "Center",
+                                                    "Padding": [0, 0, 8, 0],
+                                                    "SButton": {
+                                                        "Text": "+",
+                                                        "ContentPadding": [8, 3],
+                                                        "ToolTipText": "입력한 값을 배열에 추가",
+                                                        "OnClick": "console_browser.add_custom_value()"
+                                                    }
+                                                },
+                                                {
+                                                    "HAlign": "Right",
+                                                    "VAlign": "Center",
+                                                    "SHorizontalBox": {
+                                                        "Aka": "ValuesPanel"
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "AutoHeight": true,
+                                        "SHorizontalBox": {
+                                            "Slots": [
+                                                {
+                                                    "AutoWidth": true,
+                                                    "VAlign": "Center",
+                                                    "Padding": [0, 0, 6, 0],
+                                                    "STextBlock": { "Text": "메모:" }
+                                                },
+                                                {
+                                                    "VAlign": "Fill",
+                                                    "Padding": [0, 0, 6, 0],
+                                                    "SMultiLineEditableTextBox": {
+                                                        "Aka": "MemoInput",
+                                                        "HintText": "메모...",
+                                                        "MinDesiredHeight": 40
+                                                    }
+                                                },
+                                                {
+                                                    "AutoWidth": true,
+                                                    "VAlign": "Center",
+                                                    "SButton": {
+                                                        "Text": "저장",
+                                                        "ContentPadding": [10, 3],
+                                                        "OnClick": "console_browser.save_memo()"
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+
+                        {
+                            "AutoHeight": true,
+                            "Padding": [8, 2, 8, 4],
+                            "STextBlock": {
+                                "Aka": "StatusText",
+                                "Text": ""
+                            }
+                        }
+
+                    ]
+                }
+            }
+        }
+    }
+}

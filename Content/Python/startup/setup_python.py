@@ -17,49 +17,6 @@ import tool.dev_env_setup
 if 'tool.dev_env_setup' in sys.modules:
     importlib.reload(tool.dev_env_setup)
 
-def copy_copilot_instructions():
-    """플러그인의 GitHub Copilot 지침 파일을 프로젝트 루트로 복사"""
-    try:
-        import shutil
-        
-        # __file__을 resolve하여 실제 경로 획득 (심볼릭 링크 환경 대응)
-        current_file_path = Path(__file__).resolve()
-        
-        # .github/copilot-instructions.md 파일을 상위 디렉토리에서 검색
-        search_path = current_file_path
-        repo_root = None
-        
-        for _ in range(10):  # 최대 10단계까지 상위로 검색
-            search_path = search_path.parent
-            candidate = search_path / ".github" / "copilot-instructions.md"
-            
-            if candidate.exists():
-                repo_root = search_path
-                break
-            
-            # 루트 디렉토리에 도달하면 중단
-            if search_path.parent == search_path:
-                break
-        
-        if repo_root is None:
-            return  # 조용히 실패 (필수 기능 아님)
-        
-        project_path = Path(unreal.Paths.project_dir())
-        source_file = repo_root / ".github" / "copilot-instructions.md"
-        target_dir = project_path / ".github"
-        target_file = target_dir / "copilot-instructions.md"
-        
-        # .github 폴더가 없으면 생성
-        if not target_dir.exists():
-            target_dir.mkdir(parents=True, exist_ok=True)
-        
-        # 파일 복사 (이미 있으면 덮어쓰기)
-        shutil.copy2(source_file, target_file)
-        print(f"   ✅ Copilot 지침 복사: {target_file}")
-        
-    except Exception:
-        pass  # 조용히 실패 (필수 기능 아님)
-
 def main(setup_mode="all"):
     """
     언리얼 엔진 개발 환경 설정 (통합 버전)
@@ -74,10 +31,6 @@ def main(setup_mode="all"):
     
     print("\n🎮 언리얼 엔진 에디터에서 실행 중")
     print(f"\n⚙️  통합 개발 환경 설정 모드: {setup_mode}")
-    
-    # GitHub Copilot 지침 파일 복사 (프로젝트 작업 공간 지원)
-    print("\n📋 GitHub Copilot 지침 파일 복사 중...")
-    copy_copilot_instructions()
     
     try:
         if setup_mode == "all":

@@ -20,13 +20,15 @@ import json
 import zipfile
 import shutil
 import tempfile
+import subprocess
 
 
 # ============================================================================
 # 상수 정의
 # ============================================================================
 
-TAPYTHON_GITHUB_API = "https://api.github.com/repos/cgerchenhp/UE_TAPython_Plugin_Release/releases/latest"
+TAPYTHON_GITHUB_API_LATEST = "https://api.github.com/repos/cgerchenhp/UE_TAPython_Plugin_Release/releases/latest"
+TAPYTHON_GITHUB_API_ALL = "https://api.github.com/repos/cgerchenhp/UE_TAPython_Plugin_Release/releases"
 TAPYTHON_GITHUB_RELEASES = "https://github.com/cgerchenhp/UE_TAPython_Plugin_Release/releases"
 TAPYTHON_WEBSITE = "https://www.tacolor.xyz/tapython/welcome_to_tapython.html"
 
@@ -95,107 +97,113 @@ def get_engine_version_info():
     return None
 
 
-def get_latest_release_info():
-    """GitHub에서 최신 릴리스 정보 가져오기"""
+def _parse_release_data(data: dict) -> dict:
+    """GitHub API 릴리스 데이터를 공통 포맷으로 변환"""
+    release_info = {
+        'tag_name': data.get('tag_name', 'Unknown'),
+        'name': data.get('name', 'TAPython'),
+        'published_at': data.get('published_at', ''),
+        'html_url': data.get('html_url', TAPYTHON_GITHUB_RELEASES),
+        'assets': []
+    }
+    for asset in data.get('assets', []):
+        if asset['name'].endswith('.zip'):
+            release_info['assets'].append({
+                'name': asset['name'],
+                'download_url': asset['browser_download_url'],
+                'size': asset['size']
+            })
+    return release_info
+
+
+def get_all_releases_info() -> list:
+    """GitHub에서 전체 릴리스 목록 가져오기"""
     try:
-        unreal.log("GitHub에서 TAPython 최신 릴리스 정보 가져오는 중...")
-        
-        req = urllib.request.Request(TAPYTHON_GITHUB_API)
+        unreal.log("GitHub에서 TAPython 릴리스 목록 가져오는 중...")
+        req = urllib.request.Request(TAPYTHON_GITHUB_API_ALL)
         req.add_header('User-Agent', 'Unreal-MaidCat-Plugin')
-        
         with urllib.request.urlopen(req, timeout=10) as response:
             data = json.loads(response.read().decode('utf-8'))
-            
-            release_info = {
-                'tag_name': data.get('tag_name', 'Unknown'),
-                'name': data.get('name', 'TAPython'),
-                'published_at': data.get('published_at', ''),
-                'html_url': data.get('html_url', TAPYTHON_GITHUB_RELEASES),
-                'body': data.get('body', ''),
-                'assets': []
-            }
-            
-            # 다운로드 가능한 에셋 찾기 (zip 파일)
-            for asset in data.get('assets', []):
-                if asset['name'].endswith('.zip'):
-                    release_info['assets'].append({
-                        'name': asset['name'],
-                        'download_url': asset['browser_download_url'],
-                        'size': asset['size']
-                    })
-            
-            unreal.log(f"최신 릴리스: {release_info['name']} ({release_info['tag_name']})")
-            unreal.log(f"에셋 파일 수: {len(release_info['assets'])}")
-            
-            return release_info
-            
+            releases = [_parse_release_data(r) for r in data]
+            unreal.log(f"총 {len(releases)}개 릴리스 발견")
+            return releases
     except Exception as e:
-        unreal.log_warning(f"GitHub 릴리스 정보 가져오기 실패: {e}")
+        unreal.log_warning(f"전체 릴리스 목록 가져오기 실패: {e}")
+        return []
+
+
+def get_latest_release_info() -> dict | None:
+    """GitHub에서 최신 릴리스 정보 가져오기 (폴백용)"""
+    try:
+        req = urllib.request.Request(TAPYTHON_GITHUB_API_LATEST)
+        req.add_header('User-Agent', 'Unreal-MaidCat-Plugin')
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            release_info = _parse_release_data(data)
+            unreal.log(f"최신 릴리스: {release_info['name']} ({release_info['tag_name']})")
+            return release_info
+    except Exception as e:
+        unreal.log_warning(f"최신 릴리스 정보 가져오기 실패: {e}")
         return None
 
 
-def select_download_asset(assets: list):
-    """다운로드할 에셋 선택 (현재 엔진 버전과 정확히 일치하는 파일명)"""
-    if not assets:
-        return None
-    
-    # zip 파일만 필터링
-    zip_assets = [asset for asset in assets if asset['name'].endswith('.zip')]
-    
-    if not zip_assets:
-        unreal.log_warning("다운로드 가능한 ZIP 파일이 없습니다")
-        return None
-    
-    # 엔진 버전 정보 가져오기
-    engine_info = get_engine_version_info()
-    
-    if not engine_info:
-        # 엔진 버전을 모를 경우 첫 번째 ZIP 사용
-        unreal.log_warning(f"⚠️ 엔진 버전 정보 없음. 첫 번째 ZIP 사용: {zip_assets[0]['name']}")
-        return zip_assets[0]
-    
-    # 파일명에서 찾을 버전 패턴들 (우선순위 순)
-    # 예: TAPython_5_5_4_win64_v1_2_6.zip
+def _find_matching_asset(assets: list, version_patterns: list) -> dict | None:
+    """에셋 목록에서 버전 패턴과 일치하는 Win64 에셋 반환 (nopdb보다 pdb 우선)"""
+    zip_assets = [a for a in assets if a['name'].endswith('.zip')]
+    for pattern in version_patterns:
+        for asset in zip_assets:
+            name_lower = asset['name'].lower()
+            if pattern.lower() in name_lower and 'win64' in name_lower and 'nopdb' not in name_lower:
+                return asset
+    for pattern in version_patterns:
+        for asset in zip_assets:
+            name_lower = asset['name'].lower()
+            if pattern.lower() in name_lower and 'win64' in name_lower:
+                return asset
+    return None
+
+
+def find_best_release_and_asset(releases: list, engine_info: dict) -> tuple[dict | None, dict | None]:
+    """전체 릴리스에서 현재 엔진 버전에 맞는 릴리스와 에셋을 반환"""
     version_patterns = [
-        engine_info['version_string'],  # "5_5_4" (정확한 매치)
+        engine_info['version_string'],                                          # "5_5_4"
         f"{engine_info['major']}_{engine_info['minor']}_{engine_info['patch']}",  # 동일
-        f"{engine_info['major']}_{engine_info['minor']}",  # "5_5" (마이너 버전까지만)
+        f"{engine_info['major']}_{engine_info['minor']}",                       # "5_5"
     ]
-    
-    unreal.log(f"현재 엔진 버전: {engine_info['full']}")
-    unreal.log(f"검색할 버전 패턴: {version_patterns}")
-    
-    # 1. 정확한 버전 매치 (5_5_4 형식)
-    for pattern in version_patterns:
-        for asset in zip_assets:
-            asset_name_lower = asset['name'].lower()
-            
-            # 파일명에서 버전 패턴 찾기
-            if pattern.lower() in asset_name_lower:
-                # nopdb 아닌 것 우선
-                if 'nopdb' not in asset_name_lower and 'win64' in asset_name_lower:
-                    unreal.log(f"✅ 정확히 일치하는 에셋 발견 (PDB 포함): {asset['name']}")
-                    return asset
-    
-    # 2. nopdb 버전이라도 버전이 일치하면 선택
-    for pattern in version_patterns:
-        for asset in zip_assets:
-            asset_name_lower = asset['name'].lower()
-            if pattern.lower() in asset_name_lower and 'win64' in asset_name_lower:
-                unreal.log(f"✅ 버전 일치 에셋 발견 (nopdb): {asset['name']}")
-                return asset
-    
-    # 3. 플랫폼만 일치하는 것 찾기 (Windows)
-    platform_keywords = ['win64', 'windows']
-    for asset in zip_assets:
-        for platform in platform_keywords:
-            if platform.lower() in asset['name'].lower() and 'nopdb' not in asset['name'].lower():
-                unreal.log_warning(f"⚠️ 버전 불일치. 플랫폼만 일치하는 에셋 사용: {asset['name']}")
-                return asset
-    
-    # 4. 그냥 첫 번째 ZIP 파일
-    unreal.log_warning(f"⚠️ 조건에 맞는 에셋 없음. 첫 번째 ZIP 사용: {zip_assets[0]['name']}")
-    return zip_assets[0]
+    unreal.log(f"현재 엔진: {engine_info['full']} | 검색 패턴: {version_patterns}")
+
+    for release in releases:
+        asset = _find_matching_asset(release['assets'], version_patterns)
+        if asset:
+            unreal.log(f"✅ 매칭 릴리스: {release['name']} | 에셋: {asset['name']}")
+            return release, asset
+
+    unreal.log_warning("⚠️ 엔진 버전과 일치하는 릴리스를 찾지 못했습니다")
+    return None, None
+
+
+def select_release_and_asset() -> tuple[dict | None, dict | None]:
+    """현재 엔진 버전에 맞는 릴리스와 에셋 선택 (버전 불일치 시 최신으로 폴백)"""
+    engine_info = get_engine_version_info()
+
+    # 전체 릴리스에서 버전 매칭 시도
+    releases = get_all_releases_info()
+    if releases and engine_info:
+        release, asset = find_best_release_and_asset(releases, engine_info)
+        if release and asset:
+            return release, asset
+
+    # 폴백: 최신 릴리스의 첫 번째 Win64 ZIP
+    unreal.log_warning("최신 릴리스로 폴백합니다")
+    latest = get_latest_release_info()
+    if latest:
+        zip_assets = [a for a in latest['assets'] if 'win64' in a['name'].lower()]
+        fallback = zip_assets[0] if zip_assets else (latest['assets'][0] if latest['assets'] else None)
+        if fallback:
+            unreal.log_warning(f"⚠️ 폴백 에셋 사용: {fallback['name']}")
+            return latest, fallback
+
+    return None, None
 
 
 # ============================================================================
@@ -331,6 +339,34 @@ TAPython은 Python으로 Slate UI를 작성할 수 있게 해주는
     return result == unreal.AppReturnType.YES
 
 
+def restart_editor():
+    """에디터 새 프로세스로 재시작 후 현재 인스턴스 종료"""
+    try:
+        engine_dir = Path(unreal.Paths.engine_dir())
+        editor_exe = engine_dir / "Binaries" / "Win64" / "UnrealEditor.exe"
+
+        project_dir = Path(unreal.Paths.project_dir())
+        uproject_files = list(project_dir.glob("*.uproject"))
+
+        if not editor_exe.exists():
+            unreal.log_error(f"에디터 실행 파일을 찾을 수 없습니다: {editor_exe}")
+            unreal.SystemLibrary.quit_editor()
+            return
+
+        if not uproject_files:
+            unreal.log_error(f"프로젝트 파일(.uproject)을 찾을 수 없습니다: {project_dir}")
+            unreal.SystemLibrary.quit_editor()
+            return
+
+        unreal.log(f"에디터 재시작: {editor_exe} {uproject_files[0]}")
+        subprocess.Popen([str(editor_exe), str(uproject_files[0])])
+        unreal.SystemLibrary.quit_editor()
+
+    except Exception as e:
+        unreal.log_error(f"재시작 실패: {e}")
+        unreal.SystemLibrary.quit_editor()
+
+
 def show_restart_dialog():
     """엔진 재시작 안내 다이얼로그"""
     message = """TAPython 플러그인 설치가 완료되었습니다!
@@ -338,16 +374,15 @@ def show_restart_dialog():
 변경사항을 적용하려면 언리얼 엔진을 재시작해야 합니다.
 
 지금 재시작하시겠습니까?"""
-    
+
     result = unreal.EditorDialog.show_message(
         unreal.Text("설치 완료 - 재시작 필요"),
         unreal.Text(message),
         unreal.AppMsgType.YES_NO
     )
-    
+
     if result == unreal.AppReturnType.YES:
-        # 프로젝트 재시작 요청
-        unreal.SystemLibrary.quit_editor()
+        restart_editor()
 
 
 # ============================================================================
@@ -356,15 +391,13 @@ def show_restart_dialog():
 
 def install_tapython_from_github() -> bool:
     """GitHub에서 TAPython 다운로드 및 설치"""
-    
-    # 1. 최신 릴리스 정보 가져오기
-    release_info = get_latest_release_info()
+
+    # 1. 엔진 버전에 맞는 릴리스와 에셋 선택
+    release_info, asset = select_release_and_asset()
     if not release_info:
         unreal.log_error("릴리스 정보를 가져올 수 없습니다")
         return False
-    
-    # 2. 다운로드할 에셋 선택
-    asset = select_download_asset(release_info['assets'])
+
     if not asset:
         unreal.log_error("다운로드 가능한 파일을 찾을 수 없습니다")
         
@@ -445,34 +478,26 @@ def check_and_install_tapython() -> bool:
 def test_github_api():
     """GitHub API 테스트"""
     print("\n=== GitHub API 테스트 ===")
-    
-    # 엔진 버전 확인
+
     engine_info = get_engine_version_info()
     if engine_info:
         print(f"현재 엔진 버전: {engine_info['full']}")
-        print(f"메이저.마이너.패치: {engine_info['major_minor_patch']}")
         print(f"파일명 형식: {engine_info['version_string']}")
-    
-    # 최신 릴리스 가져오기
-    release_info = get_latest_release_info()
-    if release_info:
-        print(f"\n✅ 최신 릴리스: {release_info['name']} ({release_info['tag_name']})")
-        print(f"   URL: {release_info['html_url']}")
-        print(f"   에셋 수: {len(release_info['assets'])}")
-        
-        print(f"\n📦 사용 가능한 에셋:")
-        for i, asset in enumerate(release_info['assets'], 1):
-            size_mb = asset['size'] / (1024 * 1024)
-            print(f"   {i}. {asset['name']} ({size_mb:.1f} MB)")
-        
-        # 다운로드할 에셋 선택
-        selected_asset = select_download_asset(release_info['assets'])
-        if selected_asset:
-            size_mb = selected_asset['size'] / (1024 * 1024)
-            print(f"\n📥 선택된 에셋: {selected_asset['name']} ({size_mb:.1f} MB)")
-            print(f"   다운로드 URL: {selected_asset['download_url']}")
+
+    releases = get_all_releases_info()
+    if releases:
+        print(f"\n✅ 전체 릴리스 수: {len(releases)}")
+        for r in releases[:5]:  # 최근 5개만 출력
+            print(f"   - {r['name']} ({r['tag_name']}) | 에셋: {len(r['assets'])}개")
+
+    release_info, selected_asset = select_release_and_asset()
+    if release_info and selected_asset:
+        size_mb = selected_asset['size'] / (1024 * 1024)
+        print(f"\n📥 선택된 릴리스: {release_info['name']} ({release_info['tag_name']})")
+        print(f"   선택된 에셋: {selected_asset['name']} ({size_mb:.1f} MB)")
+        print(f"   다운로드 URL: {selected_asset['download_url']}")
     else:
-        print("❌ 릴리스 정보 가져오기 실패")
+        print("❌ 적합한 릴리스/에셋을 찾지 못했습니다")
 
 
 def test_installation_check():

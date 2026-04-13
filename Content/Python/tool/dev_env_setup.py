@@ -33,7 +33,6 @@ import xml.etree.ElementTree as ET
 import unreal
 from pathlib import Path
 import sys
-import platform
 import time
 
 
@@ -912,13 +911,74 @@ def _update_pylance_in_settings_file(settings_path, pylance_settings):
     _save_vscode_settings(settings_path, existing_settings)
 
 
+def _check_ini_key(ini_path: Path, section: str, key: str, expected_value: str) -> bool:
+    """INI 파일에서 특정 섹션/키가 기대 값으로 설정되어 있는지 확인."""
+    if not ini_path.exists():
+        return False
+    content = ini_path.read_text(encoding="utf-8-sig")
+    section_header = f"[{section}]"
+    if section_header not in content:
+        return False
+    section_start = content.index(section_header) + len(section_header)
+    next_section = content.find("\n[", section_start)
+    block = content[section_start: next_section if next_section != -1 else len(content)]
+    return any(
+        line.strip() == f"{key}={expected_value}"
+        for line in block.splitlines()
+    )
+
+
+def notify_engine_python_settings():
+    """필수 엔진 Python 설정이 구성되지 않은 경우 사용자에게 안내 메시지를 표시."""
+    project_path = Path(unreal.Paths.project_dir())
+    PYTHON_SECTION = "/Script/PythonScriptPlugin.PythonScriptPluginUserSettings"
+
+    default_engine_ini = project_path / "Config" / "DefaultEngine.ini"
+    # Saved/Config 폴더는 플랫폼별로 다르나 Windows 기준으로 확인
+    user_settings_ini = project_path / "Saved" / "Config" / "WindowsEditor" / "EditorPerProjectUserSettings.ini"
+
+    required_settings = [
+        (default_engine_ini,  PYTHON_SECTION, "bEnableRemoteExecution",          "True"),
+        (user_settings_ini,   PYTHON_SECTION, "bDeveloperMode",                  "True"),
+        (user_settings_ini,   PYTHON_SECTION, "TypeHintingMode",                 "AutoCompletion"),
+        (user_settings_ini,   PYTHON_SECTION, "bEnableContentBrowserIntegration","True"),
+    ]
+
+    missing = [
+        (ini, key, val)
+        for ini, section, key, val in required_settings
+        if not _check_ini_key(ini, section, key, val)
+    ]
+
+    if not missing:
+        print("   ✔  엔진 Python 설정이 이미 올바르게 구성되어 있습니다")
+        return
+
+    message = (
+        "MaidCat 플러그인을 사용하려면 다음 Python 설정이 필요합니다.\n\n"
+        "편집 > 프로젝트 설정 > Plugins > Python 에서 설정하세요:\n\n"
+        "  • Enable Remote Execution  (bEnableRemoteExecution=True)\n"
+        "  • Developer Mode           (bDeveloperMode=True)\n"
+        "  • Type Hinting Mode        → AutoCompletion\n"
+        "  • Enable Content Browser   (bEnableContentBrowserIntegration=True)\n\n"
+        "설정 후 에디터를 재시작하면 적용됩니다."
+    )
+
+    unreal.EditorDialog.show_message(
+        unreal.Text("Python 설정 안내"),
+        unreal.Text(message),
+        unreal.AppMsgType.OK
+    )
+
+
 def update_all_settings():
     """모든 개발 환경 설정 업데이트 (VSCode + PyCharm, 기본: permissive 모드)"""
     try:
+        notify_engine_python_settings()
         update_project_settings()
         update_plugin_settings()
         print("✅ 개발 환경 설정 완료")
-            
+
     except Exception as e:
         print(f"❌ 설정 실패: {e}")
         import traceback
@@ -928,10 +988,11 @@ def update_all_settings():
 def update_all_settings_with_mode(pylance_mode="permissive"):
     """모든 개발 환경 설정 업데이트 (VSCode + PyCharm, pylance 모드 선택 가능)"""
     try:
+        notify_engine_python_settings()
         update_project_settings_with_mode(pylance_mode)
         update_plugin_settings_with_mode(pylance_mode)
         print("✅ 개발 환경 설정 완료")
-            
+
     except Exception as e:
         print(f"❌ 설정 실패: {e}")
         import traceback

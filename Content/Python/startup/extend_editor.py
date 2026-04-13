@@ -14,30 +14,34 @@ from editor import asset_editor
 from editor import outliner_context
 from editor import world_browser_context
 from editor import detail_customize
+from editor import chameleon_menus
 
 def initialize():
     """에디터 확장 시스템 초기화"""
     try:
         # Python 컨텍스트 메뉴 초기화
         python_context.register()
-        
+
         # 애셋 브라우저 컨텍스트 메뉴 초기화
         asset_context.register()
 
         # MI 에디터 컨텍스트 메뉴 초기화
         mi_context.register()
-        
+
         # 애셋 에디터 컨텍스트 메뉴 초기화
         asset_editor.register()
-        
+
         # 아웃라이너 컨텍스트 메뉴 초기화
         outliner_context.register()
-        
+
         # 월드 브라우저 컨텍스트 메뉴 초기화
         world_browser_context.register()
 
         # 디테일 패널 커스터마이징 등록
         detail_customize.register()
+
+        # Chameleon 툴 메뉴 등록
+        chameleon_menus.register()
 
         unreal.log("✅ 에디터 확장 시스템이 성공적으로 추가되었습니다.")
         

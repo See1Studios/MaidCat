@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "WebFetch(domain:docs.github.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(Remove-Item -Recurse -Force \"C:\\\\Users\\\\parkj\\\\Documents\\\\GitHub\\\\MaidCat\\\\Content\\\\Python\\\\chameleon\\\\console_browser\")",
+      "Bash(xargs grep:*)",
+      "Bash(find \"C:\\\\Users\\\\parkj\\\\Documents\\\\GitHub\\\\MaidCat\" -name \"*.py\" -type f -exec grep -l \"class ChameleonData\\\\|ChameleonData\" {} \\\\;)",
+      "Bash(find \"C:\\\\Users\\\\parkj\\\\Documents\\\\GitHub\\\\MaidCat\" -name \"*.py\" -exec grep -l \"\\\\.get_.*list_view\\\\|\\\\.get_.*selection\" {} \\\\;)",
+      "Bash(find \"C:\\\\Users\\\\parkj\\\\Documents\\\\GitHub\\\\MaidCat\\\\Content\\\\Python\" -name \"*.json\" -exec grep -l \"SListView\\\\|ListItemsSource\" {} \\\\;)",
+      "Read(//proc/**)",
+      "Read(//d//**)",
+      "Read(//mnt/**)",
+      "Bash(powershell.exe -Command \"Get-ChildItem 'D:\\\\UnrealProjects\\\\' -ErrorAction SilentlyContinue | Select-Object Name\")"
     ]
   }
 }
