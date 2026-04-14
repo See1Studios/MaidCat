@@ -155,10 +155,14 @@ def _p4_read_settings() -> dict | None:
 
 def _p4_run(cmd: list[str], settings: dict, timeout: int = 3) -> subprocess.CompletedProcess:
     env = {**os.environ}
-    if "Port"      in settings: env["P4PORT"]  = settings["Port"]
-    if "UserName"  in settings: env["P4USER"]  = settings["UserName"]
+    if "Port"      in settings: env["P4PORT"]   = settings["Port"]
+    if "UserName"  in settings: env["P4USER"]   = settings["UserName"]
     if "Workspace" in settings: env["P4CLIENT"] = settings["Workspace"]
-    return subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=timeout)
+    flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+    return subprocess.run(
+        cmd, env=env, capture_output=True, text=True,
+        timeout=timeout, creationflags=flags,
+    )
 
 
 def _p4_ensure_writable(path: Path) -> bool:
@@ -171,15 +175,34 @@ def _p4_ensure_writable(path: Path) -> bool:
     if not settings or settings.get("Provider") != "Perforce":
         return False
     try:
-        if _p4_run(["p4", "fstat", str(path)], settings).returncode != 0:
-            return False  # Perforce 관리 파일 아님
+        # 1. 파일이 depot에 있는지 확인
+        fstat = _p4_run(["p4", "fstat", str(path)], settings)
+        if fstat.returncode != 0:
+            err = (fstat.stderr or fstat.stdout).lower()
+            # 로그인 만료/미로그인 감지
+            if any(k in err for k in ("session", "password", "login", "ticket", "not logged")):
+                unreal.log_warning(
+                    f"ConsoleBrowser: Perforce 로그인 필요 — 'p4 login' 으로 먼저 로그인하세요."
+                )
+                return False
+            # depot에 없는 신규 파일 → 체크아웃 불필요
+            return True
+
+        # 2. 이미 체크아웃(edit) 중이면 그대로 허용
+        if "action" in fstat.stdout:
+            return True
+
+        # 3. p4 edit 으로 체크아웃
         result = _p4_run(["p4", "edit", str(path)], settings)
         if result.returncode == 0:
             unreal.log(f"ConsoleBrowser: Perforce 체크아웃 완료 — {path.name}")
             return True
-        unreal.log_warning(f"ConsoleBrowser: Perforce 체크아웃 실패 — {result.stderr.strip()}")
-    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-        unreal.log_warning(f"ConsoleBrowser: p4 명령 실패 — {e}")
+        msg = (result.stderr or result.stdout).strip()
+        unreal.log_warning(f"ConsoleBrowser: Perforce 체크아웃 실패 — {msg}")
+    except subprocess.TimeoutExpired:
+        unreal.log_warning("ConsoleBrowser: p4 명령 타임아웃 — 서버 연결을 확인하세요")
+    except FileNotFoundError:
+        unreal.log_warning("ConsoleBrowser: p4 실행 파일을 찾을 수 없습니다 — PATH를 확인하세요")
     return False
 
 
