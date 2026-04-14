@@ -26,6 +26,22 @@
       "help": "Dump level collections in the current world.",
       "custom_values": [],
       "memo": ""
+    },
+    {
+      "type": "Exec",
+      "name": "ACTOR",
+      "help": "Sorry: Exec commands have no help",
+      "custom_values": [],
+      "memo": ""
+    },
+    {
+      "type": "CCmds",
+      "name": "abtest",
+      "value": "",
+      "set_by": "",
+      "help": "Provide two console commands or \\'stop\\' to stop the abtest. Frames are timed with the two options, logging results over time.",
+      "custom_values": [],
+      "memo": ""
     }
   ]
 }

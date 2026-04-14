@@ -496,8 +496,10 @@ class ConsoleBrowser:
             sel, entries = self._cvar_sel, self._cvar_filtered
         elif self._active_tab == "CCmds":
             sel, entries = self._ccmds_sel, self._ccmds_filtered
+        elif self._active_tab == "Exec":
+            sel, entries = self._exec_sel, self._exec_filtered
         else:
-            self._set_status("Variables 또는 Commands 탭에서 항목을 선택하세요")
+            self._set_status("Variables, Commands 또는 Exec 탭에서 항목을 선택하세요")
             return
 
         if not sel:
@@ -1180,6 +1182,8 @@ class ConsoleBrowser:
             sel, entries = self._cvar_sel, self._cvar_filtered
         elif self._active_tab == "CCmds":
             sel, entries = self._ccmds_sel, self._ccmds_filtered
+        elif self._active_tab == "Exec":
+            sel, entries = self._exec_sel, self._exec_filtered
         elif self._active_tab == "Favs":
             sel, entries = self._favs_sel, self._favs_filtered
         else:
@@ -1193,6 +1197,8 @@ class ConsoleBrowser:
             sel, entries = self._cvar_sel, self._cvar_filtered
         elif self._active_tab == "CCmds":
             sel, entries = self._ccmds_sel, self._ccmds_filtered
+        elif self._active_tab == "Exec":
+            sel, entries = self._exec_sel, self._exec_filtered
         elif self._active_tab == "Favs":
             sel, entries = self._favs_sel, self._favs_filtered
         else:

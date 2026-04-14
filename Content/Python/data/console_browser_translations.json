@@ -252,7 +252,7 @@
   "ShowFlag.Wireframe": "특정 표시 플래그를 재정의할 수 있습니다(편집기와 게임에서 작동, \"표시\"는 게임에서만 작동하고 UI는 편집기에서만 작동함).\n동일한 showflags를 사용하여 여러 번 빌드를 실행하는 데 유용합니다(\"showflag.abc=0\"과 같이 consolevariables.ini에 넣을 때).\n 0: 표시 플래그를 강제로 꺼집니다.\n 1: 표시 플래그를 강제로 ON으로 설정합니다.\n 2: 이 표시 플래그를 무시하지 마십시오(기본값)",
   "a.AnimNode.LegIK.Debug": "FAnimNode_LegIK에 대한 디버그 켜기",
   "a.AnimNode.LegIK.Enable": "LegIK 노드를 토글합니다.",
-  "a.AnimNode.LegIK.EnableTwoBone": "두 개의 뼈 코드 경로를 활성화합니다.",
+  "a.AnimNode.LegIK.EnableTwoBone": "두 뼈 코드 경로를 활성화합니다.",
   "a.AuditLoadedAnimGraphs": "현재 로드된 애니메이션 그래프의 메모리 분석을 감사합니다. 결과를 로그에 기록합니다.",
   "a.CheckRetargetSourceAssetData": "애님 시퀀스와 포즈 애셋 RetargetSourceAsset이 유효한지 확인합니다. Game(Content) 폴더의 자산을 확인하려면 'a.CheckRetargetSourceAssetData /Game'을 입력하세요.  'a.CheckRetargetSourceAssetData /Game true'를 사용하여 Game(Content) 폴더의 모든 자산을 확인하고 수정합니다.",
   "a.Sharing.Enabled": "인수: 0/1\n애니메이션 공유 활성화 여부를 제어합니다.",
@@ -7697,5 +7697,6 @@
   "wp.Runtime.ToggleDrawRuntimeHash3D": "월드 파티션 런타임 해시의 3D 디버그 표시를 토글합니다.",
   "wp.Runtime.ToggleDrawStreamingPerfs": "월드 파티션 스트리밍 성능의 디버그 표시를 토글합니다.",
   "wp.Runtime.ToggleDrawStreamingSources": "월드 파티션 스트리밍 소스의 디버그 표시를 토글합니다.",
-  "wp.StaticLighting.MarkPackageDirtyNewMapBuildDataId": "새로 생성된 MapBuildDataID로 모든 액터를 더티로 표시합니다."
+  "wp.StaticLighting.MarkPackageDirtyNewMapBuildDataId": "새로 생성된 MapBuildDataID로 모든 액터를 더티로 표시합니다.",
+  "ACTOR": "죄송합니다. Exec 명령에는 도움이 되지 않습니다."
 }
