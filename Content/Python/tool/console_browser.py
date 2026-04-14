@@ -15,6 +15,13 @@ console_cat 을 대체하며, console_cat 에 대한 의존성은 없음.
 2. 없으면 자동으로 rebuild() 호출 (DumpCVars / DumpCCmds 콘솔 커맨드 실행)
 3. 이후 [🔨 Rebuild] 버튼으로 수동 갱신 가능
 
+## ? 깨짐 복원 (선택적)
+- UE의 DumpCCmds 는 한글 help 를 ? 로 출력함 (narrow char 변환 한계)
+- 'help html' 명령으로 생성되는 {ProjectSaved}/ConsoleHelp.html 에는 한글이 온전히 저장됨
+- _parse_help_html() / _patch_help_from_html() 이 구현되어 있으나 rebuild() 에서는 호출 안 함
+  (이유: help html 실행 시 브라우저 자동 오픈 + 생성 시간 문제)
+- ConsoleHelp.html 이 이미 존재하면 _reload_all() 에서 자동으로 패치됨
+
 ## 즐겨찾기 데이터 구조
 - _favs_db: dict[(tier, name), list[entry]]
   - tier: "shared" | "local"
@@ -60,6 +67,7 @@ import csv
 import datetime
 import json
 import os
+import re
 import shutil
 import subprocess
 import threading
@@ -106,6 +114,7 @@ AKA_BTN_REM_FAV     = "BtnRemFav"
 # ── 상수 ──────────────────────────────────────────────────────────────────────
 CSV_CVARS        = "DumpCVars.csv"
 CSV_CCMDS        = "DumpCCmds.csv"
+HTML_HELP_FILE   = "ConsoleHelp.html"   # 'help html' 명령으로 ProjectSaved/ 에 생성됨
 FAVS_LOCAL_FILE  = "favorites.json"
 FAVS_SHARED_FILE = "console_browser_favorites.json"
 TRANS_CACHE_FILE = "console_browser_translations.json"
@@ -317,7 +326,7 @@ class ConsoleBrowser:
     # ── Rebuild ──────────────────────────────────────────────────────────────
 
     def rebuild(self) -> None:
-        """CVars/CCmds CSV 강제 재생성 후 로드"""
+        """CVars/CCmds CSV 및 ConsoleHelp.html 재생성 후 로드"""
         self._set_status("재생성 중...")
         world = unreal.EditorLevelLibrary.get_editor_world()
         unreal.SystemLibrary.execute_console_command(
@@ -733,6 +742,46 @@ class ConsoleBrowser:
     def _logs_path(self, filename: str) -> str:
         return str(self._saved_dir() / "ConsoleBrowser" / filename)
 
+    def _help_html_path(self) -> Path:
+        """'help html' 콘솔 커맨드가 생성하는 파일 경로 (ProjectSaved/ 고정)"""
+        return self._saved_dir() / HTML_HELP_FILE
+
+    def _parse_help_html(self) -> dict[str, str]:
+        """ConsoleHelp.html 에서 {name: help} 딕셔너리 파싱.
+        CSV의 ? 깨짐 문제를 보완하기 위해 사용.
+        """
+        path = self._help_html_path()
+        if not path.exists():
+            return {}
+        try:
+            content = path.read_text(encoding="utf-8")
+        except Exception as e:
+            unreal.log_warning(f"ConsoleBrowser: ConsoleHelp.html 읽기 실패: {e}")
+            return {}
+
+        m = re.search(r"var\s+cvars\s*=\s*(\[[\s\S]*?\]);", content)
+        if not m:
+            unreal.log_warning("ConsoleBrowser: ConsoleHelp.html 에서 cvars 배열을 찾지 못했습니다")
+            return {}
+
+        obj_re = re.compile(
+            r'{\s*name:\s*"(?P<name>(?:\\.|[^"\\])*)"\s*,\s*help:\s*"(?P<help>(?:\\.|[^"\\])*)"[^}]*?}'
+        )
+        _uescape = re.compile(r'\\u([0-9a-fA-F]{4})')
+        _simple  = {"n": "\n", "t": "\t", "r": "\r", "\\": "\\", '"': '"', "/": "/"}
+
+        def _js_unescape(s: str) -> str:
+            s = _uescape.sub(lambda m: chr(int(m.group(1), 16)), s)
+            return re.sub(r'\\(.)', lambda m: _simple.get(m.group(1), m.group(0)), s)
+
+        result: dict[str, str] = {}
+        for obj in obj_re.finditer(m.group(1)):
+            name  = _js_unescape(obj.group("name"))
+            help_ = _js_unescape(obj.group("help"))
+            result[name] = help_
+        unreal.log(f"ConsoleBrowser: ConsoleHelp.html 파싱 완료 — {len(result):,}개")
+        return result
+
     def _load_favs(self) -> None:
         self._favs_db = {}
 
@@ -909,9 +958,24 @@ class ConsoleBrowser:
     def _reload_all(self) -> None:
         self._cvar_entries  = self._load_csv(self._logs_path(CSV_CVARS), "CVar")
         self._ccmds_entries = self._load_csv(self._logs_path(CSV_CCMDS), "CCmds")
+        self._patch_help_from_html(self._cvar_entries + self._ccmds_entries)
         self._update_fav_selector()
         self._filter_all(self._last_query)
         self._refresh_all_lists()
+
+    def _patch_help_from_html(self, entries: list[dict]) -> None:
+        """ConsoleHelp.html 파싱 결과로 CSV의 깨진(?) help 텍스트를 복원"""
+        html_help = self._parse_help_html()
+        if not html_help:
+            return
+        patched = 0
+        for e in entries:
+            html_text = html_help.get(e["name"])
+            if html_text and html_text != e["help"]:
+                e["help"] = html_text
+                patched += 1
+        if patched:
+            unreal.log(f"ConsoleBrowser: HTML로 help 복원 — {patched:,}개")
 
     def _load_csv(self, path: str, entry_type: str) -> list[dict]:
         p = Path(path)
