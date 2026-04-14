@@ -2,39 +2,21 @@
   "Default": [
     {
       "type": "CCmds",
-      "name": "CollectionManager.Add",
+      "name": "DumpCCmds",
       "value": "",
       "set_by": "",
-      "help": "??? ???? ??? ???? ??? ?????.",
+      "help": "Lists all CVars (or a subset) and their values. Can also show help, and can save to .csv.\nUsage: DumpCCmds [Prefix] [-showhelp] [-csv=[path]]\nIf -csv does not have a file specified, it will create a file in the Project Logs directory",
       "custom_values": [],
-      "memo": "컬렉션에 애셋 추가"
+      "memo": "명령어만 덤프"
     },
     {
       "type": "CCmds",
-      "name": "CollectionManager.Create",
+      "name": "DumpCVars",
       "value": "",
       "set_by": "",
-      "help": "??? ??? ??? ???? ?????.",
+      "help": "Lists all CVars (or a subset) and their values. Can also show help, and can save to .csv.\nUsage: DumpCVars [Prefix] [-showhelp] [-csv=[path]]\nIf -csv does not have a file specified, it will create a file in the Project Logs directory",
       "custom_values": [],
-      "memo": "컬렉션 생성"
-    },
-    {
-      "type": "CCmds",
-      "name": "CollectionManager.Destroy",
-      "value": "",
-      "set_by": "",
-      "help": "??? ??? ??? ???? ?????.",
-      "custom_values": [],
-      "memo": "컬렉션 제거"
-    },
-    {
-      "type": "CCmds",
-      "name": "CollectionManager.Remove",
-      "value": "",
-      "set_by": "",
-      "help": "??? ????? ??? ???? ??? ?????.",
-      "custom_values": [],
-      "memo": "컬렉션에서 애셋 제거"
+      "memo": "변수만 덤프"
     }
   ]
 }
