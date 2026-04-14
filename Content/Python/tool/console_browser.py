@@ -6,8 +6,10 @@ ConsoleBrowser — TAPython Chameleon 툴
 console_cat 을 대체하며, console_cat 에 대한 의존성은 없음.
 
 ## 탭 구성
-- CVar  : DumpCVars.csv 로드. 2열 리스트(Name / Help). 선택 시 상세 정보 표시.
+- CVar  : DumpCVars.csv 로드. 4열 리스트(Name / Value / Set By / Help). 선택 시 상세 정보 표시.
 - CCmds : DumpCCmds.csv 로드. 2열 리스트(Name / Help).
+- Exec  : ConsoleHelp.html 에서 파싱. CVars/CCmds 에 없는 항목 = Exec 목록. 2열 리스트(Name / Help).
+          HTML이 없으면 빈 목록. 'help html' 콘솔 명령 실행 후 Rebuild 하면 채워짐.
 - Favs  : 즐겨찾기. 4열 리스트(Name / 값 / Memo / Help). 목록 다중 관리.
 
 ## CSV 로드 흐름
@@ -40,9 +42,9 @@ console_cat 을 대체하며, console_cat 에 대한 의존성은 없음.
 - [🌐] 토글로 원문↔번역 전환, [🔄] 로 파일 새로고침, [📝] 로 파일 직접 편집
 
 ## UI ↔ Python 콜백 매핑 (console_browser.json → console_browser.py)
-- 탭 전환       : on_tab_cvars / on_tab_ccmds / on_tab_favs
+- 탭 전환       : on_tab_cvars / on_tab_ccmds / on_tab_exec / on_tab_favs
 - 검색          : on_search_changed(text)
-- 리스트 선택   : on_cvar_selection_changed / on_ccmds_selection_changed / on_favs_selection_changed
+- 리스트 선택   : on_cvar_selection_changed / on_ccmds_selection_changed / on_exec_selection_changed / on_favs_selection_changed
 - 즐겨찾기 목록 : on_fav_list_changed(display_name) / add_fav_list / delete_fav_list
 - 즐겨찾기 항목 : add_to_favs / remove_from_favs / on_fav_double_click(idx)
 - 메모          : save_memo (버튼) / on_memo_committed (Enter)
@@ -90,9 +92,11 @@ AKA_STATUS          = "StatusText"
 AKA_SEARCH          = "SearchInput"
 AKA_TAB_CVARS       = "TabCVars"
 AKA_TAB_CCMDS       = "TabCCmds"
+AKA_TAB_EXEC        = "TabExec"
 AKA_TAB_FAVS        = "TabFavs"
 AKA_LIST_CVARS      = "ListCVars"
 AKA_LIST_CCMDS      = "ListCCmds"
+AKA_LIST_EXEC       = "ListExec"
 AKA_LIST_FAVS       = "ListFavs"
 AKA_DETAIL          = "DetailText"
 AKA_CUSTOM_VALUE    = "CustomValueInput"
@@ -303,13 +307,16 @@ class ConsoleBrowser:
         self.data: unreal.ChameleonData = unreal.PythonBPLib.get_chameleon_data(json_path)
         self._cvar_entries:   list[dict] = []
         self._ccmds_entries:  list[dict] = []
+        self._exec_entries:   list[dict] = []
         self._cvar_filtered:  list[dict] = []
         self._ccmds_filtered: list[dict] = []
+        self._exec_filtered:  list[dict] = []
         self._favs_filtered:  list[dict] = []
         self._active_tab      = "CVar"
         self._last_query      = ""
         self._cvar_sel:  set[int] = set()
         self._ccmds_sel: set[int] = set()
+        self._exec_sel:  set[int] = set()
         self._favs_sel:  set[int] = set()
         self._switching_tab = False
         self._cv_last_exec_time = 0.0
@@ -370,6 +377,10 @@ class ConsoleBrowser:
         if not self._switching_tab:
             self._show_tab("CCmds")
 
+    def on_tab_exec(self) -> None:
+        if not self._switching_tab:
+            self._show_tab("Exec")
+
     def on_tab_favs(self) -> None:
         if not self._switching_tab:
             self._show_tab("Favs")
@@ -392,6 +403,11 @@ class ConsoleBrowser:
         self._ccmds_sel = set(self.data.get_list_view_multi_column_selection(AKA_LIST_CCMDS))
         if len(self._ccmds_sel) == 1:
             self._show_detail(self._ccmds_filtered, next(iter(self._ccmds_sel)))
+
+    def on_exec_selection_changed(self) -> None:
+        self._exec_sel = set(self.data.get_list_view_multi_column_selection(AKA_LIST_EXEC))
+        if len(self._exec_sel) == 1:
+            self._show_detail(self._exec_filtered, next(iter(self._exec_sel)))
 
     def on_favs_selection_changed(self) -> None:
         if self._favs_refreshing:
@@ -769,27 +785,30 @@ class ConsoleBrowser:
         """'help html' 콘솔 커맨드가 생성하는 파일 경로 (ProjectSaved/ 고정)"""
         return self._saved_dir() / HTML_HELP_FILE
 
-    def _parse_help_html(self) -> dict[str, str]:
-        """ConsoleHelp.html 에서 {name: help} 딕셔너리 파싱.
-        CSV의 ? 깨짐 문제를 보완하기 위해 사용.
+    def _parse_help_html(self) -> list[dict]:
+        """ConsoleHelp.html 에서 [{"name", "help", "type"}, ...] 파싱.
+        파일이 없으면 [] 반환.
+        type 필드는 "CVar", "Exec" 등 UE가 부여한 값 (없으면 빈 문자열).
         """
         path = self._help_html_path()
         if not path.exists():
-            return {}
+            return []
         try:
             content = path.read_text(encoding="utf-8")
         except Exception as e:
             unreal.log_warning(f"ConsoleBrowser: ConsoleHelp.html 읽기 실패: {e}")
-            return {}
+            return []
 
         m = re.search(r"var\s+cvars\s*=\s*(\[[\s\S]*?\]);", content)
         if not m:
             unreal.log_warning("ConsoleBrowser: ConsoleHelp.html 에서 cvars 배열을 찾지 못했습니다")
-            return {}
+            return []
 
-        obj_re = re.compile(
-            r'{\s*name:\s*"(?P<name>(?:\\.|[^"\\])*)"\s*,\s*help:\s*"(?P<help>(?:\\.|[^"\\])*)"[^}]*?}'
+        # name/help 를 추출하고, 나머지 tail 에서 type 필드를 별도로 파싱
+        obj_re   = re.compile(
+            r'{\s*name:\s*"(?P<name>(?:\\.|[^"\\])*)"\s*,\s*help:\s*"(?P<help>(?:\\.|[^"\\])*)"(?P<tail>[^}]*?)}'
         )
+        type_re  = re.compile(r'\btype:\s*"([^"]*)"')
         _uescape = re.compile(r'\\u([0-9a-fA-F]{4})')
         _simple  = {"n": "\n", "t": "\t", "r": "\r", "\\": "\\", '"': '"', "/": "/"}
 
@@ -797,11 +816,13 @@ class ConsoleBrowser:
             s = _uescape.sub(lambda m: chr(int(m.group(1), 16)), s)
             return re.sub(r'\\(.)', lambda m: _simple.get(m.group(1), m.group(0)), s)
 
-        result: dict[str, str] = {}
+        result: list[dict] = []
         for obj in obj_re.finditer(m.group(1)):
             name  = _js_unescape(obj.group("name"))
             help_ = _js_unescape(obj.group("help"))
-            result[name] = help_
+            tm    = type_re.search(obj.group("tail"))
+            type_ = tm.group(1) if tm else ""
+            result.append({"name": name, "help": help_, "type": type_})
         unreal.log(f"ConsoleBrowser: ConsoleHelp.html 파싱 완료 — {len(result):,}개")
         return result
 
@@ -957,9 +978,10 @@ class ConsoleBrowser:
     _TAB_BTN_COLORS = {
         AKA_TAB_CVARS: (unreal.LinearColor(0.05, 0.40, 1.00, 1.0), unreal.LinearColor(0.15, 0.15, 0.15, 1.0)),  # Blue
         AKA_TAB_CCMDS: (unreal.LinearColor(0.05, 0.70, 0.25, 1.0), unreal.LinearColor(0.15, 0.15, 0.15, 1.0)),  # Green
+        AKA_TAB_EXEC:  (unreal.LinearColor(0.80, 0.45, 0.05, 1.0), unreal.LinearColor(0.15, 0.15, 0.15, 1.0)),  # Orange
         AKA_TAB_FAVS:  (unreal.LinearColor(0.85, 0.10, 0.10, 1.0), unreal.LinearColor(0.15, 0.15, 0.15, 1.0)),  # Red
     }
-    _TAB_AKA = {"CVar": AKA_TAB_CVARS, "CCmds": AKA_TAB_CCMDS, "Favs": AKA_TAB_FAVS}
+    _TAB_AKA = {"CVar": AKA_TAB_CVARS, "CCmds": AKA_TAB_CCMDS, "Exec": AKA_TAB_EXEC, "Favs": AKA_TAB_FAVS}
 
     def _show_tab(self, tab: str) -> None:
         self._switching_tab = True
@@ -973,6 +995,7 @@ class ConsoleBrowser:
         self.data.set_visibility(AKA_FAVS_TOOLS,  "Visible"   if is_favs else "Collapsed")
         self.data.set_visibility(AKA_LIST_CVARS,  "Visible" if tab == "CVar"  else "Collapsed")
         self.data.set_visibility(AKA_LIST_CCMDS,  "Visible" if tab == "CCmds" else "Collapsed")
+        self.data.set_visibility(AKA_LIST_EXEC,   "Visible" if tab == "Exec"  else "Collapsed")
         self.data.set_visibility(AKA_LIST_FAVS,   "Visible" if is_favs else "Collapsed")
         self.data.set_visibility(AKA_MEMO_ROW,    "Visible" if is_favs else "Collapsed")
         self._switching_tab = False
@@ -981,24 +1004,38 @@ class ConsoleBrowser:
     def _reload_all(self) -> None:
         self._cvar_entries  = self._load_csv(self._logs_path(CSV_CVARS), "CVar")
         self._ccmds_entries = self._load_csv(self._logs_path(CSV_CCMDS), "CCmds")
-        self._patch_help_from_html(self._cvar_entries + self._ccmds_entries)
+        html_entries = self._parse_help_html()
+        if html_entries:
+            self._patch_help_from_html(self._cvar_entries + self._ccmds_entries, html_entries)
+            self._exec_entries = self._extract_exec_from_html(html_entries)
+        else:
+            self._exec_entries = []
         self._update_fav_selector()
         self._filter_all(self._last_query)
         self._refresh_all_lists()
 
-    def _patch_help_from_html(self, entries: list[dict]) -> None:
+    def _patch_help_from_html(self, entries: list[dict], html_entries: list[dict]) -> None:
         """ConsoleHelp.html 파싱 결과로 CSV의 깨진(?) help 텍스트를 복원"""
-        html_help = self._parse_help_html()
-        if not html_help:
-            return
+        html_map = {e["name"]: e["help"] for e in html_entries}
         patched = 0
         for e in entries:
-            html_text = html_help.get(e["name"])
+            html_text = html_map.get(e["name"])
             if html_text and html_text != e["help"]:
                 e["help"] = html_text
                 patched += 1
         if patched:
             unreal.log(f"ConsoleBrowser: HTML로 help 복원 — {patched:,}개")
+
+    def _extract_exec_from_html(self, html_entries: list[dict]) -> list[dict]:
+        """HTML 전체 목록에서 CVars/CCmds에 없는 항목을 Exec 목록으로 반환"""
+        known = {e["name"] for e in self._cvar_entries} | {e["name"] for e in self._ccmds_entries}
+        result = [
+            {"type": "Exec", "name": e["name"], "help": e["help"]}
+            for e in html_entries
+            if e["name"] not in known
+        ]
+        unreal.log(f"ConsoleBrowser: Exec 목록 — {len(result):,}개")
+        return result
 
     def _load_csv(self, path: str, entry_type: str) -> list[dict]:
         p = Path(path)
@@ -1032,25 +1069,39 @@ class ConsoleBrowser:
     def _filter_all(self, query: str) -> None:
         self._cvar_sel.clear()
         self._ccmds_sel.clear()
+        self._exec_sel.clear()
         # 즐겨찾기 선택은 이름 기준으로 보존 (rebuild/filter 후 인덱스 재계산)
         selected_names = {self._favs_filtered[i]["name"] for i in self._favs_sel if i < len(self._favs_filtered)}
         if not query:
             self._cvar_filtered  = self._cvar_entries[:]
             self._ccmds_filtered = self._ccmds_entries[:]
+            self._exec_filtered  = self._exec_entries[:]
             self._favs_filtered  = self._favs[:]
         else:
             q = query.lower()
+
+            def _match_help(e: dict) -> bool:
+                """원문 또는 번역 캐시에서 쿼리 매칭"""
+                if q in e["help"].lower():
+                    return True
+                trans = self._trans_cache.get(e["name"])
+                return bool(trans and q in trans.lower())
+
             self._cvar_filtered = [
                 e for e in self._cvar_entries
-                if q in e["name"].lower() or q in e["help"].lower()
+                if q in e["name"].lower() or _match_help(e)
             ]
             self._ccmds_filtered = [
                 e for e in self._ccmds_entries
-                if q in e["name"].lower() or q in e["help"].lower()
+                if q in e["name"].lower() or _match_help(e)
+            ]
+            self._exec_filtered = [
+                e for e in self._exec_entries
+                if q in e["name"].lower() or _match_help(e)
             ]
             self._favs_filtered = [
                 e for e in self._favs
-                if q in e["name"].lower() or q in e["help"].lower()
+                if q in e["name"].lower() or _match_help(e)
                 or any(q in v.lower() for v in e.get("custom_values", []))
                 or q in e.get("memo", "").lower()
             ]
@@ -1077,6 +1128,11 @@ class ConsoleBrowser:
         for e in self._ccmds_filtered:
             flat_ccmds.extend([e["name"], _help(e, 200)])
         self.data.set_list_view_multi_column_items(AKA_LIST_CCMDS, flat_ccmds, 2)
+
+        flat_exec: list[str] = []
+        for e in self._exec_filtered:
+            flat_exec.extend([e["name"], _help(e, 200)])
+        self.data.set_list_view_multi_column_items(AKA_LIST_EXEC, flat_exec, 2)
 
         flat_favs: list[str] = []
         for e in self._favs_filtered:
@@ -1105,6 +1161,9 @@ class ConsoleBrowser:
         elif self._active_tab == "CCmds":
             shown, total = len(self._ccmds_filtered), len(self._ccmds_entries)
             status = "CSV 없음 — [Rebuild] 버튼을 눌러 생성하세요" if total == 0 else f"{shown:,} / {total:,} 개"
+        elif self._active_tab == "Exec":
+            shown, total = len(self._exec_filtered), len(self._exec_entries)
+            status = "ConsoleHelp.html 없음 — 'help html' 콘솔 명령 실행 후 Rebuild" if total == 0 else f"{shown:,} / {total:,} 개"
         else:
             shown, total = len(self._favs_filtered), len(self._favs)
             list_label = f"[{self._active_fav_list[1]}]  "

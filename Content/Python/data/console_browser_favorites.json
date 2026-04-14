@@ -17,6 +17,15 @@
       "help": "Lists all CVars (or a subset) and their values. Can also show help, and can save to .csv.\nUsage: DumpCVars [Prefix] [-showhelp] [-csv=[path]]\nIf -csv does not have a file specified, it will create a file in the Project Logs directory",
       "custom_values": [],
       "memo": "변수만 덤프"
+    },
+    {
+      "type": "CCmds",
+      "name": "DumpLevelCollections",
+      "value": "",
+      "set_by": "",
+      "help": "Dump level collections in the current world.",
+      "custom_values": [],
+      "memo": ""
     }
   ]
 }

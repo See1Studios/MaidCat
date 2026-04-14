@@ -44,6 +44,18 @@
                                         "VAlign": "Center",
                                         "Padding": [0, 0, 4, 0],
                                         "SButton": {
+                                            "Aka": "TabExec",
+                                            "ContentPadding": [10, 4],
+                                            "ButtonColorAndOpacity": [0.15, 0.15, 0.15, 1.0],
+                                            "Content": { "STextBlock": { "Text": "Exec", "Font": { "Style": "FEditorStyle", "StyleName": "BoldFont" }, "ColorAndOpacity": [1, 1, 1, 1] } },
+                                            "OnClick": "console_browser.on_tab_exec()"
+                                        }
+                                    },
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "Padding": [0, 0, 4, 0],
+                                        "SButton": {
                                             "Aka": "TabFavs",
                                             "ContentPadding": [10, 4],
                                             "ButtonColorAndOpacity": [0.15, 0.15, 0.15, 1.0],
@@ -325,6 +337,22 @@
                                     ]
                                 },
                                 "OnSelectionChanged": "console_browser.on_ccmds_selection_changed()"
+                            }
+                        },
+                        {
+                            "Padding": [6, 0, 6, 0],
+                            "SListView<MultiColumn>": {
+                                "Aka": "ListExec",
+                                "Visibility": "Collapsed",
+                                "ItemHeight": 20,
+                                "EnableAnimatedScrolling": false,
+                                "SHeaderRow": {
+                                    "Columns": [
+                                        { "DefaultLabel": "Name", "FillWidth": 0.30 },
+                                        { "DefaultLabel": "Help", "FillWidth": 0.70 }
+                                    ]
+                                },
+                                "OnSelectionChanged": "console_browser.on_exec_selection_changed()"
                             }
                         },
                         {

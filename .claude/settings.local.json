@@ -14,7 +14,9 @@
       "Bash(powershell.exe -Command \"Get-ChildItem 'D:\\\\UnrealProjects\\\\' -ErrorAction SilentlyContinue | Select-Object Name\")",
       "Bash(awk '{print $2}')",
       "Bash(awk -F'def ' '{print $2}')",
-      "Bash(python3 -c ':*)"
+      "Bash(python3 -c ':*)",
+      "Bash(ls \"D:\\\\\\\\UnrealProjects\\\\\\\\See1Unreal\\\\\\\\Saved\\\\\\\\\")",
+      "Bash(powershell -Command \"Get-ChildItem 'D:\\\\UnrealProjects\\\\See1Unreal\\\\Saved\\\\' -ErrorAction SilentlyContinue | Select-Object Name | Out-String\")"
     ]
   }
 }
