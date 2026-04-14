@@ -1241,12 +1241,24 @@ class ConsoleBrowser:
 
 def launch() -> None:
     json_path = Path(__file__).with_suffix(".json").as_posix()
-    # 이미 열려있으면 포커스만 — 도킹 상태에서 재실행 시 크래시 방지
     json_name = Path(json_path).name
     for p in unreal.PythonBPLib.get_all_chameleon_data_paths():
         if Path(p).name == json_name:
-            unreal.ChameleonData.flash_chameleon_window(p)
-            return
+            if unreal.ChameleonData.flash_chameleon_window(p):
+                return  # 플로팅 상태 → 포커스
+
+            # flash 실패 = 도킹 중이거나 탭이 닫혀 스테일 상태.
+            # 창 크기로 구분 시도: 도킹 중이면 실제 크기, 스테일이면 (0,0)
+            size = unreal.ChameleonData.get_chameleon_window_size(p)
+            if size.x > 0 or size.y > 0:
+                # 도킹된 상태 — TAPython에 도킹 탭 직접 활성화 API 없음
+                unreal.log("ConsoleBrowser: 도킹된 탭은 직접 클릭하여 활성화하세요.")
+                return
+
+            # 스테일 상태 (탭 닫힘, ChameleonData만 잔존) → 정리 후 재실행
+            unreal.ChameleonData.request_close(p)
+            break
+
     unreal.ChameleonData.launch_chameleon_tool(json_path)
 
 
