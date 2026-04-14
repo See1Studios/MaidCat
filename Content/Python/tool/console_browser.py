@@ -1241,6 +1241,12 @@ class ConsoleBrowser:
 
 def launch() -> None:
     json_path = Path(__file__).with_suffix(".json").as_posix()
+    # 이미 열려있으면 포커스만 — 도킹 상태에서 재실행 시 크래시 방지
+    json_name = Path(json_path).name
+    for p in unreal.PythonBPLib.get_all_chameleon_data_paths():
+        if Path(p).name == json_name:
+            unreal.ChameleonData.flash_chameleon_window(p)
+            return
     unreal.ChameleonData.launch_chameleon_tool(json_path)
 
 
