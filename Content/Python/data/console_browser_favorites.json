@@ -177,5 +177,2802 @@
       "custom_values": [],
       "memo": ""
     }
+  ],
+  "ShowFlag": [
+    {
+      "type": "CVar",
+      "name": "ShowFlag.ActorColoration",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.AmbientCubemap",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.AmbientOcclusion",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.AntiAliasing",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Atmosphere",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.AudioRadius",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.BillboardSprites",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Bloom",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Bones",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Bounds",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Brushes",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.BSP",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.BSPSplit",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.BSPTriangles",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.BuilderBrush",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.CameraAspectRatioBars",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.CameraFrustums",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.CameraImperfections",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.CameraInterpolation",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Cameras",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.CameraSafeFrames",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.CapsuleShadows",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Cloud",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Collision",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.CollisionPawn",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.CollisionVisibility",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.ColorGrading",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.CompositeEditorPrimitives",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Constraints",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.ContactShadows",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Cover",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.DebugAI",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.DebugDrawDistantVirtualSMLights",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Decals",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.DeferredLighting",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.DepthOfField",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Diffuse",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.DirectionalLights",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.DirectLighting",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.DisableOcclusionQueries",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.DistanceCulledPrimitives",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.DistanceFieldAO",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.DynamicShadows",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.EditingLevelInstance",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Editor",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.EyeAdaptation",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Fog",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.ForceFeedbackRadius",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Game",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.GameplayDebug",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.GBufferHints",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.GlobalIllumination",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Grain",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Grid",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Hair",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.HeterogeneousVolumes",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.HighResScreenshotMask",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.HISMCClusterTree",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.HISMCOcclusionBounds",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.HitProxies",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.HLODColoration",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.HMDDistortion",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.IndirectLightingCache",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.InputDebugVisualizer",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.InstancedFoliage",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.InstancedGrass",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.InstancedStaticMeshes",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Landscape",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LargeVertices",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LensDistortion",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LensFlares",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LightComplexity",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LightFunctions",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LightInfluences",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Lighting",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LightingOnlyOverride",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LightMapDensity",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LightRadius",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LightShafts",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LocalExposure",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LOD",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LODColoration",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LumenDetailTraces",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LumenFarFieldTraces",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LumenGlobalIllumination",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LumenGlobalTraces",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LumenReflections",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LumenScreenTraces",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LumenSecondaryBounces",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.LumenShortRangeAmbientOcclusion",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.MassProperties",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Materials",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.MaterialTextureScaleAccuracy",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.MediaPlanes",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.MegaLights",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.MeshEdges",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.MeshUVDensityAccuracy",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.ModeWidgets",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.MotionBlur",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.NaniteMeshes",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.NaniteStreamingGeometry",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Navigation",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Niagara",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.OcclusionMeshes",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.OnScreenDebug",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.OpaqueCompositeEditorPrimitives",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.OutputMaterialTextureScales",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.OverrideDiffuseAndSpecular",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Paper2DSprites",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Particles",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.PathTracing",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.PhysicalMaterialMasks",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.PhysicsField",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Pivot",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.PointLights",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.PostProcessing",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.PostProcessMaterial",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.PrecomputedVisibility",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.PrecomputedVisibilityCells",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.PreviewShadowsIndicator",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.PrimitiveDistanceAccuracy",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.QuadOverdraw",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.RayTracedDistanceFieldShadows",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.RayTracingDebug",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.RectLights",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.ReflectionEnvironment",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.ReflectionOverride",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Refraction",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Rendering",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.RequiredTextureResolution",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.SceneCaptureCopySceneDepth",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.SceneColorFringe",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.ScreenPercentage",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.ScreenSpaceAO",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.ScreenSpaceReflections",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Selection",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.SelectionOutline",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.SeparateTranslucency",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.ServerDrawDebug",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.ShaderComplexity",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.ShaderComplexityWithQuadOverdraw",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.ShaderPrint",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.ShadowFrustums",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.SkeletalMeshes",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.SkyLighting",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Snap",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Specular",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Splines",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.SpotLights",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.StaticMeshes",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.StationaryLightOverlap",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.StereoRendering",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.StreamingBounds",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.SubsurfaceScattering",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.TemporalAA",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.TestImage",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.TextRender",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.TexturedLightProfiles",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.ToneCurve",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Tonemapper",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Translucency",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VectorFields",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VertexColors",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Vignette",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VirtualShadowMapPersistentData",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VirtualTexturePendingMips",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VirtualTexturePrimitives",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VirtualTextureResidency",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisLog",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeBuffer",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeCalibrationColor",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeCalibrationCustom",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeCalibrationGrayscale",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeDistanceFieldAO",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeDOF",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeGlobalDistanceField",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeGPUSkinCache",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeGroom",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeHDR",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeInstanceOcclusionQueries",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeInstanceUpdates",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeLevelInstanceEditing",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeLightCulling",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeLightFunctionAtlas",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeLightingOnProbes",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeLocalExposure",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeLumen",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeLWCComplexity",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeMeshDistanceFields",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeMotionBlur",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeMotionVectors",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeNanite",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeOutOfBoundsPixels",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizePostProcessStack",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeReprojection",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeSenses",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeShadingModels",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeSkyAtmosphere",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeSkyLightIlluminance",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeSSR",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeSSS",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeSubstrate",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeTemporalUpscaler",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeTSR",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeVirtualShadowMap",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeVolumetricCloudConservativeDensity",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeVolumetricCloudEmptySpaceSkipping",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VisualizeVolumetricLightmap",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VolumeLightingSamples",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Volumes",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VolumetricFog",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VolumetricLightmap",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.VREditing",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.WidgetComponents",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    },
+    {
+      "type": "CVar",
+      "name": "ShowFlag.Wireframe",
+      "value": "2",
+      "set_by": "Constructor",
+      "help": "Allows to override a specific showflag (works in editor and game, \"show\" only works in game and UI only in editor)\nUseful to run a build many time with the same showflags (when put in consolevariables.ini like \"showflag.abc=0\")\n 0: force the showflag to be OFF\n 1: force the showflag to be ON\n 2: do not override this showflag (default)",
+      "custom_values": [
+        "0",
+        "1",
+        "2"
+      ],
+      "memo": ""
+    }
   ]
 }

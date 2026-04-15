@@ -552,23 +552,27 @@ class ConsoleBrowser:
             self._do_save_memo()
 
     def _do_save_memo(self) -> None:
-        if len(self._favs_sel) != 1:
-            self._set_status("메모를 저장할 항목을 하나 선택하세요")
+        if not self._favs_sel:
+            self._set_status("메모를 저장할 항목을 선택하세요")
             return
-        idx = next(iter(self._favs_sel))
-        if not (0 <= idx < len(self._favs_filtered)):
+        target_names = {
+            self._favs_filtered[i]["name"]
+            for i in self._favs_sel
+            if i < len(self._favs_filtered)
+        }
+        if not target_names:
             return
-        target_name = self._favs_filtered[idx]["name"]
         memo = self.data.get_text(AKA_MEMO_INPUT)
+        memo_map = {f["name"] for f in self._favs if f["name"] in target_names}
         for f in self._favs:
-            if f["name"] == target_name:
+            if f["name"] in target_names:
                 f["memo"] = memo
-                break
         self._save_favs()
         self._filter_all(self._last_query)
-        self._favs_sel = {i for i, e in enumerate(self._favs_filtered) if e["name"] == target_name}
+        self._favs_sel = {i for i, e in enumerate(self._favs_filtered) if e["name"] in target_names}
         self._refresh_all_lists()
-        self._set_status(f"메모 저장: {target_name}")
+        label = next(iter(target_names)) if len(target_names) == 1 else f"{len(target_names)}개 항목"
+        self._set_status(f"메모 저장: {label}")
 
     def on_custom_value_committed(self, text: str) -> None:
         """값 필드 Enter — 탐색 실행 (저장하지 않음, 포커스 이탈 무시)"""
@@ -592,30 +596,40 @@ class ConsoleBrowser:
         self._rebuild_if_auto(entry)
 
     def add_custom_value(self) -> None:
-        """값 배열에 새 값 추가"""
+        """값 배열에 새 값 추가 — 다중 선택 시 선택된 모든 항목에 추가"""
         new_val = self.data.get_text(AKA_CUSTOM_VALUE).strip()
         if not new_val:
             self._set_status("추가할 값을 입력하세요")
             return
-        if len(self._favs_sel) != 1:
+        if not self._favs_sel:
             self._set_status("항목을 선택하세요")
             return
-        idx = next(iter(self._favs_sel))
-        if not (0 <= idx < len(self._favs_filtered)):
+        target_names = {
+            self._favs_filtered[i]["name"]
+            for i in self._favs_sel
+            if i < len(self._favs_filtered)
+        }
+        added, skipped = 0, 0
+        for f in self._favs:
+            if f["name"] not in target_names:
+                continue
+            values: list = f.setdefault("custom_values", [])
+            if new_val in values:
+                skipped += 1
+            else:
+                values.append(new_val)
+                added += 1
+        if added == 0:
+            self._set_status(f"이미 모두 등록된 값: {new_val}")
             return
-        entry = self._favs_filtered[idx]
-        values: list = entry.setdefault("custom_values", [])
-        if new_val in values:
-            self._set_status(f"이미 등록된 값: {new_val}")
-            return
-        values.append(new_val)
-        target_name = entry["name"]
         self._save_favs()
         self.data.set_text(AKA_CUSTOM_VALUE, "")
         self._filter_all(self._last_query)
-        self._favs_sel = {i for i, e in enumerate(self._favs_filtered) if e["name"] == target_name}
+        self._favs_sel = {i for i, e in enumerate(self._favs_filtered) if e["name"] in target_names}
         self._refresh_all_lists()
-        self._set_status(f"값 추가: {new_val}")
+        label = next(iter(target_names)) if len(target_names) == 1 else f"{len(target_names)}개 항목"
+        skip_msg = f"  ({skipped}개 중복 스킵)" if skipped else ""
+        self._set_status(f"값 추가: {new_val}  →  {label}{skip_msg}")
 
     def exec_fav_value(self, val_idx: int) -> None:
         """값 버튼 클릭 — 해당 값으로 명령 실행"""
@@ -669,13 +683,19 @@ class ConsoleBrowser:
     # ── 내보내기 / DB 분할 ───────────────────────────────────────────────────
 
     def export_favs(self) -> None:
-        """현재 즐겨찾기 목록 전체를 CSV로 내보내기"""
-        entries = self._favs  # 검색 필터 무관, 목록 전체
-        if not entries:
+        """전체 즐겨찾기를 CSV로 내보내기.
+
+        형식: Name(명령어:메모), Group(목록 이름), Options("val1", "val2"...), Help(번역 우선)
+        """
+        # 현재 활성 목록의 항목을 (list_name, entry) 쌍으로 수집
+        list_name = self._active_fav_list[1]
+        all_rows: list[tuple[str, dict]] = [(list_name, e) for e in self._favs]
+        if not all_rows:
             self._set_status("내보낼 즐겨찾기 항목이 없습니다")
             return
+
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        default_name = f"Favs_{_safe_filename(self._active_fav_list[1])}_{timestamp}.csv"
+        default_name = f"Favs_{_safe_filename(list_name)}_{timestamp}.csv"
         default_dir = self._saved_dir() / "ConsoleBrowser"
         default_dir.mkdir(parents=True, exist_ok=True)
 
@@ -695,12 +715,21 @@ class ConsoleBrowser:
             return
 
         out_path = Path(chosen)
-        fieldnames = ["name", "value", "set_by", "help", "memo"]
         with open(out_path, "w", encoding="utf-8-sig", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
-            writer.writeheader()
-            writer.writerows(entries)
-        self._set_status(f"내보내기 완료: {out_path.name}  ({len(entries):,}개)")
+            writer = csv.writer(f)
+            writer.writerow(["Name", "Group", "Options", "Help"])
+            for list_name, e in all_rows:
+                name  = e["name"]
+                memo  = e.get("memo", "").strip()
+                name_col    = f"{name}:{memo}" if memo else name
+                group_col   = list_name
+                custom_vals = e.get("custom_values", [])
+                options_col = ("(" + ", ".join(f'"{v}"' for v in custom_vals) + ")"
+                               if custom_vals else "")
+                help_col    = self._trans_cache.get(name) or e.get("help", "")
+                writer.writerow([name_col, group_col, options_col, help_col])
+
+        self._set_status(f"내보내기 완료: {out_path.name}  ({len(all_rows):,}개)")
         unreal.log(f"✅ ConsoleBrowser 즐겨찾기 내보내기: {out_path}")
 
     # ── 내부 헬퍼 ────────────────────────────────────────────────────────────
