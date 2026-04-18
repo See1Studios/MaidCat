@@ -4,13 +4,20 @@ from typing import Callable, Optional, ClassVar
 
 MESSAGE_TEXT = unreal.Name("MessageText")
 COMBO_BOX = unreal.Name("ComboBoxInput")
+LABEL_TEXT = unreal.Name("LabelText")
+BTN_SUBMIT = unreal.Name("BtnSubmit")
+BTN_CANCEL = unreal.Name("BtnCancel")
 
 class OptionDialog(metaclass=Singleton):
-	"""이름 입력 다이얼로그 클래스 (싱글톤)"""
+	"""옵션 선택 다이얼로그 클래스 (싱글톤)"""
 	_on_selection_changed: ClassVar[Optional[Callable[[str], None]]] = None
 	_on_submit_callback: ClassVar[Optional[Callable[[str], None]]] = None
 	_on_cancel_callback: ClassVar[Optional[Callable[[], None]]] = None
 	_items: ClassVar[list[str]] = []
+	_message: ClassVar[str] = "Enter Option"
+	_label: ClassVar[str] = "Option :"
+	_submit_text: ClassVar[str] = "Submit"
+	_cancel_text: ClassVar[str] = "Cancel"
 
 
 	def __init__(self, json_path: str):
@@ -19,10 +26,13 @@ class OptionDialog(metaclass=Singleton):
 
 	def init(self) -> None:
 		"""초기화 처리"""
+		self.data.set_text(MESSAGE_TEXT, OptionDialog._message)  # type: ignore
+		self.data.set_text(LABEL_TEXT, OptionDialog._label)  # type: ignore
+		self.data.set_text(BTN_SUBMIT, OptionDialog._submit_text)  # type: ignore
+		self.data.set_text(BTN_CANCEL, OptionDialog._cancel_text)  # type: ignore
 		if(len(OptionDialog._items) > 0):
 			self.data.set_combo_box_items(COMBO_BOX, OptionDialog._items)  # type: ignore
 			self.data.set_combo_box_selected_item(COMBO_BOX, 0)  # type: ignore
-			self.data.set_text(MESSAGE_TEXT, "Enter Option")  # type: ignore
 
 	def submit(self) -> None:
 		"""제출 버튼 처리"""

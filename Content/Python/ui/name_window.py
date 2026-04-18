@@ -8,7 +8,11 @@ INPUT_FIELD = unreal.Name("NameInput")
 class NameDialog(metaclass=Singleton):
 	"""이름 입력 다이얼로그 클래스 (싱글톤)"""
 	_on_submit_callback: ClassVar[Optional[Callable[[str], None]]] = None
-	_on_cancel_callback: ClassVar[Optional[Callable[[], None]]] = None	
+	_on_cancel_callback: ClassVar[Optional[Callable[[], None]]] = None
+	_message: ClassVar[str] = "이름을 입력하세요."
+	_hint_text: ClassVar[str] = ""
+	_submit_text: ClassVar[str] = "Submit"
+	_cancel_text: ClassVar[str] = "Cancel"
 	
 	def __init__(self, json_path: str):
 		self.json_path = json_path
@@ -16,8 +20,8 @@ class NameDialog(metaclass=Singleton):
 		
 	def init(self) -> None:
 		"""초기화 처리"""
-		self.data.set_text(INPUT_FIELD, "")
-		self.data.set_text(MESSAGE_TEXT, "이름을 입력하세요.")  # type: ignore
+		self.data.set_text(INPUT_FIELD, "")  # type: ignore
+		self.data.set_text(MESSAGE_TEXT, NameDialog._message)  # type: ignore
 
 	def submit(self) -> None:
 		"""제출 버튼 처리"""

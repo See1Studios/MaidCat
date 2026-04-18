@@ -4,6 +4,7 @@ Unreal Python Utilities
 
 Available modules:
 - helper: Unreal Engine API shortcuts and helpers
+- sorter: group/item sorting helpers for Unreal object arrays
 """
 
-__all__ = ['helper']
+__all__ = ['helper', 'sorter']

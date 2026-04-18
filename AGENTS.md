@@ -61,7 +61,8 @@ Python 코드베이스의 루트는 `MaidCat/Content/Python/` 폴더입니다.
 
 **TAPython 폴더 구조** (`{host_project_dir}/TA/TAPython/`):
 - `Python/`: TAPython 설치 시 자동 생성되는 예제 코드 (읽기 전용 참고용)
-  - `Example/`, `ChameleonGallery/`, `ChameleonSketch/` 등 Chameleon UI 예제 포함
+  - `Example/`, `ChameleonGallery/`, `ChameleonSketch/`, `QueryTools/` 등 예제 포함
+  - `QueryTools/`는 객체 상세 조회, 속성 비교, 참조/의존성 질의 예제를 제공함 (`ObjectDetailViewer.py`, `queryTools.py`)
   - 각 예제는 `.py` + `.json` 쌍으로 구성됨
   - **중요**: 이 폴더는 참고용이며, 실제 도구는 `MaidCat/Content/Python/` 에 작성
 - `Lib/site-packages/`: pip로 설치된 패키지 저장 폴더
@@ -136,6 +137,8 @@ Python 코드베이스의 루트는 `MaidCat/Content/Python/` 폴더입니다.
 - **참고 문서**: 
   - [TAPython 공식 문서](https://www.tacolor.xyz/tapython/welcome_to_tapython.html)
   - [Chameleon Data API](https://www.tacolor.xyz/pages/ChameleonDataAPI.html)
+  - UI 구성 예제 우선 참고: `{host_project_dir}/TA/TAPython/Python/ChameleonGallery/` (예: `{project}TA\TAPython\Python\ChameleonGallery`)
+  - 객체 introspection, 속성 비교, 참조/의존성 조회 예제 참고: `{host_project_dir}/TA/TAPython/Python/QueryTools/` (예: `{project}TA\TAPython\Python\QueryTools`)
 
 - **Chameleon 도구 작성 위치**:
   - 실제 도구는 반드시 **`MaidCat/Content/Python/`** 아래에 작성

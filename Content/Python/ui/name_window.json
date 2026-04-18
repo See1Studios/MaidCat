@@ -1,6 +1,6 @@
 {
     "TabLabel": "Name Dialog",
-    "InitTabSize": [400, 200],
+    "InitTabSize": [300, 150],
     "InitTabPosition": [50, 200],
     "IsModalWindow": true,
     "InitPyCmd": "import ui.name_window; ch_name_window = ui.name_window.NameDialog(%JsonPath); ch_name_window.init()",
@@ -24,7 +24,7 @@
                             {
                                 "Aka": "MessageText",
                                 "Text": "Enter Name",
-								"TextStyle": {"Style": "FEditorStyle", "StyleName": "Credits.H3"},
+								"TextStyle": {"Style": "FEditorStyle", "StyleName": "Credits.H5"},
 								"Justification": "Center"
                             }
                         },
