@@ -229,6 +229,17 @@
                                                             {
                                                                 "AutoWidth": true,
                                                                 "VAlign": "Center",
+                                                                "Padding": [0, 0, 4, 0],
+                                                                "SButton": {
+                                                                    "Text": "📥",
+                                                                    "ContentPadding": [3, 1],
+                                                                    "ToolTipText": "UEConsoleScraper JSON을 번역 캐시 + 즐겨찾기로 병합",
+                                                                    "OnClick": "console_browser.import_scraper_json()"
+                                                                }
+                                                            },
+                                                            {
+                                                                "AutoWidth": true,
+                                                                "VAlign": "Center",
                                                                 "Padding": [0, 0, 8, 0],
                                                                 "SButton": {
                                                                     "Text": "📤",
