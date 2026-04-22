@@ -27,7 +27,7 @@ console_cat 을 대체하며, console_cat 에 대한 의존성은 없음.
 ## 즐겨찾기 데이터 구조
 - _favs_db: dict[(tier, name), list[entry]]
   - tier: "shared" | "local"
-  - entry: {"name", "value", "set_by", "help", "memo", "custom_values": [str, ...]}
+  - entry: {"name", "value", "set_by", "help", "label", "group", "options": [{"value", "label"?}, ...]}
 - 저장 위치
   - shared : MaidCat/Content/Python/data/console_browser_favorites.json  (git 관리)
   - local  : {ProjectSaved}/ConsoleBrowser/favorites.json
@@ -47,7 +47,7 @@ console_cat 을 대체하며, console_cat 에 대한 의존성은 없음.
 - 리스트 선택   : on_cvar_selection_changed / on_ccmds_selection_changed / on_exec_selection_changed / on_favs_selection_changed
 - 즐겨찾기 목록 : on_fav_list_changed(display_name) / add_fav_list / delete_fav_list
 - 즐겨찾기 항목 : add_to_favs / remove_from_favs / on_fav_double_click(idx)
-- 메모          : save_memo (버튼) / on_memo_committed (Enter)
+- 라벨          : save_memo (버튼) / on_memo_committed (Enter)
 - 커스텀 값     : on_custom_value_committed(text) / add_custom_value / exec_fav_value(val_idx) / delete_fav_value(val_idx)
 - 번역          : on_toggle_trans / on_engine_changed(engine) / translate_detail / cancel_translate / reload_trans_cache / open_trans_file
 - 기타          : rebuild / export_favs
@@ -424,7 +424,7 @@ class ConsoleBrowser:
         self._show_detail(self._favs_filtered, idx)
         entry = self._favs_filtered[idx]
         self.data.set_text(AKA_CUSTOM_VALUE, "")
-        self.data.set_text(AKA_MEMO_INPUT, entry.get("memo", ""))
+        self.data.set_text(AKA_MEMO_INPUT, entry.get("label", ""))
         self._refresh_values_panel()
 
     # ── 즐겨찾기 목록 관리 ───────────────────────────────────────────────────
@@ -516,7 +516,7 @@ class ConsoleBrowser:
             return
 
         for e in to_add:
-            self._favs.append({**e, "custom_values": [], "memo": ""})
+            self._favs.append({**e, "options": [], "label": ""})
         sel.clear()
         self._save_favs()
         self._filter_all(self._last_query)
@@ -562,11 +562,10 @@ class ConsoleBrowser:
         }
         if not target_names:
             return
-        memo = self.data.get_text(AKA_MEMO_INPUT)
-        memo_map = {f["name"] for f in self._favs if f["name"] in target_names}
+        label_text = self.data.get_text(AKA_MEMO_INPUT)
         for f in self._favs:
             if f["name"] in target_names:
-                f["memo"] = memo
+                f["label"] = label_text
         self._save_favs()
         self._filter_all(self._last_query)
         self._favs_sel = {i for i, e in enumerate(self._favs_filtered) if e["name"] in target_names}
@@ -589,7 +588,7 @@ class ConsoleBrowser:
             return
         entry = self._favs_filtered[idx]
         exec_value = text.strip() or entry.get("value", "").strip()
-        cmd = f"{entry['name']} {exec_value}".strip() if exec_value else entry["name"]
+        cmd = (f"{entry['name']} {exec_value}".strip() if entry["name"] else exec_value)
         world = unreal.EditorLevelLibrary.get_editor_world()
         unreal.SystemLibrary.execute_console_command(world, cmd)
         self._set_status(f"▶ 탐색: {cmd}")
@@ -613,11 +612,11 @@ class ConsoleBrowser:
         for f in self._favs:
             if f["name"] not in target_names:
                 continue
-            values: list = f.setdefault("custom_values", [])
-            if new_val in values:
+            options: list = f.setdefault("options", [])
+            if any(o["value"] == new_val for o in options):
                 skipped += 1
             else:
-                values.append(new_val)
+                options.append({"value": new_val})
                 added += 1
         if added == 0:
             self._set_status(f"이미 모두 등록된 값: {new_val}")
@@ -639,11 +638,11 @@ class ConsoleBrowser:
         if not (0 <= idx < len(self._favs_filtered)):
             return
         entry = self._favs_filtered[idx]
-        values = entry.get("custom_values", [])
-        if not (0 <= val_idx < len(values)):
+        options = entry.get("options", [])
+        if not (0 <= val_idx < len(options)):
             return
-        val = values[val_idx]
-        cmd = f"{entry['name']} {val}".strip() if val else entry["name"]
+        val = options[val_idx]["value"]
+        cmd = (f"{entry['name']} {val}".strip() if entry["name"] else val)
         world = unreal.EditorLevelLibrary.get_editor_world()
         unreal.SystemLibrary.execute_console_command(world, cmd)
         self._set_status(f"▶ 실행: {cmd}")
@@ -656,10 +655,10 @@ class ConsoleBrowser:
         if not (0 <= idx < len(self._favs_filtered)):
             return
         entry = self._favs_filtered[idx]
-        values = entry.get("custom_values", [])
-        if not (0 <= val_idx < len(values)):
+        options = entry.get("options", [])
+        if not (0 <= val_idx < len(options)):
             return
-        removed = values.pop(val_idx)
+        removed = options.pop(val_idx)["value"]
         target_name = entry["name"]
         self._save_favs()
         self._filter_all(self._last_query)
@@ -672,15 +671,162 @@ class ConsoleBrowser:
         if not (0 <= idx < len(self._favs_filtered)):
             return
         entry = self._favs_filtered[idx]
-        values = entry.get("custom_values", [])
-        exec_value = values[0] if values else entry.get("value", "").strip()
-        cmd = f"{entry['name']} {exec_value}".strip() if exec_value else entry["name"]
+        options = entry.get("options", [])
+        exec_value = options[0]["value"] if options else entry.get("value", "").strip()
+        cmd = (f"{entry['name']} {exec_value}".strip() if entry["name"] else exec_value)
         world = unreal.EditorLevelLibrary.get_editor_world()
         unreal.SystemLibrary.execute_console_command(world, cmd)
         self._set_status(f"▶ 실행: {cmd}")
         self._rebuild_if_auto(entry)
 
-    # ── 내보내기 / DB 분할 ───────────────────────────────────────────────────
+    # ── 가져오기 / 내보내기 ──────────────────────────────────────────────────
+
+    @staticmethod
+    def _infer_options(default_val: str, name: str = "") -> list[dict]:
+        """default 값으로 초기 옵션 목록을 추론."""
+        if name.lower().startswith("showflag."):
+            return [{"value": "0"}, {"value": "1"}, {"value": "2"}]
+        if not default_val:
+            return []
+        dv = default_val.strip()
+        dv_lower = dv.lower()
+
+        if dv_lower in ("0", "1"):
+            return [{"value": "0"}, {"value": "1"}]
+        if dv_lower in ("true", "false"):
+            return [{"value": "false"}, {"value": "true"}]
+
+        # 정수
+        try:
+            n = int(dv)
+            # 2의 거듭제곱 (64 이상)
+            if n >= 64 and (n & (n - 1)) == 0:
+                steps = [n >> 2, n >> 1, n, n << 1, n << 2]
+                return [{"value": str(s)} for s in steps if s > 0]
+            # 소정수 (2~9): 0 ~ n+1 전체
+            if 2 <= n <= 9:
+                return [{"value": str(i)} for i in range(0, n + 2)]
+            # 10~99: 0, 절반, 기본값, 2배
+            if 10 <= abs(n) <= 99:
+                candidates = sorted({0, n // 2, n, n * 2})
+                return [{"value": str(c)} for c in candidates]
+            return [{"value": dv}]
+        except ValueError:
+            pass
+
+        # 소수
+        try:
+            f = float(dv)
+            if 0.0 <= f <= 1.0:
+                return [{"value": v} for v in ("0", "0.25", "0.5", "0.75", "1")]
+            if f < 0:
+                return [{"value": str(-abs(f))}, {"value": "0"}, {"value": str(abs(f))}]
+            return [{"value": dv}]
+        except ValueError:
+            pass
+
+        return [{"value": dv}]
+
+    def import_scraper_json(self) -> None:
+        """UEConsoleScraper JSON → 번역 캐시 + 즐겨찾기 목록으로 병합.
+
+        - description 필드를 번역 캐시에 추가 (기존 항목 유지)
+        - 파일명을 목록 이름으로 사용해 새 즐겨찾기 목록 생성
+        - default 필드를 value로, description을 help로 매핑
+        """
+        root = tk.Tk()
+        root.withdraw()
+        root.wm_attributes("-topmost", True)
+        chosen = filedialog.askopenfilename(
+            parent=root,
+            title="UEConsoleScraper JSON 선택",
+            filetypes=[("JSON 파일", "*.json"), ("모든 파일", "*.*")],
+        )
+        root.destroy()
+        if not chosen:
+            return
+
+        path = Path(chosen)
+        try:
+            items = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as e:
+            self._set_status(f"JSON 로드 실패: {e}")
+            return
+
+        if not isinstance(items, list):
+            self._set_status("지원하지 않는 JSON 형식 (배열이어야 합니다)")
+            return
+
+        # ── 번역 캐시 병합 ──
+        trans_added = 0
+        for item in items:
+            name = item.get("name", "").strip()
+            desc = item.get("help", item.get("description", "")).strip()
+            if name and desc and name not in self._trans_cache:
+                self._trans_cache[name] = desc
+                trans_added += 1
+        if trans_added:
+            self._save_trans_cache()
+
+        # ── 즐겨찾기 목록으로 임포트 ──
+        list_name = path.stem
+        key: tuple[str, str] = ("local", list_name)
+        existing_names = {e["name"] for e in self._favs_db.get(key, [])}
+        valid_names = {e["name"] for e in self._cvar_entries + self._ccmds_entries}
+
+        seen: dict[str, dict] = {}
+        for item in items:
+            n = item.get("name", "").strip()
+            if n and n not in seen:
+                seen[n] = item
+        dedup_count = len(items) - len(seen)
+        items = list(seen.values())
+
+        new_entries, skipped, invalid = [], 0, 0
+        for item in items:
+            name = item.get("name", "").strip()
+            if not name:
+                continue
+            if valid_names and name not in valid_names:
+                invalid += 1
+                continue
+            if name in existing_names:
+                skipped += 1
+                continue
+            raw_type = item.get("type", "")
+            entry_type = {"variable": "CVar", "command": "CCmds"}.get(raw_type, raw_type) or "CVar"
+            default_val = item.get("default", "").strip()
+            init_options = self._infer_options(default_val, name)
+            new_entries.append({
+                "type":    entry_type,
+                "name":    name,
+                "value":   default_val,
+                "set_by":  "",
+                "help":    item.get("help", item.get("description", "")),
+                "label":   "",
+                "group":   item.get("group", ""),
+                "options": init_options,
+            })
+
+        if new_entries:
+            self._favs_db.setdefault(key, []).extend(new_entries)
+            self._active_fav_list = key
+            self._save_favs()
+            self._update_fav_selector()
+
+        self._filter_all(self._last_query)
+        self._refresh_all_lists()
+
+        msg = f"병합 완료: 즐겨찾기 {len(new_entries):,}개 · 번역 {trans_added:,}개"
+        if dedup_count:
+            msg += f"  ({dedup_count:,}개 JSON 중복 제거)"
+        if skipped:
+            msg += f"  ({skipped:,}개 중복 스킵)"
+        if invalid:
+            msg += f"  ({invalid:,}개 덤프 불일치 제외)"
+        self._set_status(msg)
+        unreal.log(f"ConsoleBrowser: import_scraper_json — {path.name}: favs={len(new_entries)}, trans={trans_added}, invalid={invalid}")
+
 
     def export_favs(self) -> None:
         """전체 즐겨찾기를 CSV로 내보내기.
@@ -694,43 +840,114 @@ class ConsoleBrowser:
             self._set_status("내보낼 즐겨찾기 항목이 없습니다")
             return
 
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        default_name = f"Favs_{_safe_filename(list_name)}_{timestamp}.csv"
         default_dir = self._saved_dir() / "ConsoleBrowser"
         default_dir.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        _FILE_THRESHOLD  = 100    # 이 이상이면 개별 파일
+        _GROUP_THRESHOLD = 50     # 이 이상이면 서브그룹 컬럼 적용
+
+        group_counts: dict[str, int] = {}
+        for _, e in all_rows:
+            g = e.get("group", "") or list_name
+            group_counts[g] = group_counts.get(g, 0) + 1
+
+        # 상위 그룹별 분류 (large_groups 판정용 선계산)
+        base_grouped_temp: dict[str, int] = {}
+        for _, e in all_rows:
+            base = e.get("group", "") or list_name
+            base_grouped_temp[base] = base_grouped_temp.get(base, 0) + 1
+        large_groups_temp = {g for g, count in base_grouped_temp.items() if count >= _FILE_THRESHOLD}
+
+        def _resolve_group(e: dict) -> str:
+            base = e.get("group", "") or list_name
+            # 1000개 이상인 그룹에만 서브그룹 적용
+            if base not in large_groups_temp:
+                return base
+            parts = e["name"].split(".")
+            if len(parts) >= 3:
+                return f"{base}-{parts[1]}"
+            return base
+
+        def _build_row(e: dict, group_col: str) -> list:
+            name = e["name"]
+            lbl  = e.get("label", "").strip()
+            name_col = f"{name}:{lbl}" if lbl else name
+            _nb  = {"true": "1", "false": "0"}
+            opts = e.get("options", [])
+            raw_vals = {(o.get("value") or "").lower() for o in opts}
+            _lbl = {"0": "OFF", "1": "ON"} if raw_vals <= {"true", "false"} and raw_vals else {}
+            def _opt_str(o: dict) -> str:
+                raw = o.get("value") or ""
+                val = _nb.get(raw.lower(), raw)
+                lb  = o.get("label") or _lbl.get(val, "")
+                return f'"{val}:{lb}"' if lb else f'"{val}"'
+            options_col = ("(" + ", ".join(_opt_str(o) for o in opts) + ")" if opts else "")
+            help_col = self._trans_cache.get(name) or e.get("help", "")
+            return [name_col, group_col, options_col, help_col]
+
+        # 상위 그룹별 분류
+        base_grouped: dict[str, list] = {}
+        for _, e in all_rows:
+            base_grouped.setdefault(e.get("group", "") or list_name, []).append(e)
+
+        large_groups = large_groups_temp
+        split_files  = bool(large_groups)
 
         root = tk.Tk()
         root.withdraw()
         root.wm_attributes("-topmost", True)
-        chosen = filedialog.asksaveasfilename(
-            parent=root,
-            title="즐겨찾기 내보내기",
-            initialdir=str(default_dir),
-            initialfile=default_name,
-            defaultextension=".csv",
-            filetypes=[("CSV 파일", "*.csv"), ("모든 파일", "*.*")],
-        )
+        if split_files:
+            chosen_path = filedialog.askdirectory(
+                parent=root,
+                title="즐겨찾기 내보낼 폴더 선택",
+                initialdir=str(default_dir),
+            )
+        else:
+            chosen_path = filedialog.asksaveasfilename(
+                parent=root,
+                title="즐겨찾기 내보내기",
+                initialdir=str(default_dir),
+                initialfile=f"Favs_{_safe_filename(list_name)}_{timestamp}.csv",
+                defaultextension=".csv",
+                filetypes=[("CSV 파일", "*.csv"), ("모든 파일", "*.*")],
+            )
         root.destroy()
-        if not chosen:
+        if not chosen_path:
             return
 
-        out_path = Path(chosen)
-        with open(out_path, "w", encoding="utf-8-sig", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(["Name", "Group", "Options", "Help"])
-            for list_name, e in all_rows:
-                name  = e["name"]
-                memo  = e.get("memo", "").strip()
-                name_col    = f"{name}:{memo}" if memo else name
-                group_col   = list_name
-                custom_vals = e.get("custom_values", [])
-                options_col = ("(" + ", ".join(f'"{v}"' for v in custom_vals) + ")"
-                               if custom_vals else "")
-                help_col    = self._trans_cache.get(name) or e.get("help", "")
-                writer.writerow([name_col, group_col, options_col, help_col])
+        def _write_csv(path: Path, entries: list[dict], strip_base: str = "") -> None:
+            with open(path, "w", encoding="utf-8-sig", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["Name", "Group", "Options", "Help"])
+                for e in entries:
+                    g = _resolve_group(e)
+                    if strip_base and g.startswith(f"{strip_base}-"):
+                        g = g[len(strip_base) + 1:]
+                    writer.writerow(_build_row(e, g))
 
-        self._set_status(f"내보내기 완료: {out_path.name}  ({len(all_rows):,}개)")
-        unreal.log(f"✅ ConsoleBrowser 즐겨찾기 내보내기: {out_path}")
+        if split_files:
+            out_dir = Path(chosen_path)
+            rest: list[dict] = []
+            written_files = 0
+            for base_group, entries in sorted(base_grouped.items()):
+                if base_group in large_groups:
+                    fname = f"{_safe_filename(list_name)}_{_safe_filename(base_group)}_{timestamp}.csv"
+                    _write_csv(out_dir / fname, entries, strip_base=base_group)
+                    written_files += 1
+                else:
+                    rest.extend(entries)
+            if rest:
+                fname = f"{_safe_filename(list_name)}_기타_{timestamp}.csv"
+                _write_csv(out_dir / fname, rest)
+                written_files += 1
+            self._set_status(f"내보내기 완료: {written_files}개 파일 · {len(all_rows):,}개 항목 → {out_dir.name}/")
+            unreal.log(f"✅ ConsoleBrowser 즐겨찾기 내보내기: {written_files}개 파일 → {out_dir}")
+        else:
+            out_path = Path(chosen_path)
+            _write_csv(out_path, [e for _, e in all_rows])
+            self._set_status(f"내보내기 완료: {out_path.name}  ({len(all_rows):,}개)")
+            unreal.log(f"✅ ConsoleBrowser 즐겨찾기 내보내기: {out_path}")
 
     # ── 내부 헬퍼 ────────────────────────────────────────────────────────────
 
@@ -750,9 +967,10 @@ class ConsoleBrowser:
         if not (0 <= idx < len(self._favs_filtered)):
             return
 
-        values = self._favs_filtered[idx].get("custom_values", [])
-        for i, val in enumerate(values):
-            label = val[:10] + "…" if len(val) > 10 else val
+        options = self._favs_filtered[idx].get("options", [])
+        for i, opt in enumerate(options):
+            val = opt["value"]
+            btn_label = opt.get("label") or (val[:10] + "…" if len(val) > 10 else val)
             slot = {
                 "AutoWidth": True,
                 "VAlign": "Center",
@@ -762,7 +980,7 @@ class ConsoleBrowser:
                         {
                             "AutoWidth": True,
                             "SButton": {
-                                "Text": label,
+                                "Text": btn_label,
                                 "ContentPadding": [6, 2],
                                 "ToolTipText": val,
                                 "OnClick": f"console_browser.exec_fav_value({i})",
@@ -780,7 +998,7 @@ class ConsoleBrowser:
                 },
             }
             self.data.append_slot_from_json(AKA_VALUES_PANEL, json.dumps(slot))
-        self._values_panel_count = len(values)
+        self._values_panel_count = len(options)
 
     def _show_detail(self, entries: list, index: int) -> None:
         if not (0 <= index < len(entries)):
@@ -796,12 +1014,17 @@ class ConsoleBrowser:
             f"[{e.get('type', '?')}]  {e['name']}",
             f"Value:  {e.get('value', '')}",
             f"Set By: {e.get('set_by', '')}",
-            f"\nHelp:\n{help_text}",
         ]
-        if e.get("custom_values"):
-            lines.append(f"\n실행 값: {', '.join(e['custom_values'])}")
-        if e.get("memo"):
-            lines.append(f"\nMemo:\n{e['memo']}")
+        if e.get("group"):
+            lines.append(f"Group:  {e['group']}")
+        lines.append(f"\nHelp:\n{help_text}")
+        if e.get("options"):
+            lines.append("\n실행 값: " + ", ".join(
+                (f"{o['label']}:{o['value']}" if o.get("label") else o["value"])
+                for o in e["options"]
+            ))
+        if e.get("label"):
+            lines.append(f"\nLabel:\n{e['label']}")
         self.data.set_text(AKA_DETAIL, "\n".join(lines))
 
     def _saved_dir(self) -> Path:
@@ -887,14 +1110,22 @@ class ConsoleBrowser:
         if not self._favs_db:
             self._favs_db = {("local", DEFAULT_LIST): []}
 
-        # custom_value(str) → custom_values(list) 마이그레이션
         for entries in self._favs_db.values():
             for item in entries:
+                # custom_value → custom_values → options 마이그레이션
                 if "custom_value" in item:
                     cv = item.pop("custom_value")
                     item.setdefault("custom_values", [cv] if cv else [])
+                if "custom_values" in item:
+                    old = item.pop("custom_values")
+                    item.setdefault("options", [{"value": v} for v in old if isinstance(v, str)])
                 else:
-                    item.setdefault("custom_values", [])
+                    item.setdefault("options", [])
+                # memo → label 마이그레이션
+                if "memo" in item and "label" not in item:
+                    item["label"] = item.pop("memo")
+                else:
+                    item.setdefault("label", "")
 
         self._active_fav_list = next(iter(self._favs_db))
 
@@ -1133,8 +1364,10 @@ class ConsoleBrowser:
             self._favs_filtered = [
                 e for e in self._favs
                 if q in e["name"].lower() or _match_help(e)
-                or any(q in v.lower() for v in e.get("custom_values", []))
-                or q in e.get("memo", "").lower()
+                or any(q in o["value"].lower() or q in o.get("label", "").lower()
+                       for o in e.get("options", []))
+                or q in e.get("label", "").lower()
+                or q in e.get("group", "").lower()
             ]
         self._favs_sel = {i for i, e in enumerate(self._favs_filtered) if e["name"] in selected_names}
 
@@ -1167,10 +1400,11 @@ class ConsoleBrowser:
 
         flat_favs: list[str] = []
         for e in self._favs_filtered:
+            opts = e.get("options", [])
             flat_favs.extend([
                 e["name"],
-                ", ".join(e.get("custom_values", [])),
-                e.get("memo", ""),
+                ", ".join(o.get("label") or o["value"] for o in opts),
+                e.get("label", ""),
                 _help(e, 120),
             ])
         saved_favs_sel = set(self._favs_sel)

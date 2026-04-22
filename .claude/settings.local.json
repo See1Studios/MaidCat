@@ -16,7 +16,15 @@
       "Bash(awk -F'def ' '{print $2}')",
       "Bash(python3 -c ':*)",
       "Bash(ls \"D:\\\\\\\\UnrealProjects\\\\\\\\See1Unreal\\\\\\\\Saved\\\\\\\\\")",
-      "Bash(powershell -Command \"Get-ChildItem 'D:\\\\UnrealProjects\\\\See1Unreal\\\\Saved\\\\' -ErrorAction SilentlyContinue | Select-Object Name | Out-String\")"
+      "Bash(powershell -Command \"Get-ChildItem 'D:\\\\UnrealProjects\\\\See1Unreal\\\\Saved\\\\' -ErrorAction SilentlyContinue | Select-Object Name | Out-String\")",
+      "WebFetch(domain:dev.epicgames.com)",
+      "Bash(mkdir -p \"C:/Users/parkj/Documents/GitHub/UEConsoleScraper\")",
+      "Read(//c/Users/parkj/Documents/GitHub/**)",
+      "Bash(python -m venv \"C:/Users/parkj/Documents/GitHub/UEConsoleScraper/.venv\")",
+      "Bash(\"C:/Users/parkj/Documents/GitHub/UEConsoleScraper/.venv/Scripts/pip.exe\" install *)",
+      "Bash(\"C:/Users/parkj/Documents/GitHub/UEConsoleScraper/.venv/Scripts/playwright.exe\" install *)",
+      "Bash(\".venv/Scripts/python.exe\" scrape_cvars.py --version 5.6 --lang ko --output cvars.json --dump-html)",
+      "Bash(.venv/Scripts/python.exe -c ' *)"
     ]
   }
 }
