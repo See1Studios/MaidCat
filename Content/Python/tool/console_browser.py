@@ -840,50 +840,114 @@ class ConsoleBrowser:
             self._set_status("내보낼 즐겨찾기 항목이 없습니다")
             return
 
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        default_name = f"Favs_{_safe_filename(list_name)}_{timestamp}.csv"
         default_dir = self._saved_dir() / "ConsoleBrowser"
         default_dir.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        _FILE_THRESHOLD  = 100    # 이 이상이면 개별 파일
+        _GROUP_THRESHOLD = 50     # 이 이상이면 서브그룹 컬럼 적용
+
+        group_counts: dict[str, int] = {}
+        for _, e in all_rows:
+            g = e.get("group", "") or list_name
+            group_counts[g] = group_counts.get(g, 0) + 1
+
+        # 상위 그룹별 분류 (large_groups 판정용 선계산)
+        base_grouped_temp: dict[str, int] = {}
+        for _, e in all_rows:
+            base = e.get("group", "") or list_name
+            base_grouped_temp[base] = base_grouped_temp.get(base, 0) + 1
+        large_groups_temp = {g for g, count in base_grouped_temp.items() if count >= _FILE_THRESHOLD}
+
+        def _resolve_group(e: dict) -> str:
+            base = e.get("group", "") or list_name
+            # 1000개 이상인 그룹에만 서브그룹 적용
+            if base not in large_groups_temp:
+                return base
+            parts = e["name"].split(".")
+            if len(parts) >= 3:
+                return f"{base}-{parts[1]}"
+            return base
+
+        def _build_row(e: dict, group_col: str) -> list:
+            name = e["name"]
+            lbl  = e.get("label", "").strip()
+            name_col = f"{name}:{lbl}" if lbl else name
+            _nb  = {"true": "1", "false": "0"}
+            opts = e.get("options", [])
+            raw_vals = {(o.get("value") or "").lower() for o in opts}
+            _lbl = {"0": "OFF", "1": "ON"} if raw_vals <= {"true", "false"} and raw_vals else {}
+            def _opt_str(o: dict) -> str:
+                raw = o.get("value") or ""
+                val = _nb.get(raw.lower(), raw)
+                lb  = o.get("label") or _lbl.get(val, "")
+                return f'"{val}:{lb}"' if lb else f'"{val}"'
+            options_col = ("(" + ", ".join(_opt_str(o) for o in opts) + ")" if opts else "")
+            help_col = self._trans_cache.get(name) or e.get("help", "")
+            return [name_col, group_col, options_col, help_col]
+
+        # 상위 그룹별 분류
+        base_grouped: dict[str, list] = {}
+        for _, e in all_rows:
+            base_grouped.setdefault(e.get("group", "") or list_name, []).append(e)
+
+        large_groups = large_groups_temp
+        split_files  = bool(large_groups)
 
         root = tk.Tk()
         root.withdraw()
         root.wm_attributes("-topmost", True)
-        chosen = filedialog.asksaveasfilename(
-            parent=root,
-            title="즐겨찾기 내보내기",
-            initialdir=str(default_dir),
-            initialfile=default_name,
-            defaultextension=".csv",
-            filetypes=[("CSV 파일", "*.csv"), ("모든 파일", "*.*")],
-        )
+        if split_files:
+            chosen_path = filedialog.askdirectory(
+                parent=root,
+                title="즐겨찾기 내보낼 폴더 선택",
+                initialdir=str(default_dir),
+            )
+        else:
+            chosen_path = filedialog.asksaveasfilename(
+                parent=root,
+                title="즐겨찾기 내보내기",
+                initialdir=str(default_dir),
+                initialfile=f"Favs_{_safe_filename(list_name)}_{timestamp}.csv",
+                defaultextension=".csv",
+                filetypes=[("CSV 파일", "*.csv"), ("모든 파일", "*.*")],
+            )
         root.destroy()
-        if not chosen:
+        if not chosen_path:
             return
 
-        out_path = Path(chosen)
-        with open(out_path, "w", encoding="utf-8-sig", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(["Name", "Group", "Options", "Help"])
-            for list_name, e in all_rows:
-                name      = e["name"]
-                lbl       = e.get("label", "").strip()
-                name_col  = f"{name}:{lbl}" if lbl else name
-                group_col = e.get("group", "") or list_name
-                _nb  = {"true": "1", "false": "0"}
-                opts = e.get("options", [])
-                raw_vals = {(o.get("value") or "").lower() for o in opts}
-                _lbl = {"0": "OFF", "1": "ON"} if raw_vals <= {"true", "false"} and raw_vals else {}
-                def _opt_str(o: dict) -> str:
-                    raw = o.get("value") or ""
-                    val = _nb.get(raw.lower(), raw)
-                    lbl = o.get("label") or _lbl.get(val, "")
-                    return f'"{val}:{lbl}"' if lbl else f'"{val}"'
-                options_col = ("(" + ", ".join(_opt_str(o) for o in opts) + ")" if opts else "")
-                help_col  = self._trans_cache.get(name) or e.get("help", "")
-                writer.writerow([name_col, group_col, options_col, help_col])
+        def _write_csv(path: Path, entries: list[dict], strip_base: str = "") -> None:
+            with open(path, "w", encoding="utf-8-sig", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["Name", "Group", "Options", "Help"])
+                for e in entries:
+                    g = _resolve_group(e)
+                    if strip_base and g.startswith(f"{strip_base}-"):
+                        g = g[len(strip_base) + 1:]
+                    writer.writerow(_build_row(e, g))
 
-        self._set_status(f"내보내기 완료: {out_path.name}  ({len(all_rows):,}개)")
-        unreal.log(f"✅ ConsoleBrowser 즐겨찾기 내보내기: {out_path}")
+        if split_files:
+            out_dir = Path(chosen_path)
+            rest: list[dict] = []
+            written_files = 0
+            for base_group, entries in sorted(base_grouped.items()):
+                if base_group in large_groups:
+                    fname = f"{_safe_filename(list_name)}_{_safe_filename(base_group)}_{timestamp}.csv"
+                    _write_csv(out_dir / fname, entries, strip_base=base_group)
+                    written_files += 1
+                else:
+                    rest.extend(entries)
+            if rest:
+                fname = f"{_safe_filename(list_name)}_기타_{timestamp}.csv"
+                _write_csv(out_dir / fname, rest)
+                written_files += 1
+            self._set_status(f"내보내기 완료: {written_files}개 파일 · {len(all_rows):,}개 항목 → {out_dir.name}/")
+            unreal.log(f"✅ ConsoleBrowser 즐겨찾기 내보내기: {written_files}개 파일 → {out_dir}")
+        else:
+            out_path = Path(chosen_path)
+            _write_csv(out_path, [e for _, e in all_rows])
+            self._set_status(f"내보내기 완료: {out_path.name}  ({len(all_rows):,}개)")
+            unreal.log(f"✅ ConsoleBrowser 즐겨찾기 내보내기: {out_path}")
 
     # ── 내부 헬퍼 ────────────────────────────────────────────────────────────
 
