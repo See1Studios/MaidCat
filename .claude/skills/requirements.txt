@@ -1,0 +1,9 @@
+# External Claude Code Plugins & Marketplaces
+# Format: <owner/repo> or <plugin-name>
+
+# Behavioral guidelines to reduce common LLM coding mistakes (Karpathy Guidelines)
+forrestchang/karpathy-skills
+
+# Ultra-compressed communication mode to reduce token usage
+JuliusBrussee/caveman --active
+
