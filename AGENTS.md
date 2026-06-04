@@ -2,6 +2,17 @@
 
 Use context7 for up-to-date documentation and examples.
 
+## AI 진입점 정책
+
+이 파일은 사용 중인 모든 AI 코딩 어시스턴트의 **공통 진입점**이다. 진입점은 2개만 둔다.
+
+- **AGENTS.md** (이 파일) — GitHub Copilot, Google Antigravity, OpenAI Codex가 자동 인식
+- [CLAUDE.md](CLAUDE.md) — `@AGENTS.md` import + Claude 전용 추가 지시 (Claude Code는 AGENTS.md를 자동 인식하지 않음)
+
+Gemini CLI를 사용하게 되면 `.gemini/settings.json`에 `"contextFileName": "AGENTS.md"`로 지정하거나 1줄짜리 `GEMINI.md`(`@AGENTS.md`)를 추가하면 됨.
+
+이 플러그인은 `InstallAsLink.bat`로 다른 UE 프로젝트에 symlink로 설치된다. **AI 지침은 MaidCat 폴더 내부에만** 존재하며 호스트 프로젝트 루트는 건드리지 않는다. 사용자는 보통 MaidCat 자체를 IDE 루트로 열고 작업한다.
+
 ## Dev Environment
 
 This plugin is developed standalone but runs inside a host Unreal Engine project via symbolic link.

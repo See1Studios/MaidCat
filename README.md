@@ -1,75 +1,29 @@
-# Unreal Python plugin template
-A minimalistic template for pure Python plugins in Unreal.<br>
-Example repos using this template: 
-- [unrealScriptEditor-plugin](https://github.com/hannesdelbeke/unrealScriptEditor-plugin)
-- [texture-browser-unreal-plugin](https://github.com/hannesdelbeke/texture-browser-unreal-plugin)
-- [unreal-qt-plugin](https://github.com/hannesdelbeke/unreal-qt-plugin)
-- [plugget-unreal-plugin](https://github.com/plugget/plugget-unreal-plugin)
+# MaidCat
 
+언리얼 엔진 작업 도구상자 플러그인. 개인 작업에 쓰는 Python 도구, 머티리얼 함수, 에디터 확장을 한 곳에 모아 어떤 UE 프로젝트에서도 동일한 작업 환경을 재현하기 위한 것.
 
-### Content
-```python
-📂 MyPlugin
-├── 📂 Content
-│   └── 📂 Python
-│       └── 📄 init_unreal.py  # customise startup logic
-│       └── 📄 my_module.py  # customise this Qt Widget
-│       └── 📄 requirements.txt  # add your dependencies
-│       └── 📂 dependencies_installer
-│           └── 📄 __init__.py
-│           └── 📂 vendor
-│               └── 📂 py_pip
-├── 📂 Resources
-│   └── 🖼️ icon128.png
-└── 📄 MyPlugin.uplugin  # customise uplugin settings
-📄 .gitignore
-📄 README.md  # create a nice readme for your plugin
-```
+## 설치
 
-### Info
-- `MyPlugin` rename the folder to your plugin name. Unreal's naming convention uses PascalCase.
-- `MyPlugin.uplugin` Rename this file to your plugin name, and open it with a text editor & edit the content.
-- `.gitignore` is setup to prevent unneeded python files from being commit to your git-repo.
-- `requirements.txt` Add your pip/pypi dependencies to this file, delete it if not used.
-- `README.md`: include an image & description, so people see what's your plugin about.
-- `Python` This folder is added to the PYTHONPATH, put the modules you want to import in here
-- `dependencies_installer` This Python packages auto installs all your dependencies on startup from the `requirements.txt`, it ships with `py_pip` for the installation.
+다른 UE 프로젝트에 symlink로 통합한다.
 
+1. 이 리포지토리를 원하는 위치에 git clone
+2. 루트의 `InstallAsLink.bat` 실행 → 대상 UE 프로젝트 경로 입력
+3. 대상 프로젝트의 `Plugins/MaidCat/`에 symlink가 생성되고 `dev.local.json`이 자동 생성됨
 
-# Installation
+## 의존성
 
-### Manual install
-1. Place the plugin in Unreal's `MyProject/Plugins` folder
-2. Enable the plugin in Unreal 
-   1. open `Edit > Plugins`
-   2. search for `MyPlugin` (capital sensitive) and enable it
-3. Restart Unreal
+- **Unreal Engine 5.x**
+- **[TAPython](https://github.com/cgerchenhp/UE_TAPython_Plugin_Release)** — Python으로 네이티브 Slate UI 작성
 
-### (OPTIONAL) Add Plugget install support
-To support 1-click install & automatically install all dependencies in the `requirements.txt` file, you can add [plugget](https://github.com/plugget/plugget) support.
-It's a bit more work for you, the developer. But it removes the technical steps for the end user. And makes your plugin discoverable to other users.
+자세한 폴더 구조, Python 코드베이스, UE Python API 카탈로그는 [AGENTS.md](AGENTS.md)에 정리되어 있다.
 
-1. Upload your plugin to a repo. ([example repo](https://github.com/hannesdelbeke/unreal-python-plugin-template))
-2. Create a plugget manifest ([sample manifest](https://github.com/plugget/plugget-pkgs/blob/main/unreal/hello-world-template/latest.json)) that points to your repo,
-3. Make a PR in [plugget-pkgs](https://github.com/plugget/plugget-pkgs) to merge it in the public Plugget database.
-4. Add the plugget-install instructions to your README:
-```
-Installation with plugget automatically installs all dependencies.
-1. Install the [plugget Qt Unreal plugin](https://github.com/plugget/plugget-unreal-plugin)
-2. Install the package:
-   - go to the menu `Edit > Plugget Packages` to open the package manager
-   - search & install `unreal-script-editor` <=========== EDIT THIS TEXT ⚠️
-```
+## AI 작업 환경
 
-<details>
- <summary>example of a more advanced plugin made from this template, and installable through plugget</summary>
-   
-- [repo](https://github.com/hannesdelbeke/unreal-plugin-python-script-editor)
-- [plugget manifest](https://github.com/plugget/plugget-pkgs/blob/main/unreal/python-script-editor/latest.json)
-- plugget package name `unreal-script-editor`
-</details>
+이 리포지토리는 AI 코딩 어시스턴트(Claude Code / GitHub Copilot / Google Antigravity / OpenAI Codex)의 작업 환경이 함께 들어있다. 진입점은 2개로 최소화:
 
+- [AGENTS.md](AGENTS.md) — 공통 진입점. Copilot, Antigravity, Codex가 자동 인식하는 SSOT
+- [CLAUDE.md](CLAUDE.md) — Claude Code용. `@AGENTS.md` import + Claude 전용 추가 지시
 
-### Community
-- unreal forum [thread](https://forums.unrealengine.com/t/made-a-python-plugin-template/1089878)
-- [tech-art.org thread](https://www.tech-artists.org/t/free-a-python-unreal-plugin-template/17995)
+## 문서
+
+- [docs/See1Blur.md](docs/See1Blur.md) — Mipmap-assisted temporal dithering 기반 효율적 블러 기법

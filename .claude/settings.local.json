@@ -24,7 +24,17 @@
       "Bash(\"C:/Users/parkj/Documents/GitHub/UEConsoleScraper/.venv/Scripts/pip.exe\" install *)",
       "Bash(\"C:/Users/parkj/Documents/GitHub/UEConsoleScraper/.venv/Scripts/playwright.exe\" install *)",
       "Bash(\".venv/Scripts/python.exe\" scrape_cvars.py --version 5.6 --lang ko --output cvars.json --dump-html)",
-      "Bash(.venv/Scripts/python.exe -c ' *)"
+      "Bash(.venv/Scripts/python.exe -c ' *)",
+      "Edit(~/.claude/skills/material-custom-node/**)",
+      "Bash(Remove-Item -Recurse -Force \"c:\\\\Users\\\\parkj\\\\Documents\\\\GitHub\\\\MaidCat\\\\docs\")",
+      "WebSearch",
+      "Bash(rm -f .github/copilot-instructions.md .cursor/rules/karpathy-guidelines.mdc)",
+      "Bash(rmdir .cursor/rules .cursor)",
+      "Bash(rm -f CURSOR.md EXAMPLES.md)",
+      "Bash(rm -rf skills/karpathy-guidelines)",
+      "Bash(rmdir skills *)",
+      "Bash(mkdir -p docs)",
+      "Bash(mv Content/Readme.md docs/See1Blur.md)"
     ]
   }
 }
