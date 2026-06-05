@@ -19,6 +19,84 @@ import unreal
 from pathlib import Path
 import time
 
+# ============================================================================
+# Restructured Package Compatibility Redirection (sys.modules Pre-population)
+# ============================================================================
+def setup_legacy_redirections():
+    import sys
+    import importlib
+    import pkgutil
+    
+    redirects = {
+        'api': 'ue',
+        'editor.ui': 'ui',
+        'editor.startup': 'startup'
+    }
+    
+    # Pre-populate base packages
+    for new_pkg, old_pkg in redirects.items():
+        try:
+            pkg = importlib.import_module(new_pkg)
+            sys.modules[old_pkg] = pkg
+        except Exception as e:
+            print(f"⚠️ Failed to redirect package {old_pkg}: {e}")
+            
+    # Dynamically find all submodules under our packages and register them
+    def register_submodules(package):
+        try:
+            for _, module_name, _ in pkgutil.walk_packages(package.__path__, package.__name__ + '.'):
+                try:
+                    module = importlib.import_module(module_name)
+                    
+                    # 1. Standard Prefix Redirection
+                    for new_prefix, old_prefix in redirects.items():
+                        if module_name.startswith(new_prefix + '.'):
+                            suffix = module_name[len(new_prefix)+1:]
+                            old_name = f"{old_prefix}.{suffix}"
+                            sys.modules[old_name] = module
+                            
+                            # Attach as attribute to parent packages so 'import parent.child' works
+                            parts = old_name.split('.')
+                            for i in range(1, len(parts)):
+                                parent_name = '.'.join(parts[:i])
+                                attr_name = parts[i]
+                                if parent_name in sys.modules:
+                                    setattr(sys.modules[parent_name], attr_name, sys.modules.get('.'.join(parts[:i+1]), module))
+                                    
+                    # 2. Specialized Backward-Compatibility Alias Redirections for Editor Menus
+                    if module_name.startswith('editor.menus.'):
+                        short_name = module_name.split('.')[-1]
+                        
+                        # Register as tool.short_name
+                        tool_alias = f"tool.{short_name}"
+                        sys.modules[tool_alias] = module
+                        if 'tool' in sys.modules:
+                            setattr(sys.modules['tool'], short_name, module)
+                            
+                        # Register as editor.short_name
+                        editor_alias = f"editor.{short_name}"
+                        sys.modules[editor_alias] = module
+                        if 'editor' in sys.modules:
+                            setattr(sys.modules['editor'], short_name, module)
+                            
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    try:
+        import api
+        register_submodules(api)
+        import util
+        import tool
+        import editor
+        register_submodules(editor)
+    except Exception as e:
+        print(f"⚠️ Submodule redirection failed: {e}")
+
+import sys
+setup_legacy_redirections()
+
 
 class MaidCatInitializer:
     """MaidCat 플러그인 초기화 관리 클래스"""
@@ -104,7 +182,7 @@ class MaidCatInitializer:
         """startup 폴더의 모듈들 자동 실행 (성능 모니터링 포함)"""
         print("\n🚀 startup 모듈들 실행 중...")
         
-        startup_path = MaidCatInitializer.get_plugin_path() / "Content" / "Python" / "startup"
+        startup_path = MaidCatInitializer.get_plugin_path() / "Content" / "Python" / "editor" / "startup"
         if not startup_path.exists():
             print("   ⚠️  startup 폴더를 찾을 수 없습니다")
             return
@@ -133,7 +211,7 @@ class MaidCatInitializer:
             
             try:
                 # 모듈명에서 .py 제거
-                module_name = f"startup.{file_name[:-3]}"
+                module_name = f"editor.startup.{file_name[:-3]}"
                 
                 # 모듈 import 및 실행 (강제 리로드)
                 import importlib
@@ -247,7 +325,7 @@ class MaidCatInitializer:
             mode: 설정 모드 - "all", "vscode", "pycharm"
         """
         try:
-            from startup.setup_python import main
+            from editor.startup.setup_python import main
             main(mode)
         except Exception as e:
             print(f"❌ 개발 환경 설정 실패: {e}")

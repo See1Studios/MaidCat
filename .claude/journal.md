@@ -103,7 +103,45 @@ This journal tracks the self-evolution milestones, trials, and learnings of the 
 - *Fix verified*: Single-quote wrapping (`powershell -Command '...'`) stops bash expansion; dedicated `Glob`/`Grep`/`Read` avoid it entirely. Recorded in `AGENTS.md` Dev Environment as a Shell Gotcha (ref Claude Code issue #15471).
 
 ### 3. Next Evolution Focus
-
-
 - Maintain this journal recursively at the end of each session or major milestone.
 - Begin refactoring actual Unreal Python plugin script nodes using these newly established rules.
+
+### 4. [Session 2] Python Codebase Bug Fixes and Root Directory Clean-up
+- **Bug Fixes**:
+  - Fixed a `NameError` in `tool/dev_env_setup.py` by adding the missing `import platform` standard library import.
+  - Fixed a startup menu registration warning (`⚠️  메뉴가 등록되지 않음: ContentBrowser.AssetContextMenu`) in `editor/mi_context.py` by refactoring `is_menu_registered` + `find_menu` to use `extend_menu` directly. This allows registering extensions to lazy-loaded / deferred menus safely before their subsystems initialize them.
+- **Root Clean-up**:
+  - Verified and deleted `debug_struct_properties.py` (obsolete debug script).
+  - Safely deleted `MaidCat_PythonTestObject.uasset` (unused test UObject Blueprint) using `unreal.EditorAssetLibrary.delete_asset` inside the editor, bypassing OS file locking.
+- **Learnings**:
+  - *Content Browser Sync gotcha*: Confirmed that newly created Python folders (like `agentcat`) do not dynamically update in the Content Browser via file watchers. They require an editor restart (or manual Asset Registry path scan) because Python script asset integration caches directories at editor startup.
+
+### 5. [Session 3] Python Codebase Restructuring & Namespace Unification
+- **Restructuring & Organization**:
+  - Consolidated 16 fragmented Python root folders into a unified `maidcat/` package namespace (split into `core/`, `editor/`, `tools/`, `ui/`, `agentcat/`, `chameleon/`, `data/`) to prevent plugin namespace collisions in host Unreal projects.
+  - Isolated test validator scripts under a new `tests/` directory.
+  - Moved temporary developer sandboxes (`temp/`, `sample/`, `_archive/`) to a `dev/` directory at the Python Content root.
+- **Import Redirection System**:
+  - Developed a dynamic `sys.modules` pre-population and namespace binding algorithm in `init_unreal.py`.
+  - The script dynamically crawls all subpackages and mounts them to the legacy module names (e.g., binding `maidcat.core.utils.name` to `util.name`) at editor startup. This ensures 100% backward compatibility for all dot-notation imports (`import util.name as const`) with zero manual file edits.
+- **Verification**:
+  - Successfully ran full initialization tests in the Unreal Engine editor with 0 errors and 0 module failures. All editor extensions, UI dialogs, and material preset libraries loaded cleanly.
+
+### 6. [Session 4] Root-level Flat Restructuring & Metaclass Mock Verification
+- **Root-level Flat Restructuring (No Top-Level Package)**:
+  - Honored the user's design decision to NOT use a `maidcat/` top-level namespace, keeping packages directly under `Content/Python/`.
+  - Moved subfolders out of `maidcat/` and established flat root packages: `api/` (unreal API), `util/` (general helpers), `tool/` (automation), `editor/` (UI/menus), `agentcat/` (pre-packaged library), `test/` (testing), `dev/` (development scratchpad).
+  - Deleted the temporary `maidcat` top-level directory.
+- **100% Singular Naming & Redirection Refinement**:
+  - Unified all package folder names to be consistently singular (`api`, `util`, `tool`, `editor`, `test`, `dev`) to eliminate confusion and maintain complete consistency.
+  - By using `util` and `tool` as folder names, legacy imports (`import util.file`, `import tool.mi_serializer`) now resolve **natively** via python's search path, completely bypassing redirection overhead for those packages.
+  - Configured `init_unreal.py` redirects to only map the remaining renames: `api` ➡️ `ue`, `editor.ui` ➡️ `ui`, `editor.startup` ➡️ `startup`.
+  - Preserved dual-alias registration (mapping `editor.menus.*` submodules to both `tool.{name}` and `editor.{name}`) for seamless context menu string delegate evaluation.
+  - Refactored all internal startup imports inside `init_unreal.py` to use direct root package names (`tool.tapython_installer`, `tool.dependencies_installer`, `editor.startup.setup_python`).
+- **Gotcha & Resolution (Package Walk discovery)**:
+  - Created placeholder `__init__.py` files inside `tool/`, `editor/menus/`, and `editor/ui/` to ensure `pkgutil.walk_packages` recursively discovers and registers all submodules without ignoring them.
+- **Local Metaclass Mock Verification**:
+  - Implemented and verified a metaclass-based `MockUnreal` dummy engine class locally to test full module loading and dynamic redirection without requiring a running Unreal Editor instance. The local syntax and import checks completed with 0 errors.
+  - Staged all changes cleanly in git (`git add -A`).
+
+

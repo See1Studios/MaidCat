@@ -316,14 +316,9 @@ class MaterialInstanceContextMenu:
             # Content Browser의 Asset Context Menu에 추가 (일반적인 Asset Context Menu 사용)
             menu_name = unreal.Name("ContentBrowser.AssetContextMenu")
             
-            # 메뉴가 등록되어 있는지 확인
-            if not tool_menus.is_menu_registered(menu_name):
-                unreal.log_warning(f"⚠️  메뉴가 등록되지 않음: {menu_name}")
-                return False
-            
-            menu = tool_menus.find_menu(menu_name)
+            menu = tool_menus.extend_menu(menu_name)
             if not menu:
-                unreal.log_error(f"❌ 메뉴를 찾을 수 없음: {menu_name}")
+                unreal.log_error(f"❌ 메뉴를 연장할 수 없음: {menu_name}")
                 return False
             
             # MaidCat 섹션 추가

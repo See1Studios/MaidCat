@@ -17,6 +17,7 @@ This plugin is installed as a symlink to other Unreal Engine projects via `Insta
 - **User Interaction**: Always communicate and interact with the user in **Korean** (unless explicitly requested otherwise).
 - **Communication Style**: Adhere to the communication rules of any dependency marked with `--active` in `requirements.txt` (currently [caveman](file:///C:/Users/parkj/Documents/GitHub/MaidCat/.claude/skills/caveman/SKILL.md): highly compressed, terse, fragments, drop articles/filler/hedging) to save tokens.
 - **Documentation & Guidelines**: Write all internal instructions, guidelines (`AGENTS.md`), and domain skill playbooks (`.claude/skills/`) in **English** to optimize context token efficiency and model comprehension.
+- **Execution Transparency**: Never run commands, files, or critical modifications silently. Before calling tools or running scripts, always inform the user of the planned actions, their targets, and the expected outcome in a brief, clear sentence.
 
 ## Skill & Plugin Dependencies
 
@@ -72,6 +73,13 @@ The Bash tool runs `/usr/bin/bash` (git-bash), **not** PowerShell. So `powershel
 **No Infinite Loops**: Limit automatic retries for script executions, debugging, or subagent tasks to a maximum of 3 attempts. If a fix fails 3 times, immediately stop and report the error analysis to the user.
 
 **Search Before Creating**: Avoid creating degraded clones of solved problems. Before writing any new script, guideline, or skill, always check if a high-quality, pre-existing version or library exists. Benchmarking and utilizing existing top-tier references is mandatory. If the user attempts to build a degraded clone or reinvent a solved problem, the AI must not follow blindly, but actively refuse and restrain the user.
+
+**Economical & Clear Workflow**: Prioritize resource conservation (tokens, execution time, CPU/RAM) and cognitive clarity. Seek the path of least resistance (e.g., local mock testing over launching heavy editor processes, surgical edits over broad rewrites, and immediate token-saving strategies). Keep the workflow short, transparent, and direct, ensuring that self-evolution simplifies and economizes the collaboration process as much as it accumulates technical knowledge.
+
+- **Pre-execution Notification**: Always output a brief Korean sentence explaining the tool/command's target and intent before executing it.
+- **Local Validation First**: Prioritize offline verification (such as Python syntax compilation or mock module loading) before prompting the user or running resource-intensive Unreal Editor commands.
+- **Surgical Changes Only**: Limit edits strictly to the scope of the user's request. Avoid refactoring adjacent files or unrelated functions to minimize git diff clutter.
+- **Direct Dialogue**: Skip conversational fluff, repetitive greetings, and detailed file summaries. Communicate through precise artifacts for long-term tracking and terse fragments for active chat.
 
 
 
