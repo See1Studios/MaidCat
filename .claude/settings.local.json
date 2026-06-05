@@ -34,7 +34,12 @@
       "Bash(rm -rf skills/karpathy-guidelines)",
       "Bash(rmdir skills *)",
       "Bash(mkdir -p docs)",
-      "Bash(mv Content/Readme.md docs/See1Blur.md)"
+      "Bash(mv Content/Readme.md docs/See1Blur.md)",
+      "Bash(Test-Path \"C:\\\\Users\\\\parkj\\\\Documents\\\\Unreal Projects\\\\PlayGround\\\\PlayGround.uproject\")",
+      "Bash(Test-Path \"C:\\\\Users\\\\parkj\\\\Documents\\\\Unreal Projects\\\\PlayGround\\\\Plugins\\\\MaidCat\")",
+      "Bash(powershell *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\parkj\\\\Documents\\\\GitHub\\\\MaidCat\" -Recurse -Filter \"*.py\")",
+      "Bash(Select-Object -First 20)"
     ]
   }
 }

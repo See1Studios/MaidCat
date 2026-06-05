@@ -47,6 +47,18 @@ When debugging, testing, or executing commands, check `dev.local.json` (gitignor
 - Logs are located at `{host_project_dir}/Saved/Logs/`.
 - Unreal Python stub file is at `{host_project_dir}/Intermediate/PythonStub/unreal.py`. Always verify APIs against this file before writing code.
 
+### Shell Gotcha: PowerShell via the Bash tool
+
+The Bash tool runs `/usr/bin/bash` (git-bash), **not** PowerShell. So `powershell -Command "..."` with **double quotes** breaks: bash expands `$_`, `$env:VAR`, `${...}` *before* PowerShell receives them (known Claude Code issue [#15471](https://github.com/anthropics/claude-code/issues/15471)).
+
+- **Prefer dedicated tools first**: use `Glob`/`Grep`/`Read` instead of shelling out to `Get-ChildItem`/`Select-String`/`Get-Content`. They avoid the quoting trap entirely.
+- **When PowerShell is unavoidable**, wrap the PS code in **single quotes** — bash does not expand inside `'...'`. Double quotes *inside* the PS code are fine. Verified working:
+  ```bash
+  powershell -NoProfile -Command 'Get-ChildItem "C:\path" | Select-Object Name, @{N="MB";E={[math]::Round($_.Length/1MB,2)}}'
+  ```
+- If the PS code itself needs single quotes, escape them for bash (`'\''`) or fall back to `-EncodedCommand` (base64) for full isolation.
+- **Do not** retry the same double-quoted command repeatedly — it will keep failing. Switch quoting strategy on the first `$_`/`$env:` expansion error.
+
 ## General Principles
 
 **Think Before Coding**: Never guess. Always verify against official API docs or the `unreal.py` stub file before writing code. For editor-only properties, check the `__doc__` strings in the stub — they do not appear in `dir()`. For large changes, ask first instead of proceeding unilaterally.
@@ -58,6 +70,9 @@ When debugging, testing, or executing commands, check `dev.local.json` (gitignor
 **Goal-Driven Execution**: Translate instructions into verifiable goals with clear success criteria, then execute until those criteria are met.
 
 **No Infinite Loops**: Limit automatic retries for script executions, debugging, or subagent tasks to a maximum of 3 attempts. If a fix fails 3 times, immediately stop and report the error analysis to the user.
+
+**Search Before Creating**: Avoid creating degraded clones of solved problems. Before writing any new script, guideline, or skill, always check if a high-quality, pre-existing version or library exists. Benchmarking and utilizing existing top-tier references is mandatory. If the user attempts to build a degraded clone or reinvent a solved problem, the AI must not follow blindly, but actively refuse and restrain the user.
+
 
 
 ## Self-Improvement Loop
@@ -82,6 +97,21 @@ We run a self-improvement system that automatically recognizes and records trial
 4. **Share**: Share the audited knowledge (problem, root cause, prevention, and audit summary) with the user first to propose the skill addition/update.
 5. **Record**: Once the user approves or provides feedback, write and build the skill in `.claude/skills/<skill-name>/SKILL.md`.
 6. **Journal**: Document the evolution entry (milestones, trials, and learnings) in [.claude/journal.md](file:///C:/Users/parkj/Documents/GitHub/MaidCat/.claude/journal.md) to maintain a transparent development history for the user.
+
+
+## AgentCat (Editor Automation Library)
+
+For editor scripting, material injection, and Niagara automation, use the pre-packaged library **AgentCat** located at `Content/Python/agentcat/`.
+
+### Submodules & API:
+- `import agentcat`
+- **Editor Utility:** `agentcat.editor.reopen_editor(asset)` (reopens asset to force repaint UI), `agentcat.editor.get_selected_assets(allowed_classes)`
+- **Material Utility:** `agentcat.material.inject_custom_hlsl_node(material_or_function, hlsl_code, node_name, inputs, ...)` (injects custom node and refreshes editor)
+- **Niagara Utility:** `agentcat.niagara.create_blank_system(...)`, `agentcat.niagara.duplicate_system(...)`, `agentcat.niagara.list_systems(...)`
+- **Remote Execution:** Run externally via `python -m agentcat.remote <file.py or "code string">`
+
+Always prefer calling `agentcat` functions instead of writing raw boilerplate Unreal Python commands from scratch.
+
 
 
 

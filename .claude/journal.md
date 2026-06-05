@@ -8,6 +8,7 @@ This journal tracks the self-evolution milestones, trials, and learnings of the 
 
 ### 1. What I Did Today
 - **Language & Communication Policy**: Configured Korean for user interaction and English for internal skills/guidelines to optimize context token usage.
+- **User Self-Restraint Instruction**: Registered the user's explicit request to block them from building degraded clones or reinventing wheels. Updated [AGENTS.md](file:///C:/Users/parkj/Documents/GitHub/MaidCat/AGENTS.md) to guarantee future enforcement.
 - **Auto-Activation Registry**: Created an `--active` flag mechanism in `requirements.txt` to instantly load critical skills (e.g., `caveman` mode) upon project entry.
 - **Orchestrated Verification**: Integrated a multi-agent peer review step into the Self-Improvement Loop. The agent now spawns a `self` subagent as an `Auditor` to review code/guidelines draft against `unreal.py` API syntax and Karpathy guidelines before finalizing.
 - **External Benchmarking**: Enforced searching and comparing external solutions (e.g., DSTN2000, Quodsoler repos) before writing playbooks.
@@ -75,6 +76,31 @@ This journal tracks the self-evolution milestones, trials, and learnings of the 
 
 
 
+
+### LWC Custom Node Compile Failure (UE 5.4+)
+- *Problem*: `M_LandscapeProcedural` shader compile failed; log showed `Failed to compile Material for platform PCD3D_SM6` + `Material.ush: cannot initialize a variable of type 'float3' with an lvalue of type 'FDFVector3'`. Material silently fell back to Default Material (warning only, no hard error).
+- *Root Cause*: Custom HLSL node assigned `Parameters.WorldPosition_NoOffsets` directly to `float3`. Since UE 5.4, Large World Coordinates promotes world positions to the `FDFVector3` double-float struct, so direct assignment is a type mismatch.
+- *Verification*: Confirmed against engine shaders — `DoubleFloatOperations.ush:20` defines `DFDemote(FDFType) -> FFloatType` (and a no-op overload for plain `float`); `LargeWorldCoordinates.ush:249` defines legacy `LWCToFloat(FLWCVector3)`.
+- *Prevention*: Best practice is to wire world-space values through a Custom node **Input pin** (auto-demotes to `float3`); inline fallback is `DFDemote(...)`. Recorded as `unreal-material` Instruction §4 (LWC), a new Gotcha, and Comparative Examples.
+
+### Fab Plugin Workflow Knowledge (UE 5.5)
+- *Goal*: Build durable knowledge of how the engine-bundled Fab plugin moves assets, rather than one-off level construction.
+- *Source Investigation*: Read `Engine/Plugins/Fab` source directly — `FabSettings`, `FabAssetsCache`, `FabLocalAssets`, `FabConsoleCommands`, `FabBrowserApi`.
+- *Key Findings*:
+  - **Automation boundary**: Download/import is driven by the embedded web frontend (Chromium) via server-signed URLs → NOT scriptable. Post-import `/Game/Fab/<product>/` assets ARE freely scriptable with Python.
+  - **Console surface**: Only 5 commands (`Fab.Login/Logout/ShowSettings/ClearCache/SetEnvironment`) — auth/cache/env management, no download/import command.
+  - **`UFabBrowserApi::AddToProject`** is a real entry point but `UFUNCTION()` without `BlueprintCallable` → not exposed to Python/BP; `DownloadUrl` is a server-signed URL, uncforgeable.
+  - **Cache layout**: `%TEMP%\FabLibrary\<listing-guid>\source_extracted\<name>_extracted\` (raw gltf/textures, 10-day expiry).
+  - **Import layout**: `/Game/Fab/<ProductName-sanitized>/` flat (mesh+material+textures together).
+  - **"alias" tracking**: `EditorPerProjectUserSettings.ini [/Script/Fab.FabLocalAssets] PathsListingID` maps `/Game` path ↔ Fab listing GUID.
+- *Live Verification*: Confirmed with a real import — "FREE Desert Terrain / Landscape" landed in `Content/Fab/FREE_Desert_Terrain___Landscape_/` only after Save All (assets exist in Asset Registry but not on disk until saved).
+- *Pitfall Recorded*: A Fab title containing "Terrain/Landscape" is usually a static-mesh model + PBR set, NOT a UE Landscape-actor layer material.
+- *Action*: Created the `unreal-fab` skill capturing the automation boundary, cache/import paths, console commands, settings, and gotchas.
+
+### Self-Improvement Loop Retro + Shell Fix
+- *Self-eval*: Knowledge quality strong (1st-source + live verification, self-correction worked), but efficiency weak — repeated PowerShell command failures wasted tokens, and the Auditor-subagent + external-benchmarking steps were skipped on the `unreal-fab` skill (protocol gap to tighten).
+- *Root cause of waste*: Bash tool = git-bash, so `powershell -Command "..."` lets bash pre-expand `$_`/`$env:`/`${}`. Retried the broken double-quoted form ~4x instead of switching strategy.
+- *Fix verified*: Single-quote wrapping (`powershell -Command '...'`) stops bash expansion; dedicated `Glob`/`Grep`/`Read` avoid it entirely. Recorded in `AGENTS.md` Dev Environment as a Shell Gotcha (ref Claude Code issue #15471).
 
 ### 3. Next Evolution Focus
 

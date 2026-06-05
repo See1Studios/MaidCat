@@ -29,18 +29,24 @@ This playbook outlines best practices, optimization rules, and common pitfalls f
 - **Don't**: Use custom HLSL for simple mathematical operations that native nodes handle.
 - **Why**: Custom HLSL blocks compiler optimizations (constant folding, loop unrolling) and often break cross-platform translation (Metal/Vulkan).
 
-### 4. Vector Math & Clamping
+### 4. LWC / Large World Coordinates (UE 5.4+)
+- **Do**: Feed world-space values (WorldPosition, CameraPosition, ObjectPosition) into Custom nodes via **Input pins**, not by referencing `Parameters.*` directly inside the HLSL body. The graph auto-demotes them to plain `float3` at the pin boundary.
+- **Don't**: Assign `Parameters.WorldPosition_NoOffsets` (or any world-space `Parameters.*`) directly to a `float3` inside a Custom node.
+- **Why**: Since UE 5.4, world coordinates are no longer plain `float3`. They are `FDFVector3` (Double-Float / DF type, the backend for Large World Coordinates). Direct assignment fails shader compilation with `cannot initialize a variable of type 'float3' with an lvalue of type 'FDFVector3'`, and the material silently falls back to the Default Material.
+- **Fallback**: If you must reference it inside HLSL, demote explicitly: `float3 P = DFDemote(Parameters.WorldPosition_NoOffsets);` (legacy LWC macro: `LWCToFloat(...)`). `DFDemote` is a no-op on plain `float`, so it is always safe to wrap.
+
+### 5. Vector Math & Clamping
 - **Do**: Clamp `Dot Product` output using a `Saturate` node (free on GPU) when calculating diffuse or specular lighting.
 - **Don't**: Pass unclamped dot products to exponential functions (like `Power`) or division nodes.
 - **Why**: Negative dot products (faces pointing away from light) cause math instability, NaN pixels (black/white spots), or visual artifacts.
 
-### 5. Overdraw & Translucency
+### 6. Overdraw & Translucency
 - **Do**: Use `Masked` blend mode with `DitherTemporalAA` for transparent effects (hair, foliage) when rendering performance is critical.
 - **Do**: Keep translucent pixel shader instruction count as low as possible.
 - **Don't**: Use expensive translucent materials on large screen-space objects.
 - **Why**: Translucency does not write depth, causing massive overdraw and pixel fill-rate bottlenecks.
 
-### 6. UE5 Nanite & Substrate (Strata)
+### 7. UE5 Nanite & Substrate (Strata)
 - **Do**: Keep `World Position Offset` (WPO) minimal on Nanite meshes and clamp max displacement distance.
 - **Don't**: Use `Pixel Depth Offset` (PDO) or `Masked` blend mode on Nanite meshes unless essential.
 - **Why**: PDO and Masked break Nanite's fast rasterization pipeline. Excessive WPO causes cluster tearing.
@@ -69,6 +75,18 @@ Custom HLSL nodes that compile fine on DX12 (Windows) often fail on Metal (iOS/m
 
 Passing negative values into a `Power` node or taking `Square Root` of negative numbers results in `NaN`. These display as bright white or pitch black pixels that can corrupt post-processing.
 - **Fix**: Always `Saturate` or `Clamp` the base input of any exponential/power calculations.
+
+### LWC Type Mismatch in Custom Nodes (`FDFVector3`)
+
+Referencing world-space `Parameters.*` (e.g. `WorldPosition_NoOffsets`, `WorldNormal`'s position basis, `CameraPosition`) directly inside a Custom node fails to compile on UE 5.4+:
+```
+LogShaderCompilers: Warning: Failed to compile Material for platform PCD3D_SM6, Default Material will be used in game.
+/Engine/Generated/Material.ush:XXXX:X: error: cannot initialize a variable of type 'float3' with an lvalue of type 'FDFVector3'
+```
+The material then silently renders as the gray Default Material — easy to miss because there is no hard error, only a warning.
+- **Root cause**: Large World Coordinates promotes world positions to the `FDFVector3` double-float struct.
+- **Fix (preferred)**: Wire a `WorldPosition` graph node into a Custom node **Input pin** — the pin demotes it to `float3` automatically.
+- **Fix (inline)**: `float3 P = DFDemote(Parameters.WorldPosition_NoOffsets);` (legacy: `LWCToFloat(...)`).
 
 ---
 
@@ -106,6 +124,27 @@ float Specular = pow(NdotL, Shininess); // pow of negative base is NaN!
 ```
 Or in Material Graph:
 `Dot Product` -> `Power`
+
+### World Position in a Custom Node (LWC-safe)
+#### Correct (Input pin auto-demotes to float3)
+```
+[WorldPosition node] ──> Custom node Input pin "WorldPos" (float3)
+```
+```hlsl
+// Inside the Custom node body — WorldPos is already a plain float3:
+float height = WorldPos.z;
+return height;
+```
+#### Correct (explicit demote when referencing Parameters directly)
+```hlsl
+float3 WorldPos = DFDemote(Parameters.WorldPosition_NoOffsets);
+float height = WorldPos.z;
+return height;
+```
+#### Incorrect (direct assignment — fails with FDFVector3 mismatch on UE 5.4+)
+```hlsl
+float3 WorldPos = Parameters.WorldPosition_NoOffsets; // FDFVector3 != float3 -> compile fail
+```
 
 ### Custom HLSL USF Include
 #### Correct (External USF File)
