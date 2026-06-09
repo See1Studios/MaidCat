@@ -10,7 +10,8 @@
       "Read(//c/Users/parkj/**)",
       "Bash(powershell.exe -Command \"Get-Command gh | Select-Object -ExpandProperty Source\")",
       "Bash(powershell.exe -Command \"gh auth status\")",
-      "Bash(powershell.exe -Command \"& 'C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe' auth status\")"
+      "Bash(powershell.exe -Command \"& 'C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe' auth status\")",
+      "Edit(~/.claude/skills/material-custom-node/**)"
     ]
   }
 }
