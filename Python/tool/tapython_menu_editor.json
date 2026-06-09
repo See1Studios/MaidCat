@@ -1,0 +1,1101 @@
+{
+    "TabLabel": "TA Python Menu Editor",
+    "InitTabSize": [900, 600],
+    "InitTabPosition": [100, 100],
+    "IsModalWindow": false,
+    "InitPyCmd": "import importlib; import tool.tapython_menu_editor as tc; importlib.reload(tc); tc_tool = tc.TAPythonMenuEditor(%JsonPath); tc_tool.init()",
+    "Root": {
+        "SBorder": {
+            "BorderImage": {
+                "Style": "FEditorStyle",
+                "Brush": "ToolPanel.DarkGroupBorder"
+            },
+            "Content": {
+                "SVerticalBox": {
+                    "Slots": [
+                        {
+                            "VAlign": "Top",
+                            "HAlign": "Fill",
+                            "AutoHeight": true,
+                            "Padding": [5, 5, 5, 5],
+                            "SBorder": {
+                                "BorderImage": {
+                                    "Style": "FEditorStyle",
+                                    "Brush": "ToolPanel.GroupBorder"
+                                },
+                                "Content": {
+                                    "SHorizontalBox": {
+                                        "Slots": [
+                                            {
+                                                "AutoWidth": true,
+                                                "VAlign": "Center",
+                                                "Padding": [5, 5, 10, 5],
+                                                "STextBlock": {
+                                                    "Aka": "LblFile",
+                                                    "Text": "파일:"
+                                                }
+                                            },
+                                            {
+                                                "FillWidth": 1.0,
+                                                "VAlign": "Center",
+                                                "Padding": [0, 5, 10, 5],
+                                                "STextBlock": {
+                                                    "Aka": "FilePathText",
+                                                    "Text": "(파일 선택 필요)"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "VAlign": "Top",
+                            "HAlign": "Fill",
+                            "AutoHeight": true,
+                            "Padding": [5, 5, 5, 5],
+                            "SHorizontalBox": {
+                                "Slots": [
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "Padding": [0, 0, 5, 0],
+                                        "SButton": {
+                                            "Aka": "BtnSave",
+                                            "OnClick": "tc_tool.save_file()",
+                                            "Content": {
+                                                "SHorizontalBox": {
+                                                    "Slots": [
+                                                        {
+                                                            "AutoWidth": true,
+                                                            "VAlign": "Center",
+                                                            "SImage": {
+                                                                "Image": {
+                                                                    "Style": "FEditorStyle",
+                                                                    "Brush": "MainFrame.SaveAll"
+                                                                },
+                                                                "DesiredSizeOverride": [14, 14]
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoWidth": true,
+                                                            "Padding": [5, 0],
+                                                            "STextBlock": {
+                                                                "Aka": "BtnSaveText",
+                                                                "Text": "저장"
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "Padding": [0, 0, 5, 0],
+                                        "SButton": {
+                                            "Aka": "BtnMenuEditToggle",
+                                            "OnClick": "tc_tool.toggle_menu_edit()",
+                                            "Content": {
+                                                "SHorizontalBox": {
+                                                    "Slots": [
+                                                        {
+                                                            "AutoWidth": true,
+                                                            "VAlign": "Center",
+                                                            "SImage": {
+                                                                "Image": {
+                                                                    "Style": "FCoreStyle",
+                                                                    "Brush": "Icons.Edit"
+                                                                },
+                                                                "DesiredSizeOverride": [12, 12]
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoWidth": true,
+                                                            "Padding": [5, 0],
+                                                            "STextBlock": {
+                                                                "Aka": "BtnMenuEditToggleText",
+                                                                "Text": "메뉴편집 OFF"
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "Padding": [0, 0, 8, 0],
+                                        "SButton": {
+                                            "Aka": "BtnMenuRefresh",
+                                            "OnClick": "tc_tool.refresh_tool_menus()",
+                                            "Content": {
+                                                "SHorizontalBox": {
+                                                    "Slots": [
+                                                        {
+                                                            "AutoWidth": true,
+                                                            "VAlign": "Center",
+                                                            "SImage": {
+                                                                "Image": {
+                                                                    "Style": "FCoreStyle",
+                                                                    "Brush": "Icons.Refresh"
+                                                                },
+                                                                "DesiredSizeOverride": [12, 12]
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoWidth": true,
+                                                            "Padding": [5, 0],
+                                                            "STextBlock": {
+                                                                "Aka": "BtnMenuRefreshText",
+                                                                "Text": "메뉴 새로고침"
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "Padding": [0, 0, 0, 0],
+                                        "STextBlock": {
+                                            "Aka": "DirtyIndicator",
+                                            "Text": "● 저장되지 않은 변경 사항이 있습니다.",
+                                            "ColorAndOpacity": [1.0, 0.55, 0.1, 1.0],
+                                            "Visibility": "Collapsed"
+                                        }
+                                    },
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "Padding": [12, 0, 6, 0],
+                                        "STextBlock": {
+                                            "Aka": "LblLocale",
+                                            "Text": "언어"
+                                        }
+                                    },
+                                    {
+                                        "AutoWidth": true,
+                                        "VAlign": "Center",
+                                        "SComboBox": {
+                                            "Aka": "LocaleCombo",
+                                            "Content": {
+                                                "Text": "ko"
+                                            },
+                                            "OptionsSource": ["ko", "en"],
+                                            "OnSelectionChanged": "tc_tool.on_locale_changed(%)"
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "VAlign": "Fill",
+                            "HAlign": "Fill",
+                            "FillHeight": 1.0,
+                            "Padding": [5, 5, 5, 5],
+                            "SHorizontalBox": {
+                                "Slots": [
+                                    {
+                                        "FillWidth": 0.24,
+                                        "VAlign": "Fill",
+                                        "HAlign": "Fill",
+                                        "Padding": [0, 0, 5, 0],
+                                        "SBorder": {
+                                            "BorderImage": {
+                                                "Style": "FEditorStyle",
+                                                "Brush": "ToolPanel.GroupBorder"
+                                            },
+                                            "Content": {
+                                                "SVerticalBox": {
+                                                    "Slots": [
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 5, 5, 5],
+                                                            "STextBlock": {
+                                                                "Aka": "LblMenuAnchors",
+                                                                "Text": "메뉴 앵커"
+                                                            }
+                                                        },
+                                                        {
+                                                            "FillHeight": 1.0,
+                                                            "VAlign": "Fill",
+                                                            "Padding": [5, 5, 5, 5],
+                                                            "STreeView": {
+                                                                "Aka": "ListMenuAnchors",
+                                                                "SHeaderRow": {
+                                                                    "Columns": [
+                                                                        {
+                                                                            "DefaultLabel": "Menu Anchors",
+                                                                            "FillWidth": 1
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                "TreeItemSource": ["(empty)"],
+                                                                "TreeItemParentIndices": [-1],
+                                                                "OnSelectionChanged": "tc_tool.on_anchor_selection_changed(%index)"
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 2, 5, 5],
+                                                            "SHorizontalBox": {
+                                                                "Slots": [
+                                                                    {
+                                                                        "FillWidth": 1.0,
+                                                                        "VAlign": "Center",
+                                                                        "Padding": [0, 0, 4, 0],
+                                                                        "SButton": {
+                                                                            "Aka": "BtnAddAnchor",
+                                                                            "OnClick": "tc_tool.add_anchor()",
+                                                                            "Content": {
+                                                                                "SHorizontalBox": {
+                                                                                    "Slots": [
+                                                                                        {
+                                                                                            "AutoWidth": true,
+                                                                                            "VAlign": "Center",
+                                                                                            "SImage": {
+                                                                                                "Image": {
+                                                                                                    "Style": "FEditorStyle",
+                                                                                                    "Brush": "Plus"
+                                                                                                },
+                                                                                                "DesiredSizeOverride": [12, 12]
+                                                                                            }
+                                                                                        },
+                                                                                        {
+                                                                                            "AutoWidth": true,
+                                                                                            "Padding": [5, 0],
+                                                                                            "STextBlock": {
+                                                                                                "Aka": "BtnAddAnchorText",
+                                                                                                "Text": "추가"
+                                                                                            }
+                                                                                        }
+                                                                                    ]
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "FillWidth": 1.0,
+                                                                        "VAlign": "Center",
+                                                                        "Padding": [0, 0, 0, 0],
+                                                                        "SButton": {
+                                                                            "Aka": "BtnDeleteAnchor",
+                                                                            "OnClick": "tc_tool.delete_anchor()",
+                                                                            "Content": {
+                                                                                "SHorizontalBox": {
+                                                                                    "Slots": [
+                                                                                        {
+                                                                                            "AutoWidth": true,
+                                                                                            "VAlign": "Center",
+                                                                                            "SImage": {
+                                                                                                "Image": {
+                                                                                                    "Style": "FCoreStyle",
+                                                                                                    "Brush": "Icons.Delete"
+                                                                                                },
+                                                                                                "DesiredSizeOverride": [12, 12]
+                                                                                            }
+                                                                                        },
+                                                                                        {
+                                                                                            "AutoWidth": true,
+                                                                                            "Padding": [5, 0],
+                                                                                            "STextBlock": {
+                                                                                                "Aka": "BtnDeleteAnchorText",
+                                                                                                "Text": "삭제"
+                                                                                            }
+                                                                                        }
+                                                                                    ]
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "FillWidth": 0.34,
+                                        "VAlign": "Fill",
+                                        "HAlign": "Fill",
+                                        "Padding": [5, 0, 5, 0],
+                                        "SBorder": {
+                                            "BorderImage": {
+                                                "Style": "FEditorStyle",
+                                                "Brush": "ToolPanel.GroupBorder"
+                                            },
+                                            "Content": {
+                                                "SVerticalBox": {
+                                                    "Slots": [
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 5, 5, 5],
+                                                            "STextBlock": {
+                                                                "Aka": "LblEntryTree",
+                                                                "Text": "항목 트리"
+                                                            }
+                                                        },
+                                                        {
+                                                            "FillHeight": 1.0,
+                                                            "VAlign": "Fill",
+                                                            "Padding": [5, 5, 5, 5],
+                                                            "STreeView": {
+                                                                "Aka": "ListMenuEntries",
+                                                                "SHeaderRow": {
+                                                                    "Columns": [
+                                                                        {
+                                                                            "DefaultLabel": "Menu Entries",
+                                                                            "FillWidth": 1
+                                                                        }
+                                                                    ]
+                                                                },
+                                                                "TreeItemSource": ["(empty)"],
+                                                                "TreeItemParentIndices": [-1],
+                                                                "OnSelectionChanged": "tc_tool.on_entry_selection_changed(%index)"
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 5, 5, 5],
+                                                            "SVerticalBox": {
+                                                                "Slots": [
+                                                                    {
+                                                                        "AutoHeight": true,
+                                                                        "Padding": [0, 0, 0, 4],
+                                                                        "SHorizontalBox": {
+                                                                            "Slots": [
+                                                                                {
+                                                                                    "FillWidth": 1.0,
+                                                                                    "VAlign": "Center",
+                                                                                    "Padding": [0, 0, 4, 0],
+                                                                                    "SButton": {
+                                                                                        "Aka": "BtnAdd",
+                                                                                        "OnClick": "tc_tool.show_add_type_dialog()",
+                                                                                        "Content": {
+                                                                                            "SHorizontalBox": {
+                                                                                                "Slots": [
+                                                                                                    {
+                                                                                                        "AutoWidth": true,
+                                                                                                        "VAlign": "Center",
+                                                                                                        "SImage": {
+                                                                                                            "Image": {
+                                                                                                                "Style": "FEditorStyle",
+                                                                                                                "Brush": "Plus"
+                                                                                                            },
+                                                                                                            "DesiredSizeOverride": [12, 12]
+                                                                                                        }
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "AutoWidth": true,
+                                                                                                        "Padding": [5, 0],
+                                                                                                        "STextBlock": {
+                                                                                                            "Aka": "BtnAddText",
+                                                                                                            "Text": "추가"
+                                                                                                        }
+                                                                                                    }
+                                                                                                ]
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                },
+                                                                                {
+                                                                                    "FillWidth": 1.0,
+                                                                                    "VAlign": "Center",
+                                                                                    "Padding": [4, 0, 4, 0],
+                                                                                    "SButton": {
+                                                                                        "Aka": "BtnCopy",
+                                                                                        "OnClick": "tc_tool.copy_entry()",
+                                                                                        "Content": {
+                                                                                            "SHorizontalBox": {
+                                                                                                "Slots": [
+                                                                                                    {
+                                                                                                        "AutoWidth": true,
+                                                                                                        "VAlign": "Center",
+                                                                                                        "SImage": {
+                                                                                                            "Image": {
+                                                                                                                "Style": "FCoreStyle",
+                                                                                                                "Brush": "GenericCommands.Copy"
+                                                                                                            },
+                                                                                                            "DesiredSizeOverride": [12, 12]
+                                                                                                        }
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "AutoWidth": true,
+                                                                                                        "Padding": [5, 0],
+                                                                                                        "STextBlock": {
+                                                                                                            "Aka": "BtnCopyText",
+                                                                                                            "Text": "복사"
+                                                                                                        }
+                                                                                                    }
+                                                                                                ]
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                },
+                                                                                {
+                                                                                    "FillWidth": 1.0,
+                                                                                    "VAlign": "Center",
+                                                                                    "Padding": [4, 0, 0, 0],
+                                                                                    "SButton": {
+                                                                                        "Aka": "BtnMoveUp",
+                                                                                        "OnClick": "tc_tool.move_entry_up()",
+                                                                                        "Content": {
+                                                                                            "SHorizontalBox": {
+                                                                                                "Slots": [
+                                                                                                    {
+                                                                                                        "AutoWidth": true,
+                                                                                                        "VAlign": "Center",
+                                                                                                        "SImage": {
+                                                                                                            "Image": {
+                                                                                                                "Style": "FCoreStyle",
+                                                                                                                "Brush": "Icons.CircleArrowUp"
+                                                                                                            },
+                                                                                                            "DesiredSizeOverride": [12, 12]
+                                                                                                        }
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "AutoWidth": true,
+                                                                                                        "Padding": [5, 0],
+                                                                                                        "STextBlock": {
+                                                                                                            "Aka": "BtnMoveUpText",
+                                                                                                            "Text": "위로"
+                                                                                                        }
+                                                                                                    }
+                                                                                                ]
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "AutoHeight": true,
+                                                                        "SHorizontalBox": {
+                                                                            "Slots": [
+                                                                                {
+                                                                                    "FillWidth": 1.0,
+                                                                                    "VAlign": "Center",
+                                                                                    "Padding": [0, 0, 4, 0],
+                                                                                    "SButton": {
+                                                                                        "Aka": "BtnDelete",
+                                                                                        "OnClick": "tc_tool.delete_menu_item()",
+                                                                                        "Content": {
+                                                                                            "SHorizontalBox": {
+                                                                                                "Slots": [
+                                                                                                    {
+                                                                                                        "AutoWidth": true,
+                                                                                                        "VAlign": "Center",
+                                                                                                        "SImage": {
+                                                                                                            "Image": {
+                                                                                                                "Style": "FCoreStyle",
+                                                                                                                "Brush": "Icons.Delete"
+                                                                                                            },
+                                                                                                            "DesiredSizeOverride": [12, 12]
+                                                                                                        }
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "AutoWidth": true,
+                                                                                                        "Padding": [5, 0],
+                                                                                                        "STextBlock": {
+                                                                                                            "Aka": "BtnDeleteText",
+                                                                                                            "Text": "삭제"
+                                                                                                        }
+                                                                                                    }
+                                                                                                ]
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                },
+                                                                                {
+                                                                                    "FillWidth": 1.0,
+                                                                                    "VAlign": "Center",
+                                                                                    "Padding": [4, 0, 4, 0],
+                                                                                    "SButton": {
+                                                                                        "Aka": "BtnPaste",
+                                                                                        "OnClick": "tc_tool.paste_entry()",
+                                                                                        "Content": {
+                                                                                            "SHorizontalBox": {
+                                                                                                "Slots": [
+                                                                                                    {
+                                                                                                        "AutoWidth": true,
+                                                                                                        "VAlign": "Center",
+                                                                                                        "SImage": {
+                                                                                                            "Image": {
+                                                                                                                "Style": "FCoreStyle",
+                                                                                                                "Brush": "GenericCommands.Paste"
+                                                                                                            },
+                                                                                                            "DesiredSizeOverride": [12, 12]
+                                                                                                        }
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "AutoWidth": true,
+                                                                                                        "Padding": [5, 0],
+                                                                                                        "STextBlock": {
+                                                                                                            "Aka": "BtnPasteText",
+                                                                                                            "Text": "붙여넣기"
+                                                                                                        }
+                                                                                                    }
+                                                                                                ]
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                },
+                                                                                {
+                                                                                    "FillWidth": 1.0,
+                                                                                    "VAlign": "Center",
+                                                                                    "Padding": [4, 0, 0, 0],
+                                                                                    "SButton": {
+                                                                                        "Aka": "BtnMoveDown",
+                                                                                        "OnClick": "tc_tool.move_entry_down()",
+                                                                                        "Content": {
+                                                                                            "SHorizontalBox": {
+                                                                                                "Slots": [
+                                                                                                    {
+                                                                                                        "AutoWidth": true,
+                                                                                                        "VAlign": "Center",
+                                                                                                        "SImage": {
+                                                                                                            "Image": {
+                                                                                                                "Style": "FCoreStyle",
+                                                                                                                "Brush": "Icons.CircleArrowDown"
+                                                                                                            },
+                                                                                                            "DesiredSizeOverride": [12, 12]
+                                                                                                        }
+                                                                                                    },
+                                                                                                    {
+                                                                                                        "AutoWidth": true,
+                                                                                                        "Padding": [5, 0],
+                                                                                                        "STextBlock": {
+                                                                                                            "Aka": "BtnMoveDownText",
+                                                                                                            "Text": "아래로"
+                                                                                                        }
+                                                                                                    }
+                                                                                                ]
+                                                                                            }
+                                                                                        }
+                                                                                    }
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "FillWidth": 0.42,
+                                        "VAlign": "Fill",
+                                        "HAlign": "Fill",
+                                        "Padding": [5, 0, 0, 0],
+                                        "SBorder": {
+                                            "BorderImage": {
+                                                "Style": "FEditorStyle",
+                                                "Brush": "ToolPanel.GroupBorder"
+                                            },
+                                            "Content": {
+                                                "SVerticalBox": {
+                                                    "Aka": "DetailPanel",
+                                                    "Slots": [
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 5, 5, 5],
+                                                            "STextBlock": {
+                                                                "Aka": "LblDetailTitle",
+                                                                "Text": "상세 정보"
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 5, 5, 5],
+                                                            "STextBlock": {
+                                                                "Aka": "DetailEmptyText",
+                                                                "Text": "항목을 선택하세요."
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 5, 5, 5],
+                                                            "SVerticalBox": {
+                                                                "Aka": "AnchorDetailRow",
+                                                                "Visibility": "Collapsed",
+                                                                "Slots": [
+                                                                    {
+                                                                        "AutoHeight": true,
+                                                                        "Padding": [0, 0, 0, 6],
+                                                                        "SHorizontalBox": {
+                                                                            "Slots": [
+                                                                                {
+                                                                                    "AutoWidth": true,
+                                                                                    "VAlign": "Center",
+                                                                                    "Padding": [0, 0, 6, 0],
+                                                                                    "STextBlock": { "Aka": "LblAnchorId", "Text": "ID" }
+                                                                                },
+                                                                                {
+                                                                                    "FillWidth": 1.0,
+                                                                                    "SEditableTextBox": {
+                                                                                        "Aka": "AnchorIdInput",
+                                                                                        "HintText": "LevelEditor.MainMenu.MyTools",
+                                                                                        "IsReadOnly": true
+                                                                                    }
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "AutoHeight": true,
+                                                                        "Padding": [0, 0, 0, 6],
+                                                                        "SHorizontalBox": {
+                                                                            "Slots": [
+                                                                                {
+                                                                                    "AutoWidth": true,
+                                                                                    "VAlign": "Center",
+                                                                                    "Padding": [0, 0, 6, 0],
+                                                                                    "STextBlock": { "Aka": "LblAnchorDisplayName", "Text": "표시 이름" }
+                                                                                },
+                                                                                {
+                                                                                    "FillWidth": 1.0,
+                                                                                    "SEditableTextBox": {
+                                                                                        "Aka": "AnchorDisplayNameInput",
+                                                                                        "HintText": "앵커 표시 이름",
+                                                                                        "IsReadOnly": true
+                                                                                    }
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "AutoHeight": true,
+                                                                        "Padding": [0, 0, 0, 6],
+                                                                        "SHorizontalBox": {
+                                                                            "Slots": [
+                                                                                {
+                                                                                    "AutoWidth": true,
+                                                                                    "VAlign": "Center",
+                                                                                    "Padding": [0, 0, 6, 0],
+                                                                                    "STextBlock": { "Aka": "LblAnchorTooltip", "Text": "Tooltip" }
+                                                                                },
+                                                                                {
+                                                                                    "FillWidth": 1.0,
+                                                                                    "SEditableTextBox": {
+                                                                                        "Aka": "AnchorTooltipInput",
+                                                                                        "HintText": "앵커 설명",
+                                                                                        "IsReadOnly": true
+                                                                                    }
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "AutoHeight": true,
+                                                                        "Padding": [0, 0, 0, 6],
+                                                                        "SCheckBox": {
+                                                                            "Aka": "AnchorIsReadOnlyCheck",
+                                                                            "Visibility": "Collapsed",
+                                                                            "Content": {
+                                                                                "STextBlock": { "Aka": "LblAnchorIsReadOnly", "Text": "IsReadOnly" }
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "AutoHeight": true,
+                                                                        "Padding": [0, 0, 0, 6],
+                                                                        "STextBlock": {
+                                                                            "Aka": "LblAnchorReadOnlyNotice",
+                                                                            "Text": "기본 카멜레온 앵커는 읽기 전용입니다.",
+                                                                            "ColorAndOpacity": [1.0, 0.75, 0.2, 1.0],
+                                                                            "Visibility": "Collapsed"
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "AutoHeight": true,
+                                                                        "Padding": [0, 0, 0, 0],
+                                                                        "SHorizontalBox": {
+                                                                            "Slots": [
+                                                                                {
+                                                                                    "FillWidth": 1.0,
+                                                                                    "Padding": [0, 0, 4, 0],
+                                                                                    "SButton": {
+                                                                                        "Aka": "BtnAnchorApply",
+                                                                                        "Visibility": "Collapsed",
+                                                                                        "Content": {
+                                                                                            "STextBlock": {
+                                                                                                "Aka": "BtnAnchorApplyText",
+                                                                                                "Text": "적용"
+                                                                                            }
+                                                                                        },
+                                                                                        "OnClick": "tc_tool.apply_anchor_changes()"
+                                                                                    }
+                                                                                },
+                                                                                {
+                                                                                    "FillWidth": 1.0,
+                                                                                    "Padding": [4, 0, 0, 0],
+                                                                                    "SButton": {
+                                                                                        "Aka": "BtnAnchorRevert",
+                                                                                        "Visibility": "Collapsed",
+                                                                                        "Content": {
+                                                                                            "STextBlock": {
+                                                                                                "Aka": "BtnAnchorRevertText",
+                                                                                                "Text": "되돌리기"
+                                                                                            }
+                                                                                        },
+                                                                                        "OnClick": "tc_tool.reload_anchor_detail()"
+                                                                                    }
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 2, 5, 2],
+                                                            "SHorizontalBox": {
+                                                                "Aka": "DetailTypeRow",
+                                                                "Slots": [
+                                                                    {
+                                                                        "AutoWidth": true,
+                                                                        "VAlign": "Center",
+                                                                        "Padding": [0, 0, 6, 0],
+                                                                        "STextBlock": { "Aka": "LblType", "Text": "Type" }
+                                                                    },
+                                                                    {
+                                                                        "FillWidth": 1.0,
+                                                                        "SEditableTextBox": {
+                                                                            "Aka": "DetailTypeText",
+                                                                            "IsReadOnly": true,
+                                                                            "Text": ""
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 2, 5, 2],
+                                                            "SHorizontalBox": {
+                                                                "Aka": "DetailNameRow",
+                                                                "Slots": [
+                                                                    {
+                                                                        "AutoWidth": true,
+                                                                        "VAlign": "Center",
+                                                                        "Padding": [0, 0, 6, 0],
+                                                                        "STextBlock": { "Aka": "LblName", "Text": "Name" }
+                                                                    },
+                                                                    {
+                                                                        "FillWidth": 1.0,
+                                                                        "SEditableTextBox": {
+                                                                            "Aka": "DetailNameInput",
+                                                                            "HintText": "Entry name"
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 2, 5, 2],
+                                                            "SHorizontalBox": {
+                                                                "Aka": "DetailTooltipRow",
+                                                                "Slots": [
+                                                                    {
+                                                                        "AutoWidth": true,
+                                                                        "VAlign": "Center",
+                                                                        "Padding": [0, 0, 6, 0],
+                                                                        "STextBlock": { "Aka": "LblTooltip", "Text": "Tooltip" }
+                                                                    },
+                                                                    {
+                                                                        "FillWidth": 1.0,
+                                                                        "SEditableTextBox": {
+                                                                            "Aka": "DetailTooltipInput",
+                                                                            "HintText": "Tooltip"
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 2, 5, 2],
+                                                            "SExpandableArea": {
+                                                                "Aka": "DetailIconExpandable",
+                                                                "InitiallyCollapsed": true,
+                                                                "HeaderContent": {
+                                                                    "STextBlock": {
+                                                                        "Aka": "LblIconSection",
+                                                                        "Text": "아이콘"
+                                                                    }
+                                                                },
+                                                                "BodyContent": {
+                                                                    "SVerticalBox": {
+                                                                        "Slots": [
+                                                                            {
+                                                                                "AutoHeight": true,
+                                                                                "VAlign": "Top",
+                                                                                "Padding": [0, 2, 0, 2],
+                                                                                "SHorizontalBox": {
+                                                                                    "Aka": "DetailIconRow",
+                                                                                    "Slots": [
+                                                                                        {
+                                                                                            "AutoWidth": true,
+                                                                                            "VAlign": "Center",
+                                                                                            "Padding": [0, 0, 6, 0],
+                                                                                            "STextBlock": { "Aka": "LblIcon", "Text": "Icon" }
+                                                                                        },
+                                                                                        {
+                                                                                            "FillWidth": 0.45,
+                                                                                            "Padding": [0, 0, 4, 0],
+                                                                                            "SComboBox": {
+                                                                                                "Aka": "DetailIconTypeCombo",
+                                                                                                "Content": {
+                                                                                                    "Text": "없음"
+                                                                                                },
+                                                                                                "OptionsSource": ["없음", "EditorStyle", "CoreStyle", "ChameleonStyle", "ImagePath"]
+                                                                                            }
+                                                                                        },
+                                                                                        {
+                                                                                            "FillWidth": 0.55,
+                                                                                            "SEditableTextBox": {
+                                                                                                "Aka": "DetailIconNameInput",
+                                                                                                "HintText": "LevelEditor.Tabs.Details / Resources/flash_32x.png"
+                                                                                            }
+                                                                                        }
+                                                                                    ]
+                                                                                }
+                                                                            },
+                                                                            {
+                                                                                "AutoHeight": true,
+                                                                                "VAlign": "Top",
+                                                                                "Padding": [0, 0, 0, 2],
+                                                                                "SHorizontalBox": {
+                                                                                    "Aka": "DetailIconPreviewRow",
+                                                                                    "Slots": [
+                                                                                        {
+                                                                                            "AutoWidth": true,
+                                                                                            "Padding": [0, 0, 6, 0],
+                                                                                            "SButton": {
+                                                                                                "Aka": "BtnPreviewIcon",
+                                                                                                "Content": {
+                                                                                                    "STextBlock": {
+                                                                                                        "Aka": "BtnPreviewIconText",
+                                                                                                        "Text": "미리보기"
+                                                                                                    }
+                                                                                                },
+                                                                                                "OnClick": "tc_tool.preview_selected_icon()"
+                                                                                            }
+                                                                                        },
+                                                                                        {
+                                                                                            "FillWidth": 1.0,
+                                                                                            "SBorder": {
+                                                                                                "BorderImage": {
+                                                                                                    "Style": "FEditorStyle",
+                                                                                                    "Brush": "ToolPanel.GroupBorder"
+                                                                                                },
+                                                                                                "Content": {
+                                                                                                    "SBox": {
+                                                                                                        "Aka": "DetailIconPreviewHost",
+                                                                                                        "MinDesiredHeight": 26,
+                                                                                                        "MinDesiredWidth": 120,
+                                                                                                        "Content": {
+                                                                                                            "STextBlock": {
+                                                                                                                "Aka": "DetailIconPreviewText",
+                                                                                                                "Text": "아이콘 미리보기"
+                                                                                                            }
+                                                                                                        }
+                                                                                                    }
+                                                                                                }
+                                                                                            }
+                                                                                        }
+                                                                                    ]
+                                                                                }
+                                                                            }
+                                                                        ]
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 2, 5, 2],
+                                                            "SCheckBox": {
+                                                                "Aka": "DetailEnabledCheck",
+                                                                "Content": {
+                                                                    "STextBlock": { "Aka": "LblEnabled", "Text": "Enabled" }
+                                                                }
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 2, 5, 2],
+                                                            "STextBlock": {
+                                                                "Aka": "DetailCommandLabel",
+                                                                "Text": "Command"
+                                                            }
+                                                        },
+                                                        {
+                                                            "FillHeight": 0.45,
+                                                            "VAlign": "Fill",
+                                                            "Padding": [5, 2, 5, 5],
+                                                            "SMultiLineEditableTextBox": {
+                                                                "Aka": "DetailCommandInput",
+                                                                "Text": ""
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 2, 5, 2],
+                                                            "STextBlock": {
+                                                                "Aka": "DetailCanExecuteActionLabel",
+                                                                "Text": "CanExecuteAction"
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 2, 5, 2],
+                                                            "SEditableTextBox": {
+                                                                "Aka": "DetailCanExecuteActionInput",
+                                                                "HintText": "lambda context: True"
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 2, 5, 2],
+                                                            "SHorizontalBox": {
+                                                                "Aka": "DetailChameleonRow",
+                                                                "Slots": [
+                                                                    {
+                                                                        "AutoWidth": true,
+                                                                        "VAlign": "Center",
+                                                                        "Padding": [0, 0, 6, 0],
+                                                                        "STextBlock": { "Aka": "LblChameleonTools", "Text": "ChameleonTools" }
+                                                                    },
+                                                                    {
+                                                                        "FillWidth": 1.0,
+                                                                        "SEditableTextBox": {
+                                                                            "Aka": "DetailChameleonInput",
+                                                                            "HintText": "../Python/Tools/MyTool.json"
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 2, 5, 5],
+                                                            "SHorizontalBox": {
+                                                                "Aka": "DetailButtonsRow",
+                                                                "Slots": [
+                                                                    {
+                                                                        "FillWidth": 1.0,
+                                                                        "Padding": [0, 0, 4, 0],
+                                                                        "SButton": {
+                                                                            "Aka": "BtnDetailApply",
+                                                                            "Content": {
+                                                                                "STextBlock": {
+                                                                                    "Aka": "BtnDetailApplyText",
+                                                                                    "Text": "적용"
+                                                                                }
+                                                                            },
+                                                                            "OnClick": "tc_tool.apply_detail_changes()"
+                                                                        }
+                                                                    },
+                                                                    {
+                                                                        "FillWidth": 1.0,
+                                                                        "Padding": [4, 0, 0, 0],
+                                                                        "SButton": {
+                                                                            "Aka": "BtnDetailRevert",
+                                                                            "Content": {
+                                                                                "STextBlock": {
+                                                                                    "Aka": "BtnDetailRevertText",
+                                                                                    "Text": "되돌리기"
+                                                                                }
+                                                                            },
+                                                                            "OnClick": "tc_tool.reload_detail_from_selection()"
+                                                                        }
+                                                                    }
+                                                                ]
+                                                            }
+                                                        },
+                                                        {
+                                                            "AutoHeight": true,
+                                                            "VAlign": "Top",
+                                                            "Padding": [5, 5, 5, 5],
+                                                            "SExpandableArea": {
+                                                                "Aka": "DetailDebugExpandable",
+                                                                "InitiallyCollapsed": true,
+                                                                "HeaderContent": {
+                                                                    "STextBlock": {
+                                                                        "Aka": "LblDebugSection",
+                                                                        "Text": "디버그 JSON"
+                                                                    }
+                                                                },
+                                                                "BodyContent": {
+                                                                    "SMultiLineEditableTextBox": {
+                                                                        "Aka": "DetailText",
+                                                                        "Text": "",
+                                                                        "IsReadOnly": true
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "AutoHeight": true,
+                            "VAlign": "Top",
+                            "HAlign": "Fill",
+                            "Padding": [5, 5, 5, 5],
+                            "SBorder": {
+                                "BorderImage": {
+                                    "Style": "FEditorStyle",
+                                    "Brush": "ToolPanel.GroupBorder"
+                                },
+                                "Content": {
+                                    "STextBlock": {
+                                        "Aka": "StatusText",
+                                        "Text": "초기화 중...",
+                                        "ColorAndOpacity": [0.8, 0.8, 0.8, 1.0]
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

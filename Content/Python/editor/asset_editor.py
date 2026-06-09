@@ -1,9 +1,11 @@
 import unreal
 import tool.asset_link
+import tool.shader_cat
 
 # 상수 정의
 OWNER_NAME = unreal.Name("MaidCat")
-TOOLBAR_NAME = unreal.Name("AssetEditorToolBar.CommonActions")
+COMMON_TOOLBAR_NAME = unreal.Name("AssetEditorToolBar.CommonActions")
+MATERIAL_EDITOR_TOOLBAR_NAME = unreal.Name("AssetEditor.MaterialEditor.ToolBar")
 CONTEXT_MENU_NAME = unreal.Name("PropertyEditor.RowContextMenu")
 ASSET_MANUAL_NAME = unreal.Name("AssetManual")
 CORE_STYLE_NAME = unreal.Name("CoreStyle")
@@ -23,6 +25,11 @@ LOAD_PRESET_LABEL = unreal.Text("📂 Load Preset")
 SAVE_PRESET_TOOLTIP = unreal.Text("현재 머티리얼 인스턴스를 프리셋으로 저장")
 LOAD_PRESET_TOOLTIP = unreal.Text("저장된 프리셋 로드")
 
+# Shader 메뉴 관련 상수
+SHADER_CAT_NAME = unreal.Name("MaidCat_ShaderCat")
+SHADER_CAT_LABEL = unreal.Text("ShaderCat")
+SHADER_CAT_TOOLTIP = unreal.Text("셰이더를 검사합니다")
+
 @unreal.uclass()
 class AssetManualButton(unreal.ToolMenuEntryScript):
     """에셋 에디터 툴바의 매뉴얼 버튼"""
@@ -35,13 +42,27 @@ class AssetManualButton(unreal.ToolMenuEntryScript):
     def execute(self, context):
         tool.asset_link.handle_asset_button_click(context)
 
+@unreal.uclass()
+class ShaderCatButton(unreal.ToolMenuEntryScript):
+    """에셋 에디터 툴바의 셰이더캣 버튼"""
+    
+    @unreal.ufunction(override=True)
+    def can_execute(self, context):
+        return True
+    
+    @unreal.ufunction(override=True)
+    def execute(self, context):
+        ctx = context.find_by_class(unreal.AssetEditorToolkitMenuContext)
+        objects = ctx.get_editing_objects()    
+        material = next((x for x in objects if isinstance(x, unreal.MaterialInterface)), None)
+        tool.shader_cat.launch(material)
 
 def register_manual_button():
     """공통 툴바에 매뉴얼 버튼 등록"""
     try:
         tool_menus = unreal.ToolMenus.get()
         
-        toolbar = tool_menus.extend_menu(TOOLBAR_NAME)
+        toolbar = tool_menus.extend_menu(COMMON_TOOLBAR_NAME)
         if not toolbar:
             return
         
@@ -52,7 +73,7 @@ def register_manual_button():
         entry.data.icon = unreal.ScriptSlateIcon(CORE_STYLE_NAME, ICONS_INFO_NAME)
         entry.init_entry(
             OWNER_NAME,
-            TOOLBAR_NAME, 
+            COMMON_TOOLBAR_NAME, 
             OWNER_NAME,
             ASSET_MANUAL_NAME,
             MANUAL_LABEL_TEXT,
@@ -109,6 +130,31 @@ def register_preset_menu():
     except Exception as e:
         print(f"❌ 프리셋 메뉴 등록 실패: {e}")
 
+def register_shader_menu():
+    """머티리얼 에디터에 셰이더캣 메뉴 등록"""
+    try:
+        tool_menus = unreal.ToolMenus.get()
+        shader_cat_menu = tool_menus.extend_menu(MATERIAL_EDITOR_TOOLBAR_NAME)
+        if not shader_cat_menu:
+            return
+
+        # 셰이더 검사 메뉴
+        shader_cat_entry = ShaderCatButton()
+        shader_cat_entry.data = unreal.ToolMenuEntryScriptData()
+        shader_cat_entry.data.icon = unreal.ScriptSlateIcon(CORE_STYLE_NAME, ICONS_INFO_NAME)
+        shader_cat_entry.init_entry(
+            OWNER_NAME,
+            MATERIAL_EDITOR_TOOLBAR_NAME, 
+            OWNER_NAME,
+            SHADER_CAT_NAME,
+            SHADER_CAT_LABEL,
+            SHADER_CAT_TOOLTIP
+        )
+        shader_cat_entry.register_menu_entry()
+        tool_menus.refresh_all_widgets()
+        
+    except Exception as e:
+        print(f"❌ 셰이더 검사 메뉴 등록 실패: {e}")
 
 def unregister():
     """모든 MaidCat 메뉴 항목 제거"""
@@ -121,7 +167,7 @@ def register():
     """MaidCat 에디터 기능 초기화"""
     register_manual_button()
     register_preset_menu()
-
+    register_shader_menu()
 
 if __name__ == "__main__":
     register()
